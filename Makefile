@@ -14,17 +14,17 @@ setup-and-clean: install-dev clean
 
 # === DOCKER COMMANDS ===
 
-# Build and start all services
+# 🚀 Production: Build and start all services
 docker-up:
 	docker compose up --build -d
 
-# Start with development tools (pgAdmin, Redis Commander)
-docker-up-tools:
-	docker compose --profile tools up --build -d
-
-# Start in development mode with hot reload
+# 🔥 Development: Start with hot reload and development tools
 docker-dev:
-	docker compose -f docker compose.yml -f docker compose.dev.yml up --build -d
+	APP_ENV=dev DOCKER_TARGET=development docker compose --profile tools up --build -d
+
+# 🛠️ Tools: Start with development tools only (pgAdmin, Redis Commander)
+docker-tools:
+	docker compose --profile tools up --build -d
 
 # Stop all services
 docker-down:
@@ -90,15 +90,15 @@ help:
 	@echo ""
 	@echo "  Docker - Core:"
 	@echo "    docker-setup   - Complete Docker setup (init + up + status)"
-	@echo "    docker-up      - Build and start services"
+	@echo "    docker-up      - 🚀 Production: Build and start services"
+	@echo "    docker-dev     - 🔥 Development: Hot reload + tools"
+	@echo "    docker-tools   - 🛠️ Tools only: pgAdmin + Redis Commander"
 	@echo "    docker-down    - Stop services"
 	@echo "    docker-restart - Restart services"
 	@echo "    docker-status  - Check service status"
 	@echo "    docker-logs    - View application logs"
 	@echo ""
-	@echo "  Docker - Development:"
-	@echo "    docker-dev     - Start in development mode"
-	@echo "    docker-up-tools - Start with development tools"
+	@echo "  Docker - Testing:"
 	@echo "    docker-test-api - Test API endpoints"
 	@echo "    docker-test    - Run tests in container"
 	@echo ""

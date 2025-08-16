@@ -12,6 +12,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: ${DOCKER_TARGET:-final}
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     container_name: amiagent-api
     restart: unless-stopped
     ports:
@@ -28,13 +31,18 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./logs:/app/logs
-      # 🔥 Development: Mount source code for hot reload
+      # 🔥 Development: Conditional source code mount for hot reload
       - type: bind
-        source: .
+        source: ${PWD:-.}
         target: /app
         consistency: cached
+        read_only: ${APP_ENV:-production}
         bind:
           create_host_path: true
+    # Exclude cache and build artifacts from volume mount
+    tmpfs:
+      - /app/__pycache__:noexec,nosuid,size=100m
+      - /app/.pytest_cache:noexec,nosuid,size=50m
     command: >
       sh -c "
       if [ \"$$APP_ENV\" = \"dev\" ]; then

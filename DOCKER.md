@@ -1,50 +1,108 @@
-# 🐳 Docker Quick Start
+# 🐳 AmiAgent Docker - Clean & Optimized
 
-## Files Structure (Simplified)
+## 📁 Simplified Structure
 ```
-├── Dockerfile              # App container definition
-├── docker-compose.yml      # All-in-one orchestration  
-└── .dockerignore           # Build optimization
+├── Dockerfile              # Multi-stage build (production + development)
+├── docker-compose.yml      # All-in-one orchestration with profiles
+├── .dockerignore           # Build optimization
+├── Makefile               # Docker commands shortcuts
+└── DOCKER.md              # This documentation
 ```
 
-## Usage Commands
+## 🚀 Quick Start Commands
 
-### 🚀 Production
+### Production (Optimized Build)
 ```bash
-docker compose up -d
+make docker-up
+# OR: docker compose up --build -d
 ```
 
-### 🔥 Development (Hot Reload)
+### Development (Hot Reload + Tools)
 ```bash
-APP_ENV=dev docker compose up -d
+make docker-dev  
+# OR: APP_ENV=dev DOCKER_TARGET=development docker compose --profile tools up --build -d
 ```
 
-### 🛠️ Development + Tools (pgAdmin + Redis Commander)
+### Tools Only (pgAdmin + Redis Commander)
 ```bash
-APP_ENV=dev docker compose --profile tools up -d
+make docker-tools
+# OR: docker compose --profile tools up --build -d
 ```
 
-### 📊 Access URLs
-- **API**: http://localhost:1912
-- **pgAdmin**: http://localhost:5050 (admin@amiagent.com / admin123)
-- **Redis Commander**: http://localhost:8081
+## 🎯 Multi-Stage Build Benefits
 
-### 🔧 Useful Commands
+### Production Stage (`final`)
+- ✅ Minimal dependencies (no dev tools)
+- ✅ Smaller image size (~200MB vs ~500MB)
+- ✅ Security optimized (no build tools)
+- ✅ Fast startup time
+
+### Development Stage (`development`)  
+- ✅ All dev dependencies included
+- ✅ Hot reload enabled
+- ✅ Git and build tools available
+- ✅ Source code mounted as volume
+
+## 📊 Access URLs
+- **🌐 API**: http://localhost:1912
+- **🗄️ pgAdmin**: http://localhost:5050 (admin@amiagent.com / admin123)
+- **🔴 Redis Commander**: http://localhost:8081
+
+## 🔧 Essential Commands
 ```bash
-# View logs
-docker compose logs -f amiagent
+# View application logs
+make docker-logs
+
+# Check service health
+make docker-status
 
 # Stop everything
-docker compose down
+make docker-down
 
-# Rebuild and restart
-docker compose up --build -d
+# Clean rebuild
+make docker-restart
 
-# Clean up (remove volumes)
-docker compose down -v
+# Complete cleanup (DESTRUCTIVE!)
+make docker-clean
 ```
 
-### 📁 Setup Requirements
-1. Create `.env` file with your API keys
-2. Ensure `init-db.sql` exists for database setup
-3. Create `storage/` and `logs/` directories (auto-created)
+## ⚡ Performance Optimizations
+
+1. **Multi-stage builds** - Separate prod/dev stages
+2. **Layer caching** - Dependencies cached separately  
+3. **BuildKit** - Parallel builds and cache mounting
+4. **tmpfs mounts** - Cache directories in memory
+5. **Minimal base** - python:3.12-slim for smaller images
+6. **Health checks** - Proper startup detection
+
+## 🛠️ Advanced Usage
+
+### Environment Variables
+```bash
+# Development with custom settings
+APP_ENV=dev DEBUG=true docker compose up -d
+
+# Production with specific target
+DOCKER_TARGET=final docker compose up --build -d
+```
+
+### Development Workflow
+```bash
+# 1. Start development environment
+make docker-dev
+
+# 2. Make code changes (auto-reloads)
+# Files are mounted as volume for instant feedback
+
+# 3. Test API
+make docker-test-api
+
+# 4. Run tests in container  
+make docker-test
+```
+
+## 📋 Setup Requirements
+1. **Environment**: Create `.env` file with API keys
+2. **Database**: `init-db.sql` for PostgreSQL setup
+3. **Directories**: `storage/` and `logs/` (auto-created)
+4. **Docker**: Docker + Docker Compose installed
