@@ -1,0 +1,25 @@
+# Development override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  amiagent:
+    build:
+      target: development  # Use development stage if multi-stage build
+    environment:
+      - APP_ENV=dev
+      - DEBUG=true
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/__pycache__  # Exclude pycache
+      - /app/.venv        # Exclude venv if exists
+    command: ["uv", "run", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "1912", "--reload"]
+
+  # Enable all tools in development
+  redis-commander:
+    profiles: []  # Remove profiles to enable by default
+
+  pgadmin:
+    profiles: []  # Remove profiles to enable by default

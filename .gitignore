@@ -1,0 +1,39 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+
+.venv
+.env
+
+# Ignore all cache directories
+**/.cache/
+
+# Ignore all build directories
+**/build/
+
+# Ignore all dist directories
+**/dist/
+
+# Ignore all wheel directories
+**/wheels/
+
+# Ignore all ruff cache directories
+**/.ruff_cache/
+
+# Ignore all pytest cache directories
+**/.pytest_cache/
+
+# Ignore all mypy cache directories
+**/.mypy_cache/
+
+# Ignore all build directories
+**/build/
+
+
+.cursor/
