@@ -1,8 +1,13 @@
-# Docker Compose file for AmiAgent
-# Use: docker compose up --build -d
+# 🚀 AmiAgent - All-in-One Docker Compose
+# 
+# USAGE:
+# Production:     docker compose up -d
+# Development:    APP_ENV=dev docker compose up -d  
+# With Tools:     docker compose --profile tools up -d
+# Dev + Tools:    APP_ENV=dev docker compose --profile tools up -d
 
 services:
-  # FastAPI Application
+  # 🎯 FastAPI Application
   amiagent:
     build:
       context: .
@@ -12,8 +17,8 @@ services:
     ports:
       - "1912:1912"
     environment:
-      - APP_ENV=dev
-      - DEBUG=true
+      - APP_ENV=${APP_ENV:-production}
+      - DEBUG=${DEBUG:-false}
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=1912
       - DATABASE_URL=postgresql+psycopg://rag:ragpass@postgres:5432/ragdb
@@ -23,6 +28,23 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./logs:/app/logs
+      # 🔥 Development: Mount source code for hot reload
+      - type: bind
+        source: .
+        target: /app
+        consistency: cached
+        bind:
+          create_host_path: true
+    command: >
+      sh -c "
+      if [ \"$$APP_ENV\" = \"dev\" ]; then
+        echo '🔥 Starting in DEVELOPMENT mode with hot reload...';
+        uv run uvicorn app.api.main:app --host 0.0.0.0 --port 1912 --reload;
+      else
+        echo '🚀 Starting in PRODUCTION mode...';
+        uv run uvicorn app.api.main:app --host 0.0.0.0 --port 1912;
+      fi
+      "
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,7 +100,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # Optional: Redis Commander for Redis management
+  # 🛠️ Redis Commander for Redis management
   redis-commander:
     image: rediscommander/redis-commander:latest
     container_name: amiagent-redis-commander
@@ -93,8 +115,9 @@ services:
       - amiagent-network
     profiles:
       - tools
+      - dev
 
-  # Optional: pgAdmin for PostgreSQL management
+  # 🗄️ pgAdmin for PostgreSQL management  
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: amiagent-pgadmin
@@ -113,6 +136,7 @@ services:
       - amiagent-network
     profiles:
       - tools
+      - dev
 
 volumes:
   postgres_data:

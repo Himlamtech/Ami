@@ -35,5 +35,3 @@ wheels/
 # Ignore all build directories
 **/build/
 
-
-.cursor/
