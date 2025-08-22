@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from prompt import root_agent_instruction
+from .prompt import root_agent_instruction
 #from ...core.config import settings
 from google.genai import types
 from google.adk.planners import BuiltInPlanner
@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 root_agent = Agent(
-    name = "root_agent",
-    model = "gemini-2.5-flash",
+    name = "root_agent",     # Use settings.THINKING_CHAT_MODEL_ID later because we cannot test with adk web
     description= "Tác nhân gốc, có chức năng phân tích và định tuyến yêu cầu đến tác nhân phù hợp.",
     instruction= root_agent_instruction,
     planner= BuiltInPlanner(
@@ -19,4 +18,3 @@ root_agent = Agent(
     ),
     sub_agents= []
 )
-print("Root agent created successfully.")
