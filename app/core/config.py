@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 rootutils.setup_root(__file__, indicator=".env", pythonpath=True)
 
-ChatModel = Literal["gpt-5", "gpt-5-mini", "gpt-5-nano"]
+ChatModel = Literal["gpt-5", "gpt-5-mini", "gpt-5-nano", "gemini-2.0-flash", "gemini-2.5-flash"]
 EmbedModel = Literal["text-embedding-3-small", "text-embedding-3-large"]
 Dist = Literal["cosine", "l2", "ip"]
 
@@ -65,11 +65,14 @@ class Settings(BaseSettings):
 
     # --- Providers ---
     OPENAI_API_KEY: SecretStr | None = None  # Required in production
+    GOOGLE_API_KEY: SecretStr | None = None  
 
     # --- Models ---
     DEFAULT_CHAT_MODEL_ID: ChatModel = "gpt-5-nano"
+    THINKING_CHAT_MODEL_ID: ChatModel = "gemini-2.5-flash"  # Model worked well with BuiltInPlanner
+    GENERAL_CHAT_MODEL_ID: ChatModel = "gemini-2.0-flash"  # Model for general task
     DEFAULT_EMBED_MODEL_ID: EmbedModel = "text-embedding-3-small"
-
+    
     # --- Infra ---
     DATABASE_URL: str = "postgresql+psycopg://rag:ragpass@localhost:5432/ragdb"
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -119,16 +122,25 @@ class Settings(BaseSettings):
     def _parse_origins(cls, v: Any) -> list[str]:
         return _as_list(v)
 
-    @field_validator("OPENAI_API_KEY", mode="before")
+    @field_validator("OPENAI_API_KEY", "GOOGLE_API_KEY", mode="before")
     @classmethod
-    def _strip_key(cls, v: Any, info: ValidationInfo) -> SecretStr | None:
+    def _validate_api_key(cls, v: Any, info: ValidationInfo) -> SecretStr | None:
+        """
+        Xác thực API key: loại bỏ khoảng trắng và yêu cầu key
+        trong môi trường production.
+        """
+        # Lấy tên của trường đang được xác thực (ví dụ: 'OPENAI_API_KEY')
+        current_field_name = info.field_name.upper()
+
         if not v or str(v).strip() == "":
-            # Only require API key in production environment
             app_env = info.data.get("APP_ENV", "dev")
             if app_env == "prod":
-                raise ValueError("OPENAI_API_KEY is required in production")
+                # Tạo thông báo lỗi động, chính xác cho từng trường
+                raise ValueError(f"{current_field_name} is required in production")
             return None
+            
         return SecretStr(str(v).strip())
+
 
     @field_validator("PGVECTOR_DIM", mode="after")
     @classmethod
