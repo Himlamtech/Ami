@@ -33,7 +33,7 @@ class VectorConfig:
     ivf_lists: int = 1000  # Number of IVF lists
     ivf_probes: int = 10  # Number of IVF probes during search
 
-    def update_dim(self, new_dim: int):
+    def update_dim(self, new_dim: int) -> "VectorConfig":
         """Return a new VectorConfig with updated dimension."""
         return VectorConfig(
             dim=new_dim,
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
         trong môi trường production.
         """
         # Lấy tên của trường đang được xác thực (ví dụ: 'OPENAI_API_KEY')
-        current_field_name = info.field_name.upper()
+        current_field_name = info.field_name.upper() if info.field_name else "API_KEY"
 
         if not v or str(v).strip() == "":
             app_env = info.data.get("APP_ENV", "dev")

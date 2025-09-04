@@ -5,7 +5,7 @@ import asyncio
 import logging
 from typing import Any, AsyncIterator
 
-import rootutils  # type: ignore
+import rootutils
 from openai import OpenAI
 
 rootutils.setup_root(__file__, indicator=".env", pythonpath=True)
@@ -52,7 +52,7 @@ class OpenAILLM:
             if content is None:
                 logger.warning(f"Got None content from OpenAI: {response}")
                 return ""
-            return content
+            return str(content)
         except Exception:
             logger.exception(f"OpenAI failed: model={model_id}")
             raise
@@ -64,7 +64,7 @@ class OpenAILLM:
         **kwargs: Any,
     ) -> AsyncIterator[str]:
         """Get streaming completion."""
-        payload = self._clean_params(model_id, messages=messages, stream=True, **kwargs)
+        payload = {"model": model_id, "messages": messages, "stream": True, **kwargs}
         try:
             stream = await asyncio.to_thread(
                 self.client.chat.completions.create, **payload

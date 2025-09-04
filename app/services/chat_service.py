@@ -9,7 +9,6 @@ from uuid import UUID, uuid4
 from app.infra.llms.openai_llm import OpenAILLM
 from app.infra.storage.json_storage import JSONChatStorage
 from app.schemas.chat import ChatRequest, ChatResponse, Message, SessionInfo
-from app.utils.io import load_json
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class ChatService:
         self.llm = llm_client or OpenAILLM()
         self.storage = storage or JSONChatStorage()
         # Load existing sessions from storage
-        self.session_info: Dict[UUID, SessionInfo] = load_json("storage/sessions.json")
+        self.session_info: Dict[UUID, SessionInfo] = self.storage.load_sessions()
 
     async def chat(self, request: ChatRequest) -> ChatResponse:
         # 1. Tạo hoặc lấy session

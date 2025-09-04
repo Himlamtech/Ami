@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 
 def read_file(file_path: str) -> str:
@@ -13,13 +14,19 @@ def write_file(file_path: str, content: str) -> None:
         f.write(content)
 
 
-def load_json(file_path: str) -> dict:
+def load_json(file_path: str) -> dict[Any, Any]:
     """Load content from a JSON file."""
     with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        result = json.load(f)
+        # Ensure we return a dict type
+        if not isinstance(result, dict):
+            raise ValueError(
+                f"Expected dict from JSON file {file_path}, got {type(result)}"
+            )
+        return result
 
 
-def save_json(file_path: str, content: dict) -> None:
+def save_json(file_path: str, content: dict[Any, Any]) -> None:
     """Save content to a JSON file."""
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(content, f, indent=2, ensure_ascii=False)
