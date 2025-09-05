@@ -1,90 +1,109 @@
-from dataclasses import dataclass
-from functools import lru_cache
-from typing import Any, Literal
+# app/config.py
+from __future__ import annotations
 
-import rootutils
-from pydantic import SecretStr, ValidationInfo, field_validator
+from dataclasses import dataclass
+from enum import Enum
+from functools import lru_cache
+from typing import Any
+
+from pydantic import (
+    AnyUrl,
+    Field,
+    SecretStr,
+    ValidationInfo,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-rootutils.setup_root(__file__, indicator=".env", pythonpath=True)
 
-ChatModel = Literal[
-    "gpt-5", "gpt-5-mini", "gpt-5-nano", "gemini-2.0-flash", "gemini-2.5-flash"
-]
-EmbedModel = Literal["text-embedding-3-small", "text-embedding-3-large"]
-Dist = Literal["cosine", "l2", "ip"]
+# ===== Enums =====
+class ChatModelID(str, Enum):
+    GPT5 = "gpt-5"
+    GPT5_MINI = "gpt-5-mini"
+    GPT5_NANO = "gpt-5-nano"
+    GEMINI_FLASH_25 = "gemini-2.5-flash"
 
-# Mapping of embedding models to their dimensions
-EMBED_MODEL_DIMS = {
+
+class EmbedModelID(str, Enum):
+    E3_SMALL = "text-embedding-3-small"
+    E3_LARGE = "text-embedding-3-large"
+
+
+class Distance(str, Enum):
+    COSINE = "cosine"
+    L2 = "l2"
+    IP = "ip"
+
+
+# ===== Embedding dims (single source of truth) =====
+EMBED_MODEL_DIMS: dict[str, int] = {
     "text-embedding-3-small": 1536,
     "text-embedding-3-large": 3072,
 }
 
 
-@dataclass
+# ===== Vector config (immutable) =====
+@dataclass(frozen=True)
 class VectorConfig:
-    """Configuration for vector store (pgvector)."""
-
-    dim: int = 1536  # Dimension of the embedding vector
-    distance: Dist = "cosine"  # Distance metric for vector search
-    hsnw_m: int = 16  # HNSW max connections per layer
-    hsnw_ef_construction: int = 64  # HNSW construction-time exploration factor
-    hsnw_ef_search: int = 64  # HNSW search-time exploration factor
-    ivf_lists: int = 1000  # Number of IVF lists
-    ivf_probes: int = 10  # Number of IVF probes during search
-
-    def update_dim(self, new_dim: int) -> "VectorConfig":
-        """Return a new VectorConfig with updated dimension."""
-        return VectorConfig(
-            dim=new_dim,
-            distance=self.distance,
-            hsnw_m=self.hsnw_m,
-            hsnw_ef_construction=self.hsnw_ef_construction,
-            hsnw_ef_search=self.hsnw_ef_search,
-            ivf_lists=self.ivf_lists,
-            ivf_probes=self.ivf_probes,
-        )
+    dim: int
+    distance: str = "cosine"
+    hnsw_m: int = 16
+    hnsw_ef_construction: int = 64
+    hnsw_ef_search: int = 64
+    ivf_lists: int = 1000
+    ivf_probes: int = 10
 
 
-def _as_list(v: str | list[str] | None) -> list[str]:
-    """Convert input to a list of stripped strings, defaulting to empty list."""
-    if v is None or v == "":
+def _parse_listish(v: str | list[str] | None) -> list[str]:
+    """Accept JSON-list or CSV; normalize to list[str]."""
+    if v is None:
         return []
-    if isinstance(v, str):
-        return [s.strip() for s in v.split(",") if s.strip()]
-    return [s.strip() for s in v if s.strip()]
+    if isinstance(v, list):
+        return [str(i).strip() for i in v if str(i).strip()]
+    s = v.strip()
+    if not s:
+        return []
+    if s.startswith("[") and s.endswith("]"):
+        import json
+
+        try:
+            arr = json.loads(s)
+            return [str(i).strip() for i in arr if str(i).strip()]
+        except Exception:
+            pass
+    return [i.strip() for i in s.split(",") if i.strip()]
 
 
+# ===== Settings (Pydantic v2) =====
 class Settings(BaseSettings):
-    """Application configuration settings."""
-
     # --- App ---
     APP_NAME: str = "AmiAgent"
-    APP_ENV: Literal["dev", "staging", "prod"] = "dev"
-    DEBUG: bool = True
+    APP_ENV: str = "dev"  # dev|staging|prod
+    DEBUG: bool | None = None
     SERVER_HOST: str = "0.0.0.0"
     SERVER_PORT: int = 1912
 
     # --- Providers ---
-    OPENAI_API_KEY: SecretStr | None = None  # Required in production
+    OPENAI_API_KEY: SecretStr | None = None
     GOOGLE_API_KEY: SecretStr | None = None
 
     # --- Models ---
-    DEFAULT_CHAT_MODEL_ID: ChatModel = "gpt-5-nano"
-    THINKING_CHAT_MODEL_ID: ChatModel = (
-        "gemini-2.5-flash"  # Model worked well with BuiltInPlanner
-    )
-    GENERAL_CHAT_MODEL_ID: ChatModel = "gemini-2.0-flash"  # Model for general task
-    DEFAULT_EMBED_MODEL_ID: EmbedModel = "text-embedding-3-small"
+    DEFAULT_CHAT_MODEL_ID: ChatModelID = ChatModelID.GPT5_NANO
+    GENERAL_CHAT_MODEL_ID: ChatModelID = ChatModelID.GPT5_MINI
+    DEFAULT_EMBED_MODEL_ID: EmbedModelID = EmbedModelID.E3_SMALL
 
-    # --- Infra ---
-    DATABASE_URL: str = "postgresql+psycopg://rag:ragpass@localhost:5432/ragdb"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # --- Vector Store ---
+    VECTOR_STORE_DIR: str = "vectorstore"
+    VECTOR_STORE_COLLECTION_NAME: str = "ami_collection"
+    DEFAULT_DATA_PATH: str = "assets/data/processed/qa.csv"
+    # --- Infra (use AnyUrl to accept SQLAlchemy schemes like postgresql+psycopg) ---
+    DATABASE_URL: AnyUrl = "postgresql+psycopg://rag:ragpass@localhost:5432/ragdb"
+    REDIS_URL: AnyUrl = "redis://localhost:6379/0"
 
-    # --- Vector Store Configuration ---
-    # Individual vector config fields from .env
-    PGVECTOR_DIM: int = 1536
-    VECTOR_DISTANCE: Dist = "cosine"
+    # --- Vector knobs (override only if needed) ---
+    VECTOR_DISTANCE: Distance = Distance.COSINE
     HNSW_M: int = 16
     HNSW_EF_CONSTRUCTION: int = 64
     HNSW_EF_SEARCH: int = 64
@@ -95,80 +114,90 @@ class Settings(BaseSettings):
     LANGFUSE_PUBLIC_KEY: SecretStr | None = None
     LANGFUSE_SECRET_KEY: SecretStr | None = None
     LANGFUSE_BASE_URL: str | None = None
-    DEEPEVAL_API_KEY: SecretStr | None = None  # Optional evaluation API key
+    DEEPEVAL_API_KEY: SecretStr | None = None
 
     # --- Misc ---
-    ALLOWED_ORIGINS: list[str] = []
+    ALLOWED_ORIGINS: list[str] = Field(default_factory=list)
 
-    @property
-    def VECTOR_CONFIG(self) -> VectorConfig:
-        """Build VectorConfig from individual settings."""
-        return VectorConfig(
-            dim=self.PGVECTOR_DIM,
-            distance=self.VECTOR_DISTANCE,
-            hsnw_m=self.HNSW_M,
-            hsnw_ef_construction=self.HNSW_EF_CONSTRUCTION,
-            hsnw_ef_search=self.HNSW_EF_SEARCH,
-            ivf_lists=self.IVF_LISTS,
-            ivf_probes=self.IVF_PROBES,
-        )
-
+    # --- Model config ---
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="forbid",
         validate_default=True,
+        # env_prefix="AMI_",  # uncomment nếu muốn prefix env rõ ràng
     )
+
+    # ===== Derived fields =====
+    @computed_field  # type: ignore[misc]
+    @property
+    def VECTOR_DIM(self) -> int:
+        return EMBED_MODEL_DIMS[self.DEFAULT_EMBED_MODEL_ID.value]
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def VECTOR_CONFIG(self) -> VectorConfig:
+        return VectorConfig(
+            dim=self.VECTOR_DIM,
+            distance=self.VECTOR_DISTANCE.value,
+            hnsw_m=self.HNSW_M,
+            hnsw_ef_construction=self.HNSW_EF_CONSTRUCTION,
+            hnsw_ef_search=self.HNSW_EF_SEARCH,
+            ivf_lists=self.IVF_LISTS,
+            ivf_probes=self.IVF_PROBES,
+        )
+
+    # ===== Validators / Normalizers =====
+    @model_validator(mode="after")
+    def _prod_guardrails(self) -> "Settings":
+        # Fail-fast ở production
+        if self.APP_ENV == "prod":
+            # Provider keys
+            if not (
+                self.OPENAI_API_KEY and self.OPENAI_API_KEY.get_secret_value().strip()
+            ):
+                raise ValueError("OPENAI_API_KEY is required in production")
+            # CORS phải explicit
+            if not self.ALLOWED_ORIGINS or self.ALLOWED_ORIGINS == ["*"]:
+                raise ValueError(
+                    "In production, ALLOWED_ORIGINS must be explicit (no '*')."
+                )
+        return self
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def _parse_origins(cls, v: Any) -> list[str]:
-        return _as_list(v)
+        arr = _parse_listish(v)
+        # "*" allowed only outside prod (prod is guarded above)
+        return arr
 
-    @field_validator("OPENAI_API_KEY", "GOOGLE_API_KEY", mode="before")
+    @field_validator(
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_SECRET_KEY",
+        "DEEPEVAL_API_KEY",
+        mode="before",
+    )
     @classmethod
-    def _validate_api_key(cls, v: Any, info: ValidationInfo) -> SecretStr | None:
-        """
-        Xác thực API key: loại bỏ khoảng trắng và yêu cầu key
-        trong môi trường production.
-        """
-        # Lấy tên của trường đang được xác thực (ví dụ: 'OPENAI_API_KEY')
-        current_field_name = info.field_name.upper() if info.field_name else "API_KEY"
-
-        if not v or str(v).strip() == "":
-            app_env = info.data.get("APP_ENV", "dev")
-            if app_env == "prod":
-                # Tạo thông báo lỗi động, chính xác cho từng trường
-                raise ValueError(f"{current_field_name} is required in production")
+    def _trim_secret(cls, v: Any) -> SecretStr | None:
+        if v is None:
             return None
-
-        return SecretStr(str(v).strip())
-
-    @field_validator("PGVECTOR_DIM", mode="after")
-    @classmethod
-    def _validate_vector_dim(cls, v: int, info: ValidationInfo) -> int:
-        """Ensure vector dimension matches the embedding model."""
-        embed_model = info.data.get("DEFAULT_EMBED_MODEL_ID", "text-embedding-3-small")
-        expected_dim = EMBED_MODEL_DIMS.get(embed_model)
-        if expected_dim is not None and v != expected_dim:
-            return expected_dim
-        return v
+        s = str(v).strip()
+        return SecretStr(s) if s else None
 
     @field_validator("DEBUG", mode="after")
     @classmethod
-    def _set_debug(cls, v: bool, info: ValidationInfo) -> bool:
-        """Set DEBUG based on APP_ENV if not explicitly set."""
-        if "DEBUG" not in info.data:
-            app_env: str = info.data.get("APP_ENV", "dev")
-            return bool(app_env != "prod")
-        return v
+    def _default_debug(cls, v: bool | None, info: ValidationInfo) -> bool:
+        return (info.data.get("APP_ENV", "dev") != "prod") if v is None else bool(v)
 
 
+# ===== Accessor (singleton) =====
 @lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    """Retrieve cached settings instance."""
+def get_config() -> Settings:
     return Settings()
 
 
-settings = get_settings()
+# Optional: convenience binding
+config = get_config()

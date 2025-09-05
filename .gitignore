@@ -138,5 +138,8 @@ media/
 ########################
 # Specific Project
 ########################
-assets/
+# assets/
 storage/
+.vscode/
+
+emp.py

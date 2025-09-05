@@ -9,8 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 rootutils.setup_root(__file__, indicator=".env", pythonpath=True)
 
-from app.api.v1.chat_api import router as chat_router  # noqa: E402
-from app.core.config import settings  # noqa: E402
+from app.api.v1.rag_api import router as rag_router  # noqa: E402
+from app.core.config import config as settings  # noqa: E402
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +33,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(chat_router, prefix="/api/v1")
+app.include_router(rag_router, prefix="/api/v1")
 
 
 @app.get("/")

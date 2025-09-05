@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 # AI RAG Project Standards - STRICTLY ENFORCED
 
 ## 🚫 FORBIDDEN TECHNOLOGIES

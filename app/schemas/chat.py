@@ -51,3 +51,17 @@ class SessionDetail(BaseModel):
 
     session_info: SessionInfo
     conversation_history: List[Message]
+
+
+class RAGChatRequest(BaseModel):
+    """Request cho RAG chat."""
+
+    question: str
+    session_id: str
+
+
+class RAGChatResponse(BaseModel):
+    """Response từ RAG chat."""
+
+    answer: str
+    session_id: str
