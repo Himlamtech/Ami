@@ -3,18 +3,18 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.infra.features.rag.rag import RAGService
-from app.schemas.chat import RAGChatRequest, RAGChatResponse
+from app.services.rag import RAGService
+from app.schemas.chat import ChatRequest, ChatResponse
 
 router = APIRouter()
 rag_service = RAGService()
 
 
-@router.post("/rag/chat", response_model=RAGChatResponse)
-async def rag_chat(request: RAGChatRequest) -> RAGChatResponse:
+@router.post("/chat", response_model=ChatResponse)
+async def rag_chat(request: ChatRequest) -> ChatResponse:
     """Chat với RAG service."""
     try:
-        answer = rag_service.generate_response(request.question, request.session_id)
-        return RAGChatResponse(answer=answer, session_id=request.session_id)
+        response = rag_service.generate_response(request.messages, request.session_id)
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
