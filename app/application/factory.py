@@ -1,10 +1,11 @@
 """
 Provider factory for creating instances of different providers.
-Follows Factory Pattern and Open/Closed Principle with proper database client management.
+Follows Factory Pattern and Dependency Inversion Principle.
+Simplified to only use required providers: OpenAI LLM, HuggingFace Embeddings, Qdrant.
 """
 
 import logging
-from typing import Any, Dict, Type
+from typing import Any, Dict
 
 from app.config.settings import settings
 from app.core.interfaces import (
@@ -13,17 +14,13 @@ from app.core.interfaces import (
     ILLMProvider,
     IVectorStore,
 )
-from app.infrastructure.databases.chroma_client import ChromaClient
-from app.infrastructure.databases.postgres_client import PostgresClient
+from app.infrastructure.databases.mongodb_client import MongoDBClient
+from app.infrastructure.databases.qdrant_client import QdrantClient
 from app.infrastructure.databases.redis_client import RedisClient
 from app.infrastructure.embeddings.huggingface_embeddings import HuggingFaceEmbeddings
-from app.infrastructure.embeddings.openai_embeddings import OpenAIEmbeddings
-from app.infrastructure.llms.anthropic_llm import AnthropicLLM
-from app.infrastructure.llms.gemini_llm import GeminiLLM
 from app.infrastructure.llms.openai_llm import OpenAILLM
 from app.infrastructure.tools.markitdown_processor import MarkItDownProcessor
-from app.infrastructure.vector_stores.chroma_store import ChromaStore
-from app.infrastructure.vector_stores.pgvector_store import PgVectorStore
+from app.infrastructure.vector_stores.qdrant_store import QdrantVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -31,146 +28,85 @@ logger = logging.getLogger(__name__)
 class ProviderFactory:
     """Factory for creating and managing provider instances with singleton pattern."""
 
-    _embedding_providers: Dict[str, Type[IEmbeddingProvider]] = {
-        "openai": OpenAIEmbeddings,
-        "huggingface": HuggingFaceEmbeddings,
-    }
-
-    _llm_providers: Dict[str, Type[ILLMProvider]] = {
-        "openai": OpenAILLM,
-        "gemini": GeminiLLM,
-        "anthropic": AnthropicLLM,
-    }
-
-    _vector_stores: Dict[str, Type[IVectorStore]] = {
-        "pgvector": PgVectorStore,
-        "chromadb": ChromaStore,
-    }
-
     _instances: Dict[str, Any] = {}
 
     @classmethod
-    def get_embedding_provider(cls, provider_name: str) -> IEmbeddingProvider:
+    def get_embedding_provider(cls) -> IEmbeddingProvider:
         """
-        Get embedding provider instance (singleton).
-
-        Args:
-            provider_name: Name of provider ('openai' or 'huggingface')
+        Get HuggingFace embedding provider instance (singleton).
+        Uses Vietnamese document embedding model.
 
         Returns:
             IEmbeddingProvider instance
         """
-        cache_key = f"embedding_{provider_name}"
+        cache_key = "embedding_huggingface"
         if cache_key not in cls._instances:
-            logger.info(f"Creating embedding provider: {provider_name}")
-
-            if provider_name == "openai":
-                if not settings.openai_api_key:
-                    raise ValueError("OpenAI API key not configured")
-                cls._instances[cache_key] = OpenAIEmbeddings(
-                    api_key=settings.openai_api_key,
-                    model=settings.openai_embedding_model,
-                )
-            elif provider_name == "huggingface":
-                cls._instances[cache_key] = HuggingFaceEmbeddings(
-                    model_name=settings.huggingface_embedding_model
-                )
-            else:
-                raise ValueError(f"Unknown embedding provider: {provider_name}")
+            logger.info("Creating HuggingFace embedding provider")
+            cls._instances[cache_key] = HuggingFaceEmbeddings(
+                model_name=settings.huggingface_embedding_model
+            )
 
         return cls._instances[cache_key]
 
     @classmethod
-    def get_llm_provider(cls, provider_name: str) -> ILLMProvider:
+    def get_llm_provider(cls, model: str = "balance") -> ILLMProvider:
         """
-        Get LLM provider instance (singleton).
-
+        Get OpenAI LLM provider instance (singleton).
+        
         Args:
-            provider_name: Name of provider ('openai', 'gemini', or 'anthropic')
+            model: Thinking mode - 'fast', 'balance', or 'thinking'
+                - fast: gpt-4-1106-preview (nano)
+                - balance: gpt-4-0125-preview (mini)  
+                - thinking: o4-mini (reasoning)
 
         Returns:
             ILLMProvider instance
         """
-        cache_key = f"llm_{provider_name}"
+        cache_key = f"llm_openai_{model}"
         if cache_key not in cls._instances:
-            logger.info(f"Creating LLM provider: {provider_name}")
-
-            if provider_name == "openai":
-                if not settings.openai_api_key:
-                    raise ValueError("OpenAI API key not configured")
-                cls._instances[cache_key] = OpenAILLM(api_key=settings.openai_api_key)
-            elif provider_name == "gemini":
-                if not settings.gemini_api_key:
-                    raise ValueError("Gemini API key not configured")
-                cls._instances[cache_key] = GeminiLLM(api_key=settings.gemini_api_key)
-            elif provider_name == "anthropic":
-                if not settings.anthropic_api_key:
-                    raise ValueError("Anthropic API key not configured")
-                cls._instances[cache_key] = AnthropicLLM(
-                    api_key=settings.anthropic_api_key
-                )
-            else:
-                raise ValueError(f"Unknown LLM provider: {provider_name}")
+            if not settings.openai_api_key:
+                raise ValueError("OpenAI API key not configured")
+            
+            # Map thinking modes to OpenAI models
+            model_map = {
+                "fast": "gpt-4-1106-preview",      # GPT-4 Turbo (fast)
+                "balance": "gpt-4-0125-preview",   # GPT-4 Turbo (balanced)
+                "thinking": "o4-mini"               # O1 Mini (reasoning)
+            }
+            
+            openai_model = model_map.get(model, "gpt-4-0125-preview")
+            logger.info(f"Creating OpenAI LLM provider with model: {openai_model}")
+            
+            cls._instances[cache_key] = OpenAILLM(
+                api_key=settings.openai_api_key,
+                model=openai_model
+            )
 
         return cls._instances[cache_key]
 
     @classmethod
-    async def get_vector_store(cls, store_name: str) -> IVectorStore:
+    async def get_vector_store(cls) -> IVectorStore:
         """
-        Get vector store instance (singleton).
-
-        Args:
-            store_name: Name of vector store ('pgvector' or 'chromadb')
+        Get Qdrant vector store instance (singleton).
 
         Returns:
             IVectorStore instance
         """
-        cache_key = f"vector_{store_name}"
+        cache_key = "vector_qdrant"
         if cache_key not in cls._instances:
-            logger.info(f"Creating vector store: {store_name}")
-
-            if store_name == "pgvector":
-                # Get PostgresClient
-                postgres_client = await cls.get_postgres_client()
-                store = PgVectorStore(postgres_client)
-                await store.initialize()
-                cls._instances[cache_key] = store
-
-            elif store_name == "chromadb" or store_name == "chroma":
-                # Get ChromaClient
-                chroma_client = await cls.get_chroma_client()
-                store = ChromaStore(chroma_client)
-                await store.initialize()
-                cls._instances[cache_key] = store
-            else:
-                raise ValueError(f"Unknown vector store: {store_name}")
+            logger.info("Creating Qdrant vector store")
+            
+            # Get QdrantClient
+            qdrant_client = await cls.get_qdrant_client()
+            store = QdrantVectorStore(
+                qdrant_client=qdrant_client,
+                collection_name=settings.qdrant_collection_name,
+                vector_size=settings.embedding_dimension,
+            )
+            await store.initialize()
+            cls._instances[cache_key] = store
 
         return cls._instances[cache_key]
-
-    @classmethod
-    async def get_postgres_client(cls) -> PostgresClient:
-        """
-        Get PostgresClient instance (singleton).
-
-        Returns:
-            PostgresClient instance with connection pool
-        """
-        if "postgres" not in cls._instances:
-            logger.info("Creating PostgresClient")
-            client = PostgresClient(
-                host=settings.postgres_host,
-                port=settings.postgres_port,
-                user=settings.postgres_user,
-                password=settings.postgres_password,
-                database=settings.postgres_db,
-                min_pool_size=settings.postgres_min_pool_size,
-                max_pool_size=settings.postgres_max_pool_size,
-            )
-            await client.connect()
-            cls._instances["postgres"] = client
-            logger.info("✓ PostgresClient connected")
-
-        return cls._instances["postgres"]
 
     @classmethod
     async def get_redis_client(cls) -> RedisClient:
@@ -196,21 +132,48 @@ class ProviderFactory:
         return cls._instances["redis"]
 
     @classmethod
-    async def get_chroma_client(cls) -> ChromaClient:
+    async def get_qdrant_client(cls) -> QdrantClient:
         """
-        Get ChromaClient instance (singleton).
+        Get QdrantClient instance (singleton).
 
         Returns:
-            ChromaClient instance
+            QdrantClient instance
         """
-        if "chroma" not in cls._instances:
-            logger.info("Creating ChromaClient")
-            client = ChromaClient(host=settings.chroma_host, port=settings.chroma_port)
+        if "qdrant" not in cls._instances:
+            logger.info("Creating QdrantClient")
+            client = QdrantClient(
+                host=settings.qdrant_host,
+                port=settings.qdrant_port,
+                api_key=settings.qdrant_api_key,
+            )
             await client.connect()
-            cls._instances["chroma"] = client
-            logger.info("✓ ChromaClient connected")
+            cls._instances["qdrant"] = client
+            logger.info("✓ QdrantClient connected")
 
-        return cls._instances["chroma"]
+        return cls._instances["qdrant"]
+
+    @classmethod
+    async def get_mongodb_client(cls) -> MongoDBClient:
+        """
+        Get MongoDBClient instance (singleton).
+
+        Returns:
+            MongoDBClient instance with connection pool
+        """
+        if "mongodb" not in cls._instances:
+            logger.info("Creating MongoDBClient")
+            client = MongoDBClient(
+                host=settings.mongodb_host,
+                port=settings.mongodb_port,
+                user=settings.mongodb_user,
+                password=settings.mongodb_password,
+                database=settings.mongodb_db,
+            )
+            await client.connect()
+            cls._instances["mongodb"] = client
+            logger.info("✓ MongoDBClient connected")
+
+        return cls._instances["mongodb"]
 
     @classmethod
     def get_document_processor(cls) -> IDocumentProcessor:
@@ -232,17 +195,17 @@ class ProviderFactory:
         logger.info("Cleaning up ProviderFactory instances...")
 
         # Close database connections
-        if "postgres" in cls._instances:
-            await cls._instances["postgres"].disconnect()
-            logger.info("✓ PostgresClient disconnected")
+        if "mongodb" in cls._instances:
+            await cls._instances["mongodb"].disconnect()
+            logger.info("✓ MongoDBClient disconnected")
 
         if "redis" in cls._instances:
             await cls._instances["redis"].disconnect()
             logger.info("✓ RedisClient disconnected")
 
-        if "chroma" in cls._instances:
-            # ChromaClient may not have explicit disconnect
-            pass
+        if "qdrant" in cls._instances:
+            await cls._instances["qdrant"].disconnect()
+            logger.info("✓ QdrantClient disconnected")
 
         # Clear all instances
         cls._instances.clear()

@@ -1,6 +1,6 @@
 """
 Configuration management using pydantic-settings.
-Loads settings from environment variables with validation.
+Simplified settings for OpenAI LLM, HuggingFace Embeddings, Qdrant, MongoDB.
 """
 
 import os
@@ -21,48 +21,44 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = "AMI RAG System"
+    app_name: str = "AMI RAG System - PTIT Assistant"
+    app_port: int = Field(default=6008, ge=1, le=65535)
     debug: bool = False
 
-    # LLM Provider API Keys
+    # OpenAI (Only LLM Provider)
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
-    # PostgreSQL Configuration
-    postgres_host: str = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port: int = os.getenv("POSTGRES_PORT", 5432)
-    postgres_user: str = os.getenv("POSTGRES_USER", "postgres")
-    postgres_password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
-    postgres_db: str = os.getenv("POSTGRES_DB", "ami_rag")
-    postgres_min_pool_size: int = os.getenv("POSTGRES_MIN_POOL_SIZE", 5)
-    postgres_max_pool_size: int = os.getenv("POSTGRES_MAX_POOL_SIZE", 20)
+    # MongoDB Configuration (Document & User Management)
+    mongodb_host: str = Field(default="localhost")
+    mongodb_port: int = Field(default=27017, ge=1, le=65535)
+    mongodb_user: str = Field(default=os.getenv("MONGO_USER", "admin"))
+    mongodb_password: str = Field(default=os.getenv("MONGO_PASSWORD", "admin_password"))
+    mongodb_db: str = Field(default=os.getenv("MONGO_DB", "ami_db"))
 
-    # Redis Configuration
+    # Redis Configuration (Caching)
     redis_host: str = Field(default="localhost")
     redis_port: int = Field(default=6379, ge=1, le=65535)
     redis_password: str = Field(default="redis_password")
     redis_db: int = Field(default=0, ge=0)
     redis_max_connections: int = Field(default=50, ge=1)
 
-    # ChromaDB Configuration
-    chroma_host: str = Field(default="localhost")
-    chroma_port: int = Field(default=8000, ge=1, le=65535)
-    chroma_persist_dir: str = Field(default="./chroma_data")
+    # Qdrant Configuration (Vector Store)
+    qdrant_host: str = Field(default="localhost")
+    qdrant_port: int = Field(default=6333, ge=1, le=65535)
+    qdrant_grpc_port: int = Field(default=6334, ge=1, le=65535)
+    qdrant_api_key: str = Field(default="himlam")
+    qdrant_collection_name: str = Field(default="ami_documents")
 
-    # Default Providers
-    default_embedding_provider: Literal["openai", "huggingface"] = "openai"
-    default_llm_provider: Literal["openai", "gemini", "anthropic"] = "openai"
-    default_vector_store: Literal["pgvector", "chromadb"] = "pgvector"
-
-    # Embedding Models
-    openai_embedding_model: str = os.getenv(
-        "OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"
-    )
+    # Embedding Model (HuggingFace for Vietnamese)
     huggingface_embedding_model: str = os.getenv(
-        "HUGGINGFACE_EMBEDDING_MODEL", "dangvantuan/vietnamese-document-embedding"
+        "HUGGINGFACE_EMBEDDING_MODEL", "keepitreal/vietnamese-sbert"
     )
-    embedding_dimension: int = 1536  # for OpenAI text-embedding-3-small
+    embedding_dimension: int = 768  # HuggingFace model dimension
+
+    # OpenAI Models for Thinking Modes
+    openai_model_fast: str = os.getenv("OPENAI_MODEL_FAST", "gpt-4-1106-preview")
+    openai_model_balance: str = os.getenv("OPENAI_MODEL_BALANCE", "gpt-4-0125-preview")
+    openai_model_thinking: str = os.getenv("OPENAI_MODEL_THINKING", "o4-mini")
 
     # Chunking Configuration
     chunk_size: int = Field(default=512, ge=100, le=2000)
@@ -76,15 +72,23 @@ class Settings(BaseSettings):
     cache_ttl: int = Field(default=3600, ge=0)  # seconds
     enable_cache: bool = True
 
+    # Authentication & Security
+    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = Field(default=1440, ge=1)  # 24 hours
+
+    # CORS
+    cors_origins: str = Field(default="http://localhost:6009,http://localhost:6010,http://localhost:6008")
+    
     @property
-    def postgres_url(self) -> str:
-        """AsyncPG database URL for PostgreSQL."""
-        return f"postgresql://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS origins from comma-separated string."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
     @property
-    def postgres_asyncpg_url(self) -> str:
-        """AsyncPG specific database URL."""
-        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+    def mongodb_url(self) -> str:
+        """MongoDB connection URL with auth database."""
+        return f"mongodb://{self.mongodb_user}:{self.mongodb_password}@{self.mongodb_host}:{self.mongodb_port}/?authSource=admin"
 
     @property
     def redis_url(self) -> str:
@@ -94,9 +98,9 @@ class Settings(BaseSettings):
         return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     @property
-    def chroma_url(self) -> str:
-        """ChromaDB HTTP API URL."""
-        return f"http://{self.chroma_host}:{self.chroma_port}"
+    def qdrant_url(self) -> str:
+        """Qdrant HTTP API URL."""
+        return f"http://{self.qdrant_host}:{self.qdrant_port}"
 
 
 settings = Settings()

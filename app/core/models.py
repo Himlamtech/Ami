@@ -11,12 +11,16 @@ from pydantic import BaseModel, Field
 
 
 class ThinkingMode(str, Enum):
-    """Thinking/reasoning modes for generation."""
+    """
+    Thinking modes mapping to OpenAI models.
+    - fast: gpt-4-1106-preview (fastest, most cost-effective)
+    - balance: gpt-4-0125-preview (balanced speed & quality)
+    - thinking: o4-mini (deep reasoning, slowest but most accurate)
+    """
 
-    DISABLED = "disabled"
-    CHAIN_OF_THOUGHT = "chain_of_thought"
-    STEP_BY_STEP = "step_by_step"
-    REASONING = "reasoning"
+    FAST = "fast"
+    BALANCE = "balance"
+    THINKING = "thinking"
 
 
 class ChunkConfig(BaseModel):
@@ -57,20 +61,19 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """Comprehensive chat request with RAG support."""
+    """Chat request with RAG support and thinking modes."""
 
     messages: List[Message]
-    model: Optional[str] = Field(
-        default=None, description="LLM provider: openai, gemini, anthropic"
-    )
-    thinking_mode: ThinkingMode = ThinkingMode.DISABLED
+    thinking_mode: ThinkingMode = ThinkingMode.BALANCE
     system_prompt: Optional[str] = None
     rag_config: RAGConfig = Field(default_factory=RAGConfig)
     generation_config: GenerationConfig = Field(default_factory=GenerationConfig)
-    embedding_provider: Optional[str] = None
-    vector_store: Optional[str] = None
     collection: str = "default"
     stream: bool = False
+    search_options: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional advanced search options (reserved for future use)"
+    )
 
 
 class ChatResponse(BaseModel):
@@ -90,8 +93,6 @@ class UploadRequest(BaseModel):
     collection: str = "default"
     metadata: Dict[str, Any] = Field(default_factory=dict)
     chunk_config: ChunkConfig = Field(default_factory=ChunkConfig)
-    embedding_provider: Optional[str] = None
-    vector_store: Optional[str] = None
 
 
 class UploadResponse(BaseModel):
@@ -111,8 +112,6 @@ class SearchRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=50)
     similarity_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
     metadata_filter: Optional[Dict[str, Any]] = None
-    embedding_provider: Optional[str] = None
-    vector_store: Optional[str] = None
 
 
 class SearchResponse(BaseModel):

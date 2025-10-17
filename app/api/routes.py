@@ -34,19 +34,19 @@ router = APIRouter()
 
 
 async def get_rag_service_from_request(
-    llm_provider: Optional[str] = None,
-    embedding_provider: Optional[str] = None,
-    vector_store: Optional[str] = None,
+    thinking_mode: str = "balance",
 ) -> RAGService:
-    """Create RAG service based on request parameters."""
+    """
+    Create RAG service with specified thinking mode.
+    
+    Args:
+        thinking_mode: 'fast', 'balance', or 'thinking' (maps to OpenAI models)
+    """
     try:
-        llm_provider = llm_provider or settings.default_llm_provider
-        embedding_provider = embedding_provider or settings.default_embedding_provider
-        vector_store = vector_store or settings.default_vector_store
-
-        embedding = ProviderFactory.get_embedding_provider(embedding_provider)
-        llm = ProviderFactory.get_llm_provider(llm_provider)
-        vector = await ProviderFactory.get_vector_store(vector_store)
+        # Get providers (only one of each now)
+        embedding = ProviderFactory.get_embedding_provider()
+        llm = ProviderFactory.get_llm_provider(model=thinking_mode)
+        vector = await ProviderFactory.get_vector_store()
         processor = ProviderFactory.get_document_processor()
         doc_service = DocumentService(processor)
 
@@ -70,20 +70,23 @@ async def get_rag_service_from_request(
 @router.post("/generate/chat", response_model=ChatResponse, tags=["generate"])
 async def generate_chat(request: ChatRequest):
     """
-    Generate chat response with comprehensive options.
+    Generate chat response with RAG support and thinking modes.
 
-    Options:
-    - model: LLM provider (openai, gemini, anthropic)
-    - thinking_mode: Enable reasoning modes
-    - rag_config: Control retrieval settings
-    - generation_config: Fine-tune generation (temperature, top_p, etc.)
-    - system_prompt: Custom system instructions
+    Thinking Modes:
+    - fast: Quick responses (gpt-4-1106-preview)
+    - balance: Balanced speed & quality (gpt-4-0125-preview) [default]
+    - thinking: Deep reasoning (o4-mini)
+
+    Features:
+    - RAG-enabled question answering
+    - Configurable retrieval settings
+    - Source citations
+    - Streaming support
     """
     try:
+        # Create RAG service with selected thinking mode
         rag_service = await get_rag_service_from_request(
-            llm_provider=request.model,
-            embedding_provider=request.embedding_provider,
-            vector_store=request.vector_store,
+            thinking_mode=request.thinking_mode.value
         )
 
         # Get the last user message
@@ -93,17 +96,8 @@ async def generate_chat(request: ChatRequest):
         if not user_query:
             raise HTTPException(status_code=400, detail="No user message found")
 
-        # Build system prompt with thinking mode
+        # System prompt (thinking mode is handled by model selection)
         system_prompt = request.system_prompt or ""
-        if request.thinking_mode.value != "disabled":
-            thinking_instructions = {
-                "chain_of_thought": "Think step by step before answering. Show your reasoning.",
-                "step_by_step": "Break down your answer into clear steps.",
-                "reasoning": "Provide detailed reasoning for your answer.",
-            }
-            system_prompt += (
-                f"\n\n{thinking_instructions.get(request.thinking_mode.value, '')}"
-            )
 
         # Prepare generation kwargs
         gen_kwargs = {
@@ -137,7 +131,7 @@ async def generate_chat(request: ChatRequest):
                 metadata={
                     "rag_enabled": True,
                     "thinking_mode": request.thinking_mode.value,
-                    "model": request.model or settings.default_llm_provider,
+                    "collection": request.collection,
                 },
             )
         else:
@@ -153,7 +147,6 @@ async def generate_chat(request: ChatRequest):
                 metadata={
                     "rag_enabled": False,
                     "thinking_mode": request.thinking_mode.value,
-                    "model": request.model or settings.default_llm_provider,
                 },
             )
 
@@ -165,16 +158,14 @@ async def generate_chat(request: ChatRequest):
 async def generate_stream(request: ChatRequest):
     """
     Stream chat response with real-time chunks in Server-Sent Events format.
-    Same options as /generate/chat but returns streaming response.
+    Supports same thinking modes as /generate/chat.
     """
     try:
         if not request.stream:
             request.stream = True
 
         rag_service = await get_rag_service_from_request(
-            llm_provider=request.model,
-            embedding_provider=request.embedding_provider,
-            vector_store=request.vector_store,
+            thinking_mode=request.thinking_mode.value
         )
 
         user_query = next(
@@ -233,15 +224,10 @@ async def vectordb_upload(request: UploadRequest):
     Options:
     - collection: Organize documents in collections
     - chunk_config: Control chunking strategy and size
-    - embedding_provider: Choose embedding model
-    - vector_store: Target vector database
     - metadata: Custom metadata for filtering
     """
     try:
-        rag_service = await get_rag_service_from_request(
-            embedding_provider=request.embedding_provider,
-            vector_store=request.vector_store,
-        )
+        rag_service = await get_rag_service_from_request()
 
         # Override chunk settings
         rag_service.document_service.chunk_size = request.chunk_config.chunk_size
@@ -276,14 +262,10 @@ async def vectordb_upload_file(
     collection: str = Query(default="default"),
     chunk_size: int = Query(default=512, ge=100, le=4000),
     chunk_overlap: int = Query(default=50, ge=0, le=500),
-    embedding_provider: Optional[str] = Query(default=None),
-    vector_store: Optional[str] = Query(default=None),
 ):
     """Upload file directly to vector database."""
     try:
-        rag_service = await get_rag_service_from_request(
-            embedding_provider=embedding_provider, vector_store=vector_store
-        )
+        rag_service = await get_rag_service_from_request()
 
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=os.path.splitext(file.filename)[1]
@@ -324,10 +306,7 @@ async def vectordb_search(request: SearchRequest):
     - embedding_provider: Choose embedding model
     """
     try:
-        rag_service = await get_rag_service_from_request(
-            embedding_provider=request.embedding_provider,
-            vector_store=request.vector_store,
-        )
+        rag_service = await get_rag_service_from_request()
 
         # Get query embedding
         query_embedding = await rag_service.embedding_provider.embed_text(request.query)
@@ -393,9 +372,7 @@ async def vectordb_delete(
 ):
     """Delete document by ID."""
     try:
-        vector = await ProviderFactory.get_vector_store(
-            vector_store or settings.default_vector_store
-        )
+        vector = await ProviderFactory.get_vector_store()
         await vector.delete([doc_id])
 
         return DeleteResponse(
@@ -409,9 +386,7 @@ async def vectordb_delete(
 async def vectordb_collections(vector_store: Optional[str] = Query(default=None)):
     """List all collections from vector store."""
     try:
-        store = await ProviderFactory.get_vector_store(
-            vector_store or settings.default_vector_store
-        )
+        store = await ProviderFactory.get_vector_store()
         collections = await store.get_collections()
         return collections
     except Exception as e:
@@ -423,13 +398,10 @@ async def vectordb_collections(vector_store: Optional[str] = Query(default=None)
 @router.get("/vectordb/stats", response_model=DatabaseStats, tags=["vectordb"])
 async def vectordb_stats(
     collection: Optional[str] = Query(default=None),
-    vector_store: Optional[str] = Query(default=None),
 ):
     """Get database statistics with actual counts."""
     try:
-        store = await ProviderFactory.get_vector_store(
-            vector_store or settings.default_vector_store
-        )
+        store = await ProviderFactory.get_vector_store()
 
         # Get stats
         stats = await store.get_stats(collection=collection)
@@ -441,7 +413,7 @@ async def vectordb_stats(
             total_documents=stats.get("total_documents", 0),
             total_chunks=stats.get("total_chunks", 0),
             collections=collections,
-            vector_store=vector_store or settings.default_vector_store,
+            vector_store="qdrant",  # Only Qdrant is used now
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
@@ -454,58 +426,53 @@ async def vectordb_stats(
 
 @router.get("/config/models", response_model=List[ModelInfo], tags=["config"])
 async def config_models():
-    """List all available models and their status."""
+    """List all available models and their configuration."""
     models = [
-        ModelInfo(name="openai", type="llm", available=bool(settings.openai_api_key)),
-        ModelInfo(name="gemini", type="llm", available=bool(settings.gemini_api_key)),
+        # LLM Models (OpenAI only, with thinking modes)
         ModelInfo(
-            name="anthropic", type="llm", available=bool(settings.anthropic_api_key)
+            name="openai-fast",
+            type="llm",
+            available=bool(settings.openai_api_key),
         ),
         ModelInfo(
-            name="openai", type="embedding", available=bool(settings.openai_api_key)
+            name="openai-balance",
+            type="llm",
+            available=bool(settings.openai_api_key),
         ),
+        ModelInfo(
+            name="openai-thinking",
+            type="llm",
+            available=bool(settings.openai_api_key),
+        ),
+        # Embedding (HuggingFace only)
         ModelInfo(name="huggingface", type="embedding", available=True),
-        ModelInfo(name="pgvector", type="vector_store", available=True),
-        ModelInfo(name="chroma", type="vector_store", available=True),
+        # Vector Store (Qdrant only)
+        ModelInfo(name="qdrant", type="vector_store", available=True),
     ]
     return models
 
 
 @router.get("/config/providers", response_model=ProviderStatus, tags=["config"])
 async def config_providers():
-    """Get provider status and defaults."""
+    """Get provider status and configuration."""
     return ProviderStatus(
         providers={
             "llm": [
                 ModelInfo(
                     name="openai", type="llm", available=bool(settings.openai_api_key)
                 ),
-                ModelInfo(
-                    name="gemini", type="llm", available=bool(settings.gemini_api_key)
-                ),
-                ModelInfo(
-                    name="anthropic",
-                    type="llm",
-                    available=bool(settings.anthropic_api_key),
-                ),
             ],
             "embedding": [
-                ModelInfo(
-                    name="openai",
-                    type="embedding",
-                    available=bool(settings.openai_api_key),
-                ),
                 ModelInfo(name="huggingface", type="embedding", available=True),
             ],
             "vector_store": [
-                ModelInfo(name="pgvector", type="vector_store", available=True),
-                ModelInfo(name="chroma", type="vector_store", available=True),
+                ModelInfo(name="qdrant", type="vector_store", available=True),
             ],
         },
         default_providers={
-            "llm": settings.default_llm_provider,
-            "embedding": settings.default_embedding_provider,
-            "vector_store": settings.default_vector_store,
+            "llm": "openai",
+            "embedding": "huggingface",
+            "vector_store": "qdrant",
         },
     )
 
@@ -517,20 +484,23 @@ async def config_health():
         "status": "healthy",
         "providers": {
             "openai": bool(settings.openai_api_key),
-            "gemini": bool(settings.gemini_api_key),
-            "anthropic": bool(settings.anthropic_api_key),
+            "huggingface": True,
         },
-        "databases": {"postgres": "unknown", "redis": "unknown", "chroma": "unknown"},
-        "vector_store": settings.default_vector_store,
+        "databases": {"mongodb": "unknown", "redis": "unknown", "qdrant": "unknown"},
+        "services": {
+            "llm": "openai",
+            "embedding": "huggingface",
+            "vector_store": "qdrant",
+        },
     }
 
-    # Check PostgreSQL
+    # Check MongoDB
     try:
-        postgres_client = await ProviderFactory.get_postgres_client()
-        await postgres_client.fetch_val("SELECT 1")
-        health_status["databases"]["postgres"] = "ok"
+        mongodb_client = await ProviderFactory.get_mongodb_client()
+        await mongodb_client.db.command("ping")
+        health_status["databases"]["mongodb"] = "ok"
     except Exception as e:
-        health_status["databases"]["postgres"] = f"error: {str(e)[:50]}"
+        health_status["databases"]["mongodb"] = f"error: {str(e)[:50]}"
         health_status["status"] = "degraded"
 
     # Check Redis
@@ -542,13 +512,14 @@ async def config_health():
         health_status["databases"]["redis"] = f"error: {str(e)[:50]}"
         health_status["status"] = "degraded"
 
-    # Check ChromaDB
+    # Check Qdrant
     try:
-        chroma_client = await ProviderFactory.get_chroma_client()
-        await chroma_client.heartbeat()
-        health_status["databases"]["chroma"] = "ok"
+        qdrant_client = await ProviderFactory.get_qdrant_client()
+        # Simple health check by getting collections
+        await qdrant_client.client.get_collections()
+        health_status["databases"]["qdrant"] = "ok"
     except Exception as e:
-        health_status["databases"]["chroma"] = f"error: {str(e)[:50]}"
-        # ChromaDB is optional, don't mark as degraded
+        health_status["databases"]["qdrant"] = f"error: {str(e)[:50]}"
+        health_status["status"] = "degraded"
 
     return health_status

@@ -1,26 +1,4 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: ami_postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ami_rag}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - ami_network
-
   redis:
     image: redis:7-alpine
     container_name: ami_redis
@@ -37,20 +15,38 @@ services:
     networks:
       - ami_network
 
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: ami_chromadb
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ami_qdrant
     environment:
-      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_AUTH_CREDENTIALS:-}
-      - CHROMA_SERVER_AUTH_PROVIDER=${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
-      - ALLOW_RESET=true
-      - IS_PERSISTENT=true
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-himlam}
+      - QDRANT__SERVICE__ENABLE_TLS=false
     ports:
-      - "${CHROMA_PORT:-8000}:8000"
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
     volumes:
-      - chroma_data:/chroma/chroma
+      - qdrant_data:/qdrant/storage
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat" ]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ami_network
+
+  mongodb:
+    image: mongo:7
+    container_name: ami_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-admin_password}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-ami_db}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,11 +54,11 @@ services:
       - ami_network
 
 volumes:
-  postgres_data:
-    driver: local
   redis_data:
     driver: local
-  chroma_data:
+  qdrant_data:
+    driver: local
+  mongodb_data:
     driver: local
 
 networks:

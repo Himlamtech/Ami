@@ -1,20 +1,111 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.env
-.venv
-venv/
-env/
-*.egg-info/
-dist/
 build/
-chroma_db/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# uv
+.uv/
+uv.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Pytest
 .pytest_cache/
 .coverage
 htmlcov/
-*.log
-.vscode/
+.tox/
 
+# Jupyter Notebook
+.ipynb_checkpoints
 
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Uploaded files
+uploads/
+temp/
+tmp/
+
+# Assets (keep raw files, ignore processed)
+# assets/processed/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.turbo/
+frontend/*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts output
+scripts/output/
+scripts/*.json
+scripts/*.csv
+
+# Backup files
+*.backup
+backup_*/
+*_backup/
+
+# MongoDB dumps
+dump/
+
+# Redis
+dump.rdb
+
+# Qdrant
+qdrant_storage/

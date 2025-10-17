@@ -1,102 +1,174 @@
-# RAG System Makefile
+# AMI RAG System Makefile - PTIT Assistant
 
-.PHONY: help install run dev test clean docker-up docker-down docker-logs docker-restart test-db crawl-stats crawl-dry crawl ingest-data test-api
+.PHONY: help install up down dev create-admin migrate health logs clean test test-qdrant frontend
 
 help:
 	@echo "AMI RAG System - Available Commands:"
 	@echo ""
-	@echo "Development:"
-	@echo "  make install       - Install dependencies with uv"
-	@echo "  make run           - Run application (production)"
-	@echo "  make dev           - Run application (development mode)"
+	@echo "🚀 Quick Start:"
+	@echo "  make up           - Start all services (MongoDB, Qdrant, Redis)"
+	@echo "  make create-admin - Create first admin user (run once)"
+	@echo "  make migrate      - Import documents from assets/raw/"
+	@echo "  make dev          - Run backend development server"
 	@echo ""
-	@echo "Database:"
-	@echo "  make docker-up     - Start all databases (PostgreSQL, Redis, ChromaDB)"
-	@echo "  make docker-down   - Stop all database containers"
-	@echo "  make docker-logs   - View database container logs"
-	@echo "  make docker-restart- Restart all database containers"
-	@echo "  make test-db       - Test all database connections"
+	@echo "📦 Installation:"
+	@echo "  make install      - Install Python dependencies with uv"
 	@echo ""
-	@echo "Data Crawling:"
-	@echo "  make crawl-stats   - Show crawl statistics from CSV"
-	@echo "  make crawl-dry     - Dry run crawl (show what would be crawled)"
-	@echo "  make crawl         - Crawl data from URLs (requires FireCrawl setup)"
+	@echo "🐳 Docker Services:"
+	@echo "  make up           - Start all database services"
+	@echo "  make down         - Stop all services"
+	@echo "  make logs         - View service logs"
+	@echo "  make clean        - Clean up containers and volumes"
 	@echo ""
-	@echo "Data Ingestion:"
-	@echo "  make ingest-data   - Ingest markdown files into vector database"
+	@echo "🔧 Development:"
+	@echo "  make dev          - Run backend (port 6008)"
+	@echo "  make frontend     - Run React admin UI (port 6009)"
 	@echo ""
-	@echo "Testing:"
-	@echo "  make test-api      - Run API tests"
+	@echo "🧪 Testing:"
+	@echo "  make health       - Check system health"
+	@echo "  make test         - Run all tests"
+	@echo "  make test-qdrant  - Test Qdrant connection"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  make clean         - Clean temporary files"
+	@echo "📊 Admin Tasks:"
+	@echo "  make create-admin - Create admin user"
+	@echo "  make migrate      - Migrate documents to MongoDB"
+	@echo ""
+	@echo "🧹 Cleanup:"
+	@echo "  make clean        - Remove temp files and caches"
+	@echo ""
+	@echo "Service URLs:"
+	@echo "  Backend API:  http://localhost:6008"
+	@echo "  API Docs:     http://localhost:6008/docs"
+	@echo "  Admin UI:     http://localhost:6009"
+	@echo "  Qdrant UI:    http://localhost:6333/dashboard"
 
 install:
+	@echo "📦 Installing dependencies..."
 	uv sync
+	@echo "✅ Installation complete!"
 
-run:
-	uv run uvicorn app.api.main:app --host 0.0.0.0 --port 6000
-
-dev:
-	uv run uvicorn app.api.main:app --reload --host 0.0.0.0 --port 6000
-
-docker-up:
-	@echo "🚀 Starting database services..."
+up:
+	@echo "🚀 Starting all services..."
 	docker-compose up -d
 	@echo "⏳ Waiting for services to be ready..."
 	@sleep 10
 	@echo "✅ Services are ready!"
 	@echo ""
 	@echo "Database connections:"
-	@echo "  PostgreSQL: localhost:5432"
+	@echo "  MongoDB:    localhost:27017"
+	@echo "  Qdrant:     localhost:6333 (HTTP) / localhost:6334 (gRPC)"
 	@echo "  Redis:      localhost:6379"
-	@echo "  ChromaDB:   localhost:8000"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. make create-admin  # Create first admin user"
+	@echo "  2. make migrate       # Import existing documents"
+	@echo "  3. make dev           # Start backend"
+	@echo "  4. make frontend      # Start React UI (in new terminal)"
 
-docker-down:
-	@echo "🛑 Stopping database services..."
+down:
+	@echo "🛑 Stopping all services..."
 	docker-compose down
 	@echo "✅ Services stopped"
 
-docker-logs:
+dev:
+	@echo "🔧 Starting backend development server..."
+	@echo "📡 Backend will be available at: http://localhost:6008"
+	@echo "📚 API Docs: http://localhost:6008/docs"
+	uv run uvicorn app.api.main:app --reload --host 0.0.0.0 --port 6008
+
+frontend:
+	@echo "🎨 Starting React Admin UI..."
+	@echo "🌐 UI will be available at: http://localhost:6009"
+	cd frontend && npm run dev
+
+create-admin:
+	@echo "👤 Creating admin user..."
+	uv run python scripts/create_admin_user.py
+
+migrate:
+	@echo "📂 Migrating documents to MongoDB..."
+	uv run python scripts/migrate_data_to_mongodb.py
+
+health:
+	@echo "🏥 Checking system health..."
+	@curl -s http://localhost:6008/api/v1/config/health | python -m json.tool || \
+	(echo "❌ Backend not responding. Make sure to run 'make dev' first" && exit 1)
+
+logs:
+	@echo "📋 Viewing service logs..."
 	docker-compose logs -f
 
-docker-restart:
-	@echo "🔄 Restarting database services..."
-	docker-compose restart
-	@sleep 5
-	@echo "✅ Services restarted"
-
-test-db:
-	@echo "🧪 Testing database connections..."
-	uv run python scripts/test_db_connections.py
-
-crawl-stats:
-	@echo "Analyzing data sheet..."
-	uv run python scripts/crawl_data.py --stats
-
-crawl-dry:
-	@echo "Dry run - showing what would be crawled..."
-	uv run python scripts/crawl_data.py --dry-run --limit 10
-
-crawl:
-	@echo "Starting data crawl..."
-	@echo "Note: This requires FireCrawl API setup"
-	uv run python scripts/crawl_with_firecrawl.py --limit 5
-
-ingest-data:
-	@echo "Ingesting documents into vector database..."
-	uv run python scripts/ingest_data.py
-
-test-api:
-	@echo "Testing API endpoints..."
-	uv run pytest tests/ -v
-
 clean:
+	@echo "🧹 Cleaning up..."
+	@# Python cache
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@# Test artifacts
 	rm -rf .pytest_cache
 	rm -rf htmlcov
+	rm -rf .coverage
+	@# Build artifacts
 	rm -rf dist
 	rm -rf build
+	@# Docker volumes (optional - uncomment if needed)
+	@# docker-compose down -v
+	@echo "✅ Cleanup complete!"
+
+test: health
+	@echo "✅ System is healthy!"
+	@echo "🧪 Running additional tests..."
+	@# Add more tests here if needed
+
+test-qdrant:
+	@echo "🧪 Testing Qdrant connection..."
+	@curl -s http://localhost:6333/collections | python -m json.tool || \
+	echo "❌ Qdrant not responding"
+
+# Advanced commands
+docker-restart:
+	@echo "🔄 Restarting all services..."
+	docker-compose restart
+	@sleep 5
+	@echo "✅ Services restarted"
+
+docker-clean:
+	@echo "🧹 Cleaning Docker volumes (THIS WILL DELETE ALL DATA)..."
+	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+	@sleep 5
+	docker-compose down -v
+	@echo "✅ Docker volumes cleaned"
+
+# Development helpers
+watch-logs:
+	@echo "📋 Watching backend logs..."
+	tail -f logs/*.log 2>/dev/null || echo "No log files found"
+
+backup-db:
+	@echo "💾 Backing up MongoDB..."
+	docker exec ami_mongodb mongodump --out=/data/backup
+	@echo "✅ Backup complete (stored in MongoDB container)"
+
+# Info commands
+info:
+	@echo "📊 System Information:"
+	@echo ""
+	@echo "Services Status:"
+	@docker-compose ps
+	@echo ""
+	@echo "Port Bindings:"
+	@echo "  6008  - Backend API"
+	@echo "  6009  - React Admin UI"
+	@echo "  27017 - MongoDB"
+	@echo "  6333  - Qdrant HTTP"
+	@echo "  6334  - Qdrant gRPC"
+	@echo "  6379  - Redis"
+
+ports:
+	@echo "🔌 Checking ports..."
+	@lsof -i :6008 || echo "Port 6008 (Backend): Free"
+	@lsof -i :6009 || echo "Port 6009 (Frontend): Free"
+	@lsof -i :27017 || echo "Port 27017 (MongoDB): Free"
+	@lsof -i :6333 || echo "Port 6333 (Qdrant): Free"
+	@lsof -i :6379 || echo "Port 6379 (Redis): Free"

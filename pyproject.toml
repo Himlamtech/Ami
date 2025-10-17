@@ -4,28 +4,29 @@ version = "0.1.0"
 description = "Comprehensive RAG system with multiple providers"
 requires-python = ">=3.11"
 dependencies = [
+    # Core Framework
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "httpx>=0.26.0",
     "python-multipart>=0.0.6",
-    # Database & Vector Stores
-    "asyncpg>=0.29.0",
-    "pgvector>=0.2.4",
+    # Databases
+    "motor>=3.3.0",          # Async MongoDB driver
     "redis[asyncio]>=5.0.1",
-    "chromadb>=0.4.22",
-    # LLM Providers
+    "qdrant-client>=1.7.0",
+    # LLM & Embeddings
     "openai>=1.12.0",
-    "google-generativeai>=0.3.0",
-    "anthropic>=0.18.0",
-    # Embeddings & ML
     "sentence-transformers>=2.3.0",
     "torch>=2.1.0",
     "numpy>=1.26.0",
     # Document Processing
     "markitdown>=0.0.1a2",
     "pandas>=2.2.0",
+    # Authentication
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.9",
 ]
 
 [build-system]

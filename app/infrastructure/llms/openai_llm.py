@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class OpenAILLM(ILLMProvider):
     """OpenAI LLM provider with enhanced error handling."""
 
-    def __init__(self, api_key: str, model: str = settings.openai_model):
+    def __init__(self, api_key: str, model: str = "gpt-4-0125-preview"):
         self.client = AsyncOpenAI(api_key=api_key, max_retries=3, timeout=60.0)
         self.model = model
         logger.info(f"Initialized OpenAILLM with model: {model}")
