@@ -10,7 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin_routes import router as admin_router
 from app.api.auth_routes import router as auth_router
-from app.api.routes import router
+from app.api.chat_history_routes import router as chat_history_router
+from app.api.config_routes import router as config_router
+from app.api.crawl_routes import router as crawl_router
+from app.api.generate_routes import router as generate_router
+from app.api.image_routes import router as image_router
+# from app.api.stt_routes import router as stt_router  # Commented for quick testing
+from app.api.vectordb_routes import router as vectordb_router
 from app.application.factory import ProviderFactory
 from app.config.settings import settings
 
@@ -61,6 +67,18 @@ app = FastAPI(
             "description": "RAG-powered Q&A with thinking modes (fast/balance/thinking)",
         },
         {
+            "name": "chat-history",
+            "description": "Chat conversation history management with auto-summarization",
+        },
+        {
+            "name": "images",
+            "description": "Image generation (DALL-E), vision analysis (GPT-4 Vision), and file uploads",
+        },
+        {
+            "name": "Speech-to-Text",
+            "description": "Vietnamese speech recognition using Wav2Vec2 models",
+        },
+        {
             "name": "vectordb",
             "description": "Vector database CRUD operations for document management",
         },
@@ -82,7 +100,13 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
-app.include_router(router, prefix="/api/v1")
+app.include_router(chat_history_router, prefix="/api/v1")
+app.include_router(image_router, prefix="/api/v1")
+# app.include_router(stt_router)  # Already has /api/v1 prefix
+app.include_router(crawl_router, prefix="/api/v1")
+app.include_router(generate_router, prefix="/api/v1")
+app.include_router(vectordb_router, prefix="/api/v1")
+app.include_router(config_router, prefix="/api/v1")
 
 
 @app.get("/")

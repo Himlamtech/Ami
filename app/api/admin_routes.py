@@ -3,12 +3,14 @@ Admin routes for document management.
 Protected by JWT authentication - requires ADMIN role.
 """
 
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.api.auth_dependencies import get_current_admin_user
 from app.application.factory import ProviderFactory
+from app.core.models import ReindexRequest, ReindexResponse
 from app.core.mongodb_models import (
     DocumentCreate,
     DocumentListResponse,
@@ -16,6 +18,8 @@ from app.core.mongodb_models import (
     DocumentUpdate,
     UserInDB,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin/documents", tags=["admin"])
 
@@ -79,7 +83,7 @@ async def list_documents(
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(
+async def get_document_endpoint(
     document_id: str,
     current_admin: UserInDB = Depends(get_current_admin_user),
 ):
@@ -89,7 +93,7 @@ async def get_document(
     """
     mongodb = await ProviderFactory.get_mongodb_client()
     
-    document = await mongodb.get_document_by_id(document_id)
+    document = await mongodb.get_document(document_id)
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -186,7 +190,7 @@ async def create_document(
             )
         
         # Get created document
-        document = await mongodb.get_document_by_id(doc_id)
+        document = await mongodb.get_document(doc_id)
         
         return DocumentResponse(
             id=document["_id"],
@@ -231,7 +235,7 @@ async def update_document(
     mongodb = await ProviderFactory.get_mongodb_client()
     
     # Check if document exists
-    existing_doc = await mongodb.get_document_by_id(document_id)
+    existing_doc = await mongodb.get_document(document_id)
     if not existing_doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -255,7 +259,7 @@ async def update_document(
         await mongodb.update_document(document_id, update_data)
     
     # Get updated document
-    document = await mongodb.get_document_by_id(document_id)
+    document = await mongodb.get_document(document_id)
     
     return DocumentResponse(
         id=document["_id"],
@@ -288,7 +292,7 @@ async def soft_delete_document(
     vector_store = await ProviderFactory.get_vector_store()
     
     # Check if document exists
-    document = await mongodb.get_document_by_id(document_id)
+    document = await mongodb.get_document(document_id)
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -323,7 +327,7 @@ async def restore_document(
     vector_store = await ProviderFactory.get_vector_store()
     
     # Check if document exists
-    document = await mongodb.get_document_by_id(document_id)
+    document = await mongodb.get_document(document_id)
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -344,7 +348,7 @@ async def restore_document(
         await vector_store.restore(vector_ids)
     
     # Get updated document
-    document = await mongodb.get_document_by_id(document_id)
+    document = await mongodb.get_document(document_id)
     
     return DocumentResponse(
         id=document["_id"],
@@ -361,6 +365,154 @@ async def restore_document(
         created_at=document["created_at"],
         updated_at=document.get("updated_at"),
     )
+
+
+@router.put("/{document_id}/reindex")
+async def reindex_document_endpoint(
+    document_id: str,
+    request: ReindexRequest,
+    current_admin: UserInDB = Depends(get_current_admin_user),
+):
+    """
+    Re-index a document with updated embeddings.
+    Admin only.
+    
+    Use cases:
+    - Document content changed
+    - Change chunking strategy
+    - Update metadata
+    - Upgrade embedding model
+    
+    Returns new vector IDs and statistics.
+    """
+    from datetime import datetime
+    
+    mongodb = await ProviderFactory.get_mongodb_client()
+    
+    try:
+        # Step 1: Validate document exists
+        document = await mongodb.get_document(document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document {document_id} not found"
+            )
+        
+        if not document.get("is_active"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot re-index deleted document. Restore it first."
+            )
+        
+        # Step 2: Get file path
+        file_path = document.get("file_path")
+        if not file_path:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document has no file_path. Cannot re-index."
+            )
+        
+        # Check file exists
+        import os
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File not found: {file_path}"
+            )
+        
+        # Step 3: Get old vector mappings
+        vector_mappings = await mongodb.get_vector_mappings(document_id=document_id)
+        old_vector_ids = [vm["vector_id"] for vm in vector_mappings]
+        
+        if not old_vector_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No vector mappings found. Document may not be properly ingested."
+            )
+        
+        # Step 4: Prepare metadata
+        collection = document.get("collection", "default")
+        existing_metadata = document.get("metadata", {})
+        
+        # Merge metadata if update provided
+        if request.update_metadata:
+            metadata = {**existing_metadata, **request.update_metadata}
+        else:
+            metadata = existing_metadata
+        
+        metadata["reindexed_by"] = current_admin.username
+        metadata["reindexed_at"] = datetime.now().isoformat()
+        
+        # Step 5: Initialize RAG service
+        embedding = ProviderFactory.get_embedding_provider()
+        llm = ProviderFactory.get_llm_provider()
+        vector_store = await ProviderFactory.get_vector_store()
+        
+        from app.application.services import DocumentService, RAGService
+        processor = ProviderFactory.get_document_processor()
+        doc_service = DocumentService(processor)
+        cache = await ProviderFactory.get_redis_client()
+        
+        rag_service = RAGService(embedding, llm, vector_store, doc_service, cache)
+        
+        # Step 6: Re-index
+        result = await rag_service.reindex_document(
+            document_id=document_id,
+            file_path=file_path,
+            old_vector_ids=old_vector_ids,
+            collection=collection,
+            metadata=metadata,
+            chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
+            chunk_strategy=request.chunk_strategy,
+        )
+        
+        # Step 7: Update MongoDB mappings
+        # Delete old mappings
+        await mongodb.db.vector_mappings.delete_many({"document_id": document_id})
+        
+        # Create new mappings
+        for i, vector_id in enumerate(result["new_vector_ids"]):
+            await mongodb.create_vector_mapping(
+                vector_id=vector_id,
+                document_id=document_id,
+                collection=collection,
+                metadata={"chunk_index": i}
+            )
+        
+        # Step 8: Update document in MongoDB
+        await mongodb.update_document(document_id, {
+            "chunk_count": result["new_chunk_count"],
+            "updated_at": datetime.now(),
+            "metadata": metadata,
+        })
+        
+        logger.info(
+            f"Re-indexed document {document_id}: "
+            f"{result['old_chunk_count']} -> {result['new_chunk_count']} chunks"
+        )
+        
+        # Return response
+        return ReindexResponse(
+            success=True,
+            document_id=document_id,
+            old_chunk_count=result["old_chunk_count"],
+            new_chunk_count=result["new_chunk_count"],
+            old_vector_ids=result["old_vector_ids"],
+            new_vector_ids=result["new_vector_ids"],
+            processing_time_seconds=result["processing_time_seconds"],
+            collection=collection,
+            message=f"Document re-indexed successfully. Chunks: {result['old_chunk_count']} → {result['new_chunk_count']}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to re-index document {document_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Re-indexing failed: {str(e)}"
+        )
 
 
 @router.get("/collections/list", response_model=List[str])

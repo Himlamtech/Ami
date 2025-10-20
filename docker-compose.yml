@@ -26,13 +26,9 @@ services:
       - "${QDRANT_GRPC_PORT:-6334}:6334"
     volumes:
       - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - ami_network
+    restart: unless-stopped
 
   mongodb:
     image: mongo:7
@@ -53,12 +49,103 @@ services:
     networks:
       - ami_network
 
+  minio:
+    image: minio/minio:latest
+    container_name: ami_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-admin_password}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - ami_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ami_backend
+    restart: unless-stopped
+    environment:
+      - ENV=${ENV:-production}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+      - MONGODB_URL=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-admin_password}@mongodb:27017
+      - MONGO_DB=${MONGO_DB:-ami_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-himlam}
+      - QDRANT_USE_GRPC=false
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-admin_password}
+      - MINIO_BUCKET=${MINIO_BUCKET:-ami-uploads}
+      - MINIO_SECURE=false
+      - HF_EMBEDDING_MODEL=${HF_EMBEDDING_MODEL:-keepitreal/vietnamese-sbert}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-this-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+    ports:
+      - "127.0.0.1:6008:6008"
+    volumes:
+      - ./app:/app/app:ro
+      - ./assets:/app/assets
+    depends_on:
+      - redis
+      - qdrant
+      - mongodb
+      - minio
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:6008/api/v1/config/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ami_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ami_frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6009:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - ami_network
+  # Nginx reverse proxy is managed by host system at /etc/nginx/
+  # See NGINX_CONFIG.md for configuration examples
+
 volumes:
   redis_data:
     driver: local
   qdrant_data:
     driver: local
   mongodb_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

@@ -12,6 +12,7 @@ from app.core.interfaces import (
     IDocumentProcessor,
     IEmbeddingProvider,
     ILLMProvider,
+    ISTTProvider,
     IVectorStore,
 )
 from app.infrastructure.databases.mongodb_client import MongoDBClient
@@ -19,6 +20,7 @@ from app.infrastructure.databases.qdrant_client import QdrantClient
 from app.infrastructure.databases.redis_client import RedisClient
 from app.infrastructure.embeddings.huggingface_embeddings import HuggingFaceEmbeddings
 from app.infrastructure.llms.openai_llm import OpenAILLM
+# from app.infrastructure.stt.wav2vec2_stt import Wav2Vec2STT  # Requires rebuild: docker compose build backend
 from app.infrastructure.tools.markitdown_processor import MarkItDownProcessor
 from app.infrastructure.vector_stores.qdrant_store import QdrantVectorStore
 
@@ -168,6 +170,7 @@ class ProviderFactory:
                 user=settings.mongodb_user,
                 password=settings.mongodb_password,
                 database=settings.mongodb_db,
+                connection_url=settings.get_mongodb_url(),
             )
             await client.connect()
             cls._instances["mongodb"] = client
@@ -188,6 +191,39 @@ class ProviderFactory:
             cls._instances["processor"] = MarkItDownProcessor()
 
         return cls._instances["processor"]
+    
+    # Temporarily disabled - requires backend rebuild with STT dependencies
+    # @classmethod
+    # def get_stt_provider(cls, model: str = "base") -> ISTTProvider:
+    #     """
+    #     Get Speech-to-Text provider instance (singleton).
+    #     
+    #     Args:
+    #         model: Model size - 'base' or 'large'
+    #             - base: wav2vec2-base-vi-vlsp2020 (faster, smaller)
+    #             - large: wav2vec2-large-vi-vlsp2020 (slower, better accuracy)
+    #     
+    #     Returns:
+    #         ISTTProvider instance
+    #     """
+    #     cache_key = f"stt_wav2vec2_{model}"
+    #     if cache_key not in cls._instances:
+    #         # Map model size to HuggingFace model name
+    #         model_map = {
+    #             "base": "nguyenvulebinh/wav2vec2-base-vi-vlsp2020",
+    #             "large": "nguyenvulebinh/wav2vec2-large-vi-vlsp2020",
+    #         }
+    #         
+    #         model_name = model_map.get(model, model_map["base"])
+    #         logger.info(f"Creating Wav2Vec2STT provider with model: {model_name}")
+    #         
+    #         from app.infrastructure.stt.wav2vec2_stt import Wav2Vec2STT
+    #         cls._instances[cache_key] = Wav2Vec2STT(
+    #             model_name=model_name,
+    #             lazy_load=True,  # Load model on first use to avoid startup delay
+    #         )
+    #     
+    #     return cls._instances[cache_key]
 
     @classmethod
     async def cleanup(cls):

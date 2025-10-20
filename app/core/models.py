@@ -42,6 +42,23 @@ class RAGConfig(BaseModel):
     metadata_filter: Optional[Dict[str, Any]] = None
 
 
+class WebSearchConfig(BaseModel):
+    """Configuration for web search using Firecrawl."""
+
+    enabled: bool = False
+    query: Optional[str] = Field(
+        default=None,
+        description="Search query. If None, uses the last user message"
+    )
+    max_results: int = Field(default=5, ge=1, le=10)
+    timeout: int = Field(default=30000, ge=5000, le=60000)
+    formats: List[str] = Field(default=["markdown"])
+    include_in_context: bool = Field(
+        default=True,
+        description="Include search results in RAG context"
+    )
+
+
 class GenerationConfig(BaseModel):
     """Configuration for LLM generation."""
 
@@ -61,18 +78,25 @@ class Message(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """Chat request with RAG support and thinking modes."""
+    """Chat request with RAG support, web search, and thinking modes."""
 
     messages: List[Message]
     thinking_mode: ThinkingMode = ThinkingMode.BALANCE
     system_prompt: Optional[str] = None
     rag_config: RAGConfig = Field(default_factory=RAGConfig)
+    web_search_config: WebSearchConfig = Field(default_factory=WebSearchConfig)
     generation_config: GenerationConfig = Field(default_factory=GenerationConfig)
     collection: str = "default"
     stream: bool = False
-    search_options: Optional[Dict[str, Any]] = Field(
+    
+    # Chat history integration
+    session_id: Optional[str] = Field(
         default=None,
-        description="Optional advanced search options (reserved for future use)"
+        description="Chat session ID to save conversation history"
+    )
+    auto_generate_title: bool = Field(
+        default=True,
+        description="Auto-generate session title from first messages"
     )
 
 
@@ -81,8 +105,15 @@ class ChatResponse(BaseModel):
 
     message: Message
     sources: Optional[List[Dict[str, Any]]] = None
+    web_sources: Optional[List[Dict[str, Any]]] = None
     usage: Optional[Dict[str, int]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Chat history fields
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Chat session ID if conversation was saved"
+    )
 
 
 class UploadRequest(BaseModel):
@@ -159,6 +190,35 @@ class DeleteResponse(BaseModel):
     message: str
 
 
+class ReindexRequest(BaseModel):
+    """Request model for re-indexing a document."""
+    
+    chunk_size: Optional[int] = Field(None, ge=100, le=4000, description="Override chunk size")
+    chunk_overlap: Optional[int] = Field(None, ge=0, le=500, description="Override chunk overlap")
+    chunk_strategy: Literal["fixed", "semantic", "sentence"] = Field(
+        default="fixed",
+        description="Chunking strategy to use"
+    )
+    update_metadata: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Additional metadata to merge with existing"
+    )
+
+
+class ReindexResponse(BaseModel):
+    """Response model for re-indexing operation."""
+    
+    success: bool
+    document_id: str
+    old_chunk_count: int
+    new_chunk_count: int
+    old_vector_ids: List[str]
+    new_vector_ids: List[str]
+    processing_time_seconds: float
+    message: str
+    collection: str
+
+
 class ModelInfo(BaseModel):
     """Model/provider information."""
 
@@ -228,3 +288,89 @@ class CrawlBatchReport(BaseModel):
     duration_seconds: float
     results: List[CrawlResult]
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+# ============================================================================
+# IMAGE GENERATION & VISION MODELS
+# ============================================================================
+
+
+class ImageGenerationRequest(BaseModel):
+    """Request to generate an image from text prompt."""
+    
+    prompt: str = Field(..., min_length=1, max_length=1000, description="Image description")
+    session_id: Optional[str] = Field(default=None, description="Chat session ID")
+    size: Literal["1024x1024", "1792x1024", "1024x1792"] = Field(
+        default="1024x1024",
+        description="Image dimensions"
+    )
+    style: str = Field(default="natural", description="Image style")
+
+
+class ImageGenerationResponse(BaseModel):
+    """Response from image generation."""
+    
+    message_id: Optional[str] = Field(default=None, description="Chat message ID if added to session")
+    file_id: str = Field(..., description="Unique file ID")
+    url: str = Field(..., description="Public URL to generated image")
+    thumbnail_url: str = Field(..., description="Thumbnail URL")
+    prompt: str = Field(..., description="Original prompt")
+    size: str = Field(..., description="Image size")
+    model: str = Field(default="gpt-4.1-mini", description="Model used")
+
+
+class ImageVisionRequest(BaseModel):
+    """Request to analyze an image."""
+    
+    file_id: Optional[str] = Field(default=None, description="File ID from database")
+    image_url: Optional[str] = Field(default=None, description="Direct image URL")
+    question: str = Field(
+        default="What's in this image?",
+        description="Question to ask about the image"
+    )
+    session_id: Optional[str] = Field(default=None, description="Chat session ID")
+    detail: Literal["auto", "low", "high"] = Field(
+        default="auto",
+        description="Level of detail for analysis"
+    )
+
+
+class ImageVisionResponse(BaseModel):
+    """Response from image vision analysis."""
+    
+    message_id: Optional[str] = Field(default=None, description="Chat message ID if added to session")
+    description: str = Field(..., description="AI description of image")
+    labels: List[str] = Field(default_factory=list, description="Detected objects/concepts")
+    ocr_text: Optional[str] = Field(default=None, description="Extracted text if any")
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence score")
+    analyzed_file_id: Optional[str] = Field(default=None, description="ID of analyzed file")
+
+
+class FileUploadRequest(BaseModel):
+    """Request to upload a file."""
+    
+    session_id: Optional[str] = Field(default=None, description="Chat session ID")
+    auto_analyze: bool = Field(default=False, description="Automatically analyze image after upload")
+
+
+class FileAttachment(BaseModel):
+    """File attachment in message."""
+    
+    file_id: str
+    type: Literal["image", "document", "audio", "video"]
+    url: str
+    thumbnail_url: Optional[str] = None
+    filename: str
+    size: int
+    mime_type: str
+    
+    # Image-specific
+    width: Optional[int] = None
+    height: Optional[int] = None
+    
+    # Generated image
+    generated: bool = False
+    generation_prompt: Optional[str] = None
+    
+    # Vision analysis
+    vision_analysis: Optional[Dict[str, Any]] = None

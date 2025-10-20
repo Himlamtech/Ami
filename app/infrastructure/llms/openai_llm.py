@@ -37,6 +37,21 @@ class OpenAILLM(ILLMProvider):
                 )
             messages.append({"role": "user", "content": prompt})
 
+            # O1/O4 reasoning models have different parameter requirements
+            is_reasoning_model = self.model.startswith(("o1", "o4", "o3"))
+            
+            # Filter out unsupported parameters for reasoning models
+            if is_reasoning_model:
+                # Remove parameters not supported by reasoning models
+                unsupported_params = ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"]
+                kwargs = {k: v for k, v in kwargs.items() if k not in unsupported_params}
+                
+                # Remove max_tokens if it's None (reasoning models don't accept null)
+                if kwargs.get("max_tokens") is None:
+                    kwargs.pop("max_tokens", None)
+                    
+                logger.debug(f"Using reasoning model {self.model} with filtered params: {list(kwargs.keys())}")
+
             response = await self.client.chat.completions.create(
                 model=self.model, messages=messages, **kwargs
             )
@@ -74,6 +89,20 @@ class OpenAILLM(ILLMProvider):
                     }
                 )
             messages.append({"role": "user", "content": prompt})
+
+            # O1/O4 reasoning models have different parameter requirements
+            is_reasoning_model = self.model.startswith(("o1", "o4", "o3"))
+            
+            # Filter out unsupported parameters for reasoning models
+            if is_reasoning_model:
+                unsupported_params = ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"]
+                kwargs = {k: v for k, v in kwargs.items() if k not in unsupported_params}
+                
+                # Remove max_tokens if it's None
+                if kwargs.get("max_tokens") is None:
+                    kwargs.pop("max_tokens", None)
+                    
+                logger.debug(f"Streaming with reasoning model {self.model} with filtered params: {list(kwargs.keys())}")
 
             stream = await self.client.chat.completions.create(
                 model=self.model, messages=messages, stream=True, **kwargs

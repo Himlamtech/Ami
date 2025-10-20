@@ -97,3 +97,121 @@ class IDatabase(ABC):
         self, query: str, params: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         pass
+
+
+class IStorageProvider(ABC):
+    """Interface for file storage providers (S3, MinIO, etc.)."""
+
+    @abstractmethod
+    async def upload_file(
+        self,
+        file_data: bytes,
+        filename: str,
+        content_type: str,
+        path_prefix: Optional[str] = None,
+    ) -> str:
+        """Upload file and return URL."""
+        pass
+
+    @abstractmethod
+    async def get_presigned_url(self, object_name: str, expires_seconds: int = 3600) -> str:
+        """Get temporary signed URL for private file access."""
+        pass
+
+    @abstractmethod
+    async def delete_file(self, object_name: str) -> bool:
+        """Delete file from storage."""
+        pass
+
+    @abstractmethod
+    async def file_exists(self, object_name: str) -> bool:
+        """Check if file exists."""
+        pass
+
+
+class IImageProvider(ABC):
+    """Interface for AI image generation and vision providers."""
+
+    @abstractmethod
+    async def generate_image(
+        self,
+        prompt: str,
+        size: str = "1024x1024",
+        style: str = "natural",
+    ) -> bytes:
+        """Generate image from text prompt."""
+        pass
+
+    @abstractmethod
+    async def analyze_image(
+        self,
+        image_url: str,
+        question: str = "What's in this image?",
+        detail: str = "auto",
+    ) -> Dict[str, Any]:
+        """Analyze image and return description, labels, etc."""
+        pass
+
+    @abstractmethod
+    async def extract_text_ocr(self, image_url: str) -> Optional[str]:
+        """Extract text from image using OCR."""
+        pass
+
+
+class ISTTProvider(ABC):
+    """Interface for Speech-to-Text (STT) providers."""
+
+    @abstractmethod
+    async def transcribe(
+        self,
+        audio_data: bytes,
+        language: str = "vi",
+        use_lm: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Transcribe audio to text.
+        
+        Args:
+            audio_data: Audio file bytes
+            language: Language code (default: "vi" for Vietnamese)
+            use_lm: Use language model for better accuracy
+            
+        Returns:
+            Dict with:
+                - text: Transcribed text
+                - confidence: Confidence score (if available)
+                - language: Detected/specified language
+                - duration: Audio duration in seconds
+                - model: Model name used
+        """
+        pass
+
+    @abstractmethod
+    async def transcribe_file(
+        self,
+        file_path: str,
+        language: str = "vi",
+        use_lm: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Transcribe audio file to text.
+        
+        Args:
+            file_path: Path to audio file
+            language: Language code
+            use_lm: Use language model
+            
+        Returns:
+            Same as transcribe()
+        """
+        pass
+
+    @abstractmethod
+    async def health_check(self) -> Dict[str, Any]:
+        """
+        Check if STT service is ready.
+        
+        Returns:
+            Dict with status and model info
+        """
+        pass

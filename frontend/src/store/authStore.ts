@@ -1,32 +1,43 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 interface User {
     id: string
     username: string
-    email: string
-    full_name?: string
-    role: string
+    email?: string
 }
 
-interface AuthState {
+interface AuthStore {
     token: string | null
     user: User | null
-    setAuth: (token: string, user: User) => void
+    isLoading: boolean
+    setToken: (token: string | null) => void
+    setUser: (user: User | null) => void
+    setIsLoading: (loading: boolean) => void
     logout: () => void
+    initialize: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-    persist(
-        (set) => ({
-            token: null,
-            user: null,
-            setAuth: (token, user) => set({ token, user }),
-            logout: () => set({ token: null, user: null }),
-        }),
-        {
-            name: 'ami-auth-storage',
+export const useAuthStore = create<AuthStore>((set) => ({
+    token: localStorage.getItem('auth_token'),
+    user: null,
+    isLoading: false,
+    setToken: (token) => {
+        if (token) {
+            localStorage.setItem('auth_token', token)
+        } else {
+            localStorage.removeItem('auth_token')
         }
-    )
-)
+        set({ token })
+    },
+    setUser: (user) => set({ user }),
+    setIsLoading: (loading) => set({ isLoading: loading }),
+    logout: () => {
+        localStorage.removeItem('auth_token')
+        set({ token: null, user: null })
+    },
+    initialize: () => {
+        const token = localStorage.getItem('auth_token')
+        set({ token })
+    },
+}))
 

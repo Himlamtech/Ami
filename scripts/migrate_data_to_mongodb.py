@@ -110,11 +110,12 @@ async def migrate_documents():
                 doc_id = await mongodb.create_document(doc_data)
                 
                 # Create vector mappings
-                for vector_id in result["doc_ids"]:
+                for i, qdrant_point_id in enumerate(result["doc_ids"]):
                     await mongodb.create_vector_mapping(
-                        vector_id=vector_id,
                         document_id=doc_id,
-                        collection=collection,
+                        qdrant_point_id=qdrant_point_id,
+                        chunk_index=i,
+                        metadata={"collection": collection},
                     )
                 
                 print(f"   ✅ Migrated successfully!")

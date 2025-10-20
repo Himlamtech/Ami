@@ -12,7 +12,7 @@ dependencies = [
     "httpx>=0.26.0",
     "python-multipart>=0.0.6",
     # Databases
-    "motor>=3.3.0",          # Async MongoDB driver
+    "motor>=3.3.0", # Async MongoDB driver
     "redis[asyncio]>=5.0.1",
     "qdrant-client>=1.7.0",
     # LLM & Embeddings
@@ -20,13 +20,27 @@ dependencies = [
     "sentence-transformers>=2.3.0",
     "torch>=2.1.0",
     "numpy>=1.26.0",
+    # Speech-to-Text
+    "transformers>=4.20.0",
+    "torchaudio>=2.1.0",
+    "pyctcdecode>=0.4.0",
+    "pydub>=0.25.1",
+    "librosa>=0.10.0",
+    "soundfile>=0.12.0",
     # Document Processing
     "markitdown>=0.0.1a2",
     "pandas>=2.2.0",
+    "firecrawl-py>=1.5.0",
+    "beautifulsoup4>=4.12.0",
     # Authentication
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.9",
+    "email-validator>=2.3.0",
+    # File Storage & Image Processing
+    "minio>=7.2.0",
+    "pillow>=10.1.0",
+    "python-magic>=0.4.27",
 ]
 
 [build-system]
@@ -36,5 +50,5 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
-[tool.uv]
-dev-dependencies = ["pytest>=7.4.0", "pytest-asyncio>=0.21.0", "httpx>=0.26.0"]
+[dependency-groups]
+dev = ["pytest>=7.4.0", "pytest-asyncio>=0.21.0", "httpx>=0.26.0"]

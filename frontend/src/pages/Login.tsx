@@ -1,141 +1,194 @@
 import { useState } from 'react'
-import { Box, Button, Card, CardContent, TextField, Typography, Alert } from '@mui/material'
+import { Zap, BookOpen, Search, Save, FolderUp, Globe, FolderOpen, TrendingUp, Bot, BarChart3 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-import { authAPI } from '../api/client'
+import '../styles/__ami__/Login.css'
 
 export default function Login() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
-    const setAuth = useAuthStore((state) => state.setAuth)
+    const [isLoading, setIsLoading] = useState(false)
+    const { setToken, setUser } = useAuthStore()
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
-        setLoading(true)
+        setIsLoading(true)
 
         try {
-            const response = await authAPI.login(username, password)
-            setAuth(response.access_token, response.user)
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6008/api/v1'
+            const response = await fetch(
+                `${apiUrl}/auth/login`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                }
+            )
+
+            if (!response.ok) {
+                throw new Error('Invalid credentials')
+            }
+
+            const data = await response.json()
+            setToken(data.access_token)
+            setUser({ id: data.user.id, username: data.user.username })
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login failed')
         } finally {
-            setLoading(false)
+            setIsLoading(false)
         }
     }
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '100vh',
-                bgcolor: 'background.default',
-                background: 'linear-gradient(135deg, #fff5f7 0%, #ffe8ec 100%)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    width: '400px',
-                    height: '400px',
-                    background: 'radial-gradient(circle, rgba(255, 138, 154, 0.1) 0%, transparent 70%)',
-                    top: '-100px',
-                    right: '-100px',
-                    animation: 'float 6s ease-in-out infinite',
-                },
-                '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    width: '300px',
-                    height: '300px',
-                    background: 'radial-gradient(circle, rgba(255, 168, 180, 0.08) 0%, transparent 70%)',
-                    bottom: '-80px',
-                    left: '-80px',
-                    animation: 'float 8s ease-in-out infinite reverse',
-                },
-                '@keyframes float': {
-                    '0%, 100%': { transform: 'translate(0, 0)' },
-                    '50%': { transform: 'translate(20px, 20px)' },
-                },
-            }}
-        >
-            <Card
-                sx={{
-                    maxWidth: 400,
-                    width: '100%',
-                    mx: 2,
-                    boxShadow: '0 8px 32px rgba(255, 138, 154, 0.15)',
-                    backdropFilter: 'blur(10px)',
-                    position: 'relative',
-                    zIndex: 1,
-                    animation: 'slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '@keyframes slideIn': {
-                        from: { opacity: 0, transform: 'translateY(20px)' },
-                        to: { opacity: 1, transform: 'translateY(0)' },
-                    },
-                }}
-            >
-                <CardContent sx={{ p: 4 }}>
-                    <Typography
-                        variant="h4"
-                        component="h1"
-                        gutterBottom
-                        align="center"
-                        sx={{
-                            background: 'linear-gradient(135deg, #ff8a9a 0%, #ff5c7c 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            fontWeight: 700,
-                        }}
-                    >
-                        AMI Admin
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom align="center" sx={{ mb: 3 }}>
-                        PTIT Document Management System
-                    </Typography>
+        <div className="login-container">
+            <div className="login-info-panel">
 
-                    {error && (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                            {error}
-                        </Alert>
-                    )}
+                <div className="info-content">
+                    <div className="feature-section">
+                        <h2>
+                            <Bot size={24} strokeWidth={2} />
+                            Intelligent Chat Assistant
+                        </h2>
+                        <ul className="feature-list">
+                            <li>
+                                <span className="feature-icon">
+                                    <Zap size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Multiple Thinking Modes</strong>
+                                    <span>Fast, Balanced, or Deep reasoning for different needs</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <BookOpen size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>RAG-Powered Responses</strong>
+                                    <span>Context-aware answers from your knowledge base</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <Search size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Web Search Integration</strong>
+                                    <span>Real-time information from the web when needed</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <Save size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Session History</strong>
+                                    <span>Save and continue conversations seamlessly</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
 
-                    <form onSubmit={handleSubmit}>
-                        <TextField
-                            label="Username"
-                            fullWidth
-                            margin="normal"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                            autoFocus
-                        />
-                        <TextField
-                            label="Password"
-                            type="password"
-                            fullWidth
-                            margin="normal"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            fullWidth
-                            size="large"
-                            sx={{ mt: 3 }}
-                            disabled={loading}
-                        >
-                            {loading ? 'Logging in...' : 'Login'}
-                        </Button>
+                    <div className="feature-section">
+                        <h2>
+                            <BarChart3 size={24} strokeWidth={2} />
+                            Data Management
+                        </h2>
+                        <ul className="feature-list">
+                            <li>
+                                <span className="feature-icon">
+                                    <FolderUp size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Document Upload</strong>
+                                    <span>Support for PDF, DOCX, TXT, Markdown, and more</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <Globe size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Web Crawling</strong>
+                                    <span>Extract and ingest content from websites</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <FolderOpen size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Collection Management</strong>
+                                    <span>Organize documents into logical collections</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span className="feature-icon">
+                                    <TrendingUp size={22} strokeWidth={2} />
+                                </span>
+                                <div>
+                                    <strong>Analytics & Stats</strong>
+                                    <span>Monitor your data and system performance</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="info-footer">
+                    <p>© 2025 PTIT - Posts and Telecommunications Institute of Technology</p>
+                </div>
+            </div>
+
+            <div className="login-form-panel">
+                <div className="login-form-content">
+                    <div className="form-header">
+                        <h2>Welcome Back</h2>
+                        <p>Sign in to continue</p>
+                    </div>
+
+                    {error && <div className="error-message">{error}</div>}
+
+                    <form onSubmit={handleLogin}>
+                        <div className="form-group">
+                            <label htmlFor="username">Username</label>
+                            <input
+                                id="username"
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                placeholder="Enter your username"
+                                disabled={isLoading}
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="password">Password</label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Enter your password"
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <button type="submit" className="btn-login" disabled={isLoading || !username || !password}>
+                            {isLoading ? 'Signing in...' : 'Sign In'}
+                        </button>
                     </form>
-                </CardContent>
-            </Card>
-        </Box>
+
+                    <div className="login-demo">
+                        <p className="demo-credentials">
+                            <strong>Demo:</strong> admin / admin
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     )
 }
 

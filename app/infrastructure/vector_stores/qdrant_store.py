@@ -124,6 +124,11 @@ class QdrantVectorStore(IVectorStore):
                 )
                 points.append(point)
 
+            # Check if we have any points to add
+            if not points:
+                logger.warning(f"No valid documents to add to collection '{collection}'")
+                return []
+
             # Batch upsert to Qdrant
             await self.client.client.upsert(
                 collection_name=self.collection_name,

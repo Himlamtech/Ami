@@ -35,7 +35,8 @@ class HuggingFaceEmbeddings(IEmbeddingProvider):
             device: Device to run model on ('cpu' or 'cuda')
         """
         logger.info(f"Loading HuggingFace model: {model_name}")
-        self.model = SentenceTransformer(model_name, device=device.type)
+        # Load model with trust_remote_code for custom models
+        self.model = SentenceTransformer(model_name, device=device.type, trust_remote_code=True)
         self.model_name = model_name
         self.batch_size = batch_size
         self.dimension = self.model.get_sentence_embedding_dimension()

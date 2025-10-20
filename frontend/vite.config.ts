@@ -8,16 +8,17 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@styles': path.resolve(__dirname, './src/styles'),
+            '@components': path.resolve(__dirname, './src/components'),
         },
     },
     server: {
         port: 6009,
-        proxy: {
-            '/api': {
-                target: 'http://localhost:6008',
-                changeOrigin: true,
-            },
-        },
+        host: '127.0.0.1'
     },
+    build: {
+        outDir: 'dist',
+        sourcemap: false
+    }
 })
 

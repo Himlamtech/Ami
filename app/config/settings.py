@@ -27,8 +27,12 @@ class Settings(BaseSettings):
 
     # OpenAI (Only LLM Provider)
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    
+    # Firecrawl (Web Scraping)
+    firecrawl_api_key: str = os.getenv("FIRECRAWL_API_KEY", "")
 
     # MongoDB Configuration (Document & User Management)
+    mongodb_url: str | None = None  # If set, this takes precedence
     mongodb_host: str = Field(default="localhost")
     mongodb_port: int = Field(default=27017, ge=1, le=65535)
     mongodb_user: str = Field(default=os.getenv("MONGO_USER", "admin"))
@@ -48,6 +52,13 @@ class Settings(BaseSettings):
     qdrant_grpc_port: int = Field(default=6334, ge=1, le=65535)
     qdrant_api_key: str = Field(default="himlam")
     qdrant_collection_name: str = Field(default="ami_documents")
+
+    # MinIO Configuration (File Storage)
+    minio_endpoint: str = Field(default="localhost:9000")
+    minio_access_key: str = Field(default=os.getenv("MINIO_ACCESS_KEY", "admin"))
+    minio_secret_key: str = Field(default=os.getenv("MINIO_SECRET_KEY", "admin_password"))
+    minio_bucket: str = Field(default="ami")  # Main bucket
+    minio_secure: bool = Field(default=False)  # Use HTTPS if True
 
     # Embedding Model (HuggingFace for Vietnamese)
     huggingface_embedding_model: str = os.getenv(
@@ -85,9 +96,11 @@ class Settings(BaseSettings):
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
-    @property
-    def mongodb_url(self) -> str:
+    def get_mongodb_url(self) -> str:
         """MongoDB connection URL with auth database."""
+        # Prioritize MONGODB_URL env var (for Docker), fallback to constructed URL
+        if self.mongodb_url:
+            return self.mongodb_url
         return f"mongodb://{self.mongodb_user}:{self.mongodb_password}@{self.mongodb_host}:{self.mongodb_port}/?authSource=admin"
 
     @property

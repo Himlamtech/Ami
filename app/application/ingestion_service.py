@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.core.interfaces import IEmbeddingProvider, IVectorStore
-from app.infrastructure.databases.postgres_client import PostgresClient
 from app.infrastructure.databases.redis_client import RedisClient
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,6 @@ class IngestionService:
         embedding_provider: IEmbeddingProvider,
         vector_store: IVectorStore,
         redis_client: Optional[RedisClient] = None,
-        postgres_client: Optional[PostgresClient] = None,
         chunk_size: int = 512,
         chunk_overlap: int = 50,
     ):
@@ -34,14 +32,12 @@ class IngestionService:
             embedding_provider: Provider for generating embeddings
             vector_store: Vector store for storing embeddings
             redis_client: Redis client for caching
-            postgres_client: PostgreSQL client (for direct DB operations if needed)
             chunk_size: Size of text chunks
             chunk_overlap: Overlap between chunks
         """
         self.embedding_provider = embedding_provider
         self.vector_store = vector_store
         self.redis = redis_client
-        self.postgres = postgres_client
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         logger.info(
@@ -188,8 +184,7 @@ class IngestionService:
 
         # Check cache for each text
         for i, text in enumerate(texts):
-            cache_key = self._hash_text(text)
-            cached = await self.redis.get_embedding(cache_key)
+            cached = await self.redis.get_cached_embedding(text, "huggingface", "vietnamese-document-embedding")
 
             if cached:
                 embeddings.append(cached)
@@ -208,9 +203,8 @@ class IngestionService:
             # Insert into result and cache
             for idx, embedding in zip(uncached_indices, new_embeddings):
                 embeddings[idx] = embedding
-                cache_key = self._hash_text(texts[idx])
                 # Cache for 7 days
-                await self.redis.set_embedding(cache_key, embedding, ttl=7 * 24 * 3600)
+                await self.redis.cache_embedding(texts[idx], embedding, "huggingface", "vietnamese-document-embedding", ttl=7 * 24 * 3600)
         else:
             logger.debug(f"All {len(texts)} embeddings found in cache")
 
