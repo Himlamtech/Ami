@@ -186,38 +186,57 @@ async def vectordb_list(
     offset: int = Query(default=0, ge=0),
     vector_store: Optional[str] = Query(default=None),
 ):
-    """List documents in vector database with pagination."""
+    """
+    List documents in vector database with pagination.
+
+    Returns document metadata including:
+    - Document ID
+    - Content preview
+    - Collection name
+    - Metadata
+    - Creation timestamp
+    """
     try:
-        # This is a simplified version - would need actual implementation in vector stores
+        store = await ProviderFactory.get_vector_store()
+        result = await store.list_documents(
+            collection=collection,
+            limit=limit,
+            offset=offset,
+        )
+
+        # Convert to response model
+        from app.core.models import DocumentInfo
+        from datetime import datetime
+
+        documents = [
+            DocumentInfo(
+                id=doc["id"],
+                content=doc["content"][:500] if doc["content"] else "",  # Limit content preview
+                metadata=doc["metadata"],
+                collection=doc["collection"],
+                created_at=doc.get("created_at") or datetime.now(),
+                embedding_dims=doc.get("embedding_dims"),
+            )
+            for doc in result["documents"]
+        ]
+
         return ListDocumentsResponse(
-            documents=[], total_count=0, limit=limit, offset=offset
+            documents=documents,
+            total_count=result["total_count"],
+            limit=limit,
+            offset=offset,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/{doc_id}", response_model=DeleteResponse)
-async def vectordb_delete(
-    doc_id: str, vector_store: Optional[str] = Query(default=None)
-):
-    """Delete document by ID."""
-    try:
-        vector = await ProviderFactory.get_vector_store()
-        await vector.delete([doc_id])
-
-        return DeleteResponse(
-            deleted_count=1, message=f"Document {doc_id} deleted successfully"
-        )
-    except Exception as e:
+        logger.error(f"Failed to list documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/collections", response_model=List[str])
 async def vectordb_collections(vector_store: Optional[str] = Query(default=None)):
-    """List all collections from vector store."""
+    """List all unique collection names from documents."""
     try:
         store = await ProviderFactory.get_vector_store()
-        collections = await store.get_collections()
+        collections = await store.get_document_collections()
         return collections
     except Exception as e:
         raise HTTPException(
@@ -237,7 +256,7 @@ async def vectordb_stats(
         stats = await store.get_stats(collection=collection)
 
         # Get collections list
-        collections = await store.get_collections()
+        collections = await store.get_document_collections()
 
         return DatabaseStats(
             total_documents=stats.get("total_documents", 0),
@@ -247,4 +266,60 @@ async def vectordb_stats(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+
+@router.get("/{doc_id}")
+async def vectordb_get_document(doc_id: str):
+    """
+    Get full document content by ID.
+
+    Returns complete document with full content and metadata.
+    """
+    try:
+        store = await ProviderFactory.get_vector_store()
+
+        # Retrieve point from Qdrant
+        points = await store.client.client.retrieve(
+            collection_name=store.collection_name,
+            ids=[doc_id],
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        if not points:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        point = points[0]
+        payload = point.payload or {}
+
+        return {
+            "id": str(point.id),
+            "content": payload.get("content", ""),
+            "metadata": {k: v for k, v in payload.items() if k not in ["content", "collection", "is_active"]},
+            "collection": payload.get("collection", "default"),
+            "is_active": payload.get("is_active", True),
+            "created_at": payload.get("created_at"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get document {doc_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{doc_id}", response_model=DeleteResponse)
+async def vectordb_delete(
+    doc_id: str, vector_store: Optional[str] = Query(default=None)
+):
+    """Delete document by ID."""
+    try:
+        vector = await ProviderFactory.get_vector_store()
+        await vector.delete([doc_id])
+
+        return DeleteResponse(
+            deleted_count=1, message=f"Document {doc_id} deleted successfully"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 

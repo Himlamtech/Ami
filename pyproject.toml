@@ -1,5 +1,5 @@
 [project]
-name = "rag-system"
+name = "ami"
 version = "0.1.0"
 description = "Comprehensive RAG system with multiple providers"
 requires-python = ">=3.11"

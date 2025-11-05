@@ -603,3 +603,57 @@
     white-space: pre-wrap;
     font-family: 'Courier New', monospace;
 }
+
+/* Management Tab */
+.management-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.management-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid var(--color-gray-200);
+}
+
+.management-section h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 1.5rem 0;
+    font-family: 'Charter', serif;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--color-gray-200);
+}
+
+/* Crawler Tab */
+.crawler-tab {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* History Tab */
+.history-tab {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.history-tab h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+    font-family: 'Charter', serif;
+}
+
+.coming-soon {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    background: white;
+    border-radius: 12px;
+    border: 2px dashed var(--color-gray-300);
+}

@@ -15,6 +15,7 @@ from app.api.config_routes import router as config_router
 from app.api.crawl_routes import router as crawl_router
 from app.api.generate_routes import router as generate_router
 from app.api.image_routes import router as image_router
+from app.api.log_routes import router as log_router
 # from app.api.stt_routes import router as stt_router  # Commented for quick testing
 from app.api.vectordb_routes import router as vectordb_router
 from app.application.factory import ProviderFactory
@@ -86,6 +87,10 @@ app = FastAPI(
             "name": "config",
             "description": "System configuration, models, and health status",
         },
+        {
+            "name": "logs",
+            "description": "System logs and activity monitoring (Admin only)",
+        },
     ],
 )
 
@@ -102,6 +107,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(chat_history_router, prefix="/api/v1")
 app.include_router(image_router, prefix="/api/v1")
+app.include_router(log_router, prefix="/api/v1")
 # app.include_router(stt_router)  # Already has /api/v1 prefix
 app.include_router(crawl_router, prefix="/api/v1")
 app.include_router(generate_router, prefix="/api/v1")

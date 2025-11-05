@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, FolderUp, Globe, AlertTriangle, X } from 'lucide-react'
+import { Database, Globe, History, AlertTriangle, X } from 'lucide-react'
 import { useDataStore } from '../store/dataStore'
 import { apiClient } from '../api/client'
 import DataStats from '../components/__data__/DataStats'
 import FileUpload from '../components/__data__/FileUpload'
 import WebCrawler from '../components/__data__/WebCrawler'
+import DocumentsList from '../components/__data__/DocumentsList'
 import '../styles/__data__/DataManagement.css'
 
 export default function DataManagement() {
@@ -21,7 +22,7 @@ export default function DataManagement() {
         setError,
     } = useDataStore()
 
-    const [activeTab, setActiveTab] = useState<'upload' | 'crawl' | 'stats'>('stats')
+    const [activeTab, setActiveTab] = useState<'management' | 'crawler' | 'history'>('management')
 
     useEffect(() => {
         loadInitialData()
@@ -94,25 +95,25 @@ export default function DataManagement() {
 
             <div className="data-tabs">
                 <button
-                    className={`tab-button ${activeTab === 'stats' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('stats')}
+                    className={`tab-button ${activeTab === 'management' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('management')}
                 >
-                    <BarChart3 size={18} />
-                    <span>Statistics</span>
+                    <Database size={18} />
+                    <span>Management</span>
                 </button>
                 <button
-                    className={`tab-button ${activeTab === 'upload' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('upload')}
-                >
-                    <FolderUp size={18} />
-                    <span>Upload Files</span>
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'crawl' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('crawl')}
+                    className={`tab-button ${activeTab === 'crawler' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('crawler')}
                 >
                     <Globe size={18} />
-                    <span>Web Crawler</span>
+                    <span>Crawler</span>
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    <History size={18} />
+                    <span>History</span>
                 </button>
             </div>
 
@@ -124,12 +125,31 @@ export default function DataManagement() {
                     </div>
                 )}
 
-                {activeTab === 'stats' && <DataStats stats={stats} onRefresh={loadStats} />}
-                {activeTab === 'upload' && (
-                    <FileUpload collection={selectedCollection} onSuccess={loadStats} />
+                {activeTab === 'management' && (
+                    <div className="management-tab">
+                        <DataStats stats={stats} onRefresh={loadStats} />
+                        <div className="management-section">
+                            <h2>Documents</h2>
+                            <DocumentsList selectedCollection={selectedCollection} onRefresh={loadStats} />
+                        </div>
+                        <div className="management-section">
+                            <h2>Upload Files</h2>
+                            <FileUpload collection={selectedCollection} onSuccess={loadStats} />
+                        </div>
+                    </div>
                 )}
-                {activeTab === 'crawl' && (
-                    <WebCrawler collection={selectedCollection} onSuccess={loadStats} />
+
+                {activeTab === 'crawler' && (
+                    <div className="crawler-tab">
+                        <WebCrawler collection={selectedCollection} onSuccess={loadStats} />
+                    </div>
+                )}
+
+                {activeTab === 'history' && (
+                    <div className="history-tab">
+                        <h2>Activity History</h2>
+                        <p className="coming-soon">History tracking coming soon...</p>
+                    </div>
                 )}
             </div>
         </div>

@@ -412,3 +412,98 @@ class FileAttachmentDB(BaseModel):
     # Vision analysis
     vision_analysis: Optional[Dict[str, Any]] = None
 
+# ============================================
+# Log Management Models (NEW)
+# ============================================
+
+class LogLevel(str, Enum):
+    """Log severity levels."""
+
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+class LogAction(str, Enum):
+    """Types of logged actions."""
+
+    # Authentication
+    LOGIN = "login"
+    LOGOUT = "logout"
+    LOGIN_FAILED = "login_failed"
+
+    # Chat
+    CHAT_MESSAGE = "chat_message"
+    CHAT_RESPONSE = "chat_response"
+    CHAT_ERROR = "chat_error"
+
+    # Document Management
+    DOCUMENT_UPLOAD = "document_upload"
+    DOCUMENT_DELETE = "document_delete"
+    DOCUMENT_VIEW = "document_view"
+
+    # Web Crawling
+    CRAWL_START = "crawl_start"
+    CRAWL_SUCCESS = "crawl_success"
+    CRAWL_ERROR = "crawl_error"
+
+    # User Management
+    USER_CREATE = "user_create"
+    USER_UPDATE = "user_update"
+    USER_DELETE = "user_delete"
+
+    # System
+    SYSTEM_START = "system_start"
+    SYSTEM_ERROR = "system_error"
+    API_ERROR = "api_error"
+
+
+class LogCreate(BaseModel):
+    """Model for creating a new log entry."""
+
+    level: LogLevel
+    action: LogAction
+    message: str
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+
+
+class LogResponse(BaseModel):
+    """Log entry for API responses."""
+
+    id: str
+    level: LogLevel
+    action: LogAction
+    message: str
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    session_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime
+
+
+class LogListResponse(BaseModel):
+    """Paginated log list response."""
+
+    logs: List[LogResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class LogStatsResponse(BaseModel):
+    """Log statistics response."""
+
+    total_logs: int
+    by_level: Dict[str, int]
+    by_action: Dict[str, int]
+    recent_errors: int
+    active_users: int

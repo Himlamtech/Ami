@@ -347,21 +347,146 @@ class QdrantVectorStore(IVectorStore):
         """
         return await self.client.collection_exists(self.collection_name)
 
-    async def get_collections(self) -> List[str]:
+    async def get_document_collections(self) -> List[str]:
         """
-        Get list of all collection names from Qdrant.
-        
+        Get list of unique collection values from document payloads.
+
         Returns:
-            List of collection names
+            List of unique collection names from documents
         """
         try:
-            collections_response = await self.client.client.get_collections()
-            collection_names = [col.name for col in collections_response.collections]
-            logger.info(f"Found {len(collection_names)} collections")
+            logger.info(f"Getting document collections from '{self.collection_name}'")
+
+            # Scroll through all points to get unique collection values
+            collections_set = set()
+            next_offset = None
+            scroll_count = 0
+
+            while True:
+                logger.debug(f"Scrolling batch {scroll_count + 1}, offset: {next_offset}")
+
+                scroll_result = await self.client.client.scroll(
+                    collection_name=self.collection_name,
+                    limit=100,
+                    offset=next_offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+
+                points, next_offset = scroll_result
+                logger.debug(f"Got {len(points)} points in batch {scroll_count + 1}")
+
+                for point in points:
+                    if point.payload and 'collection' in point.payload:
+                        collections_set.add(point.payload['collection'])
+
+                scroll_count += 1
+
+                if next_offset is None:
+                    break
+
+            collection_names = sorted(list(collections_set))
+            logger.info(f"Found {len(collection_names)} unique document collections: {collection_names}")
             return collection_names
+
         except Exception as e:
-            logger.error(f"Failed to get collections: {e}")
+            logger.error(f"Failed to get document collections: {e}", exc_info=True)
             return []
+
+    async def list_documents(
+        self,
+        collection: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        List documents from Qdrant with pagination.
+
+        Args:
+            collection: Optional collection filter
+            limit: Maximum number of documents to return
+            offset: Number of documents to skip
+
+        Returns:
+            Dictionary with documents list and total count
+        """
+        try:
+            # Build filter if collection specified
+            scroll_filter = None
+            if collection:
+                scroll_filter = Filter(
+                    must=[
+                        FieldCondition(
+                            key="collection",
+                            match=MatchValue(value=collection),
+                        )
+                    ]
+                )
+
+            # Qdrant scroll doesn't support offset directly, need to scroll through
+            # For simplicity, we'll scroll all and slice (not optimal for large datasets)
+            # TODO: Implement proper cursor-based pagination for production
+            all_points = []
+            next_offset = None
+
+            # Scroll through all points (or until we have enough for pagination)
+            while True:
+                scroll_result = await self.client.client.scroll(
+                    collection_name=self.collection_name,
+                    scroll_filter=scroll_filter,
+                    limit=100,  # Fetch in batches of 100
+                    offset=next_offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+
+                points, next_offset = scroll_result
+                all_points.extend(points)
+
+                # Stop if we have enough points or no more points
+                if next_offset is None or len(all_points) >= offset + limit:
+                    break
+
+            # Apply pagination by slicing
+            paginated_points = all_points[offset:offset + limit]
+
+            # Extract documents from points
+            documents = []
+            for point in paginated_points:
+                payload = point.payload or {}
+                documents.append({
+                    "id": str(point.id),
+                    "content": payload.get("content", ""),
+                    "metadata": {k: v for k, v in payload.items() if k not in ["content", "collection", "is_active", "created_at"]},
+                    "collection": payload.get("collection", "default"),
+                    "created_at": payload.get("created_at"),
+                    "embedding_dims": None,  # Not included in payload
+                })
+
+            # Get total count
+            if collection:
+                count_result = await self.client.client.count(
+                    collection_name=self.collection_name,
+                    count_filter=scroll_filter,
+                    exact=True,
+                )
+                total_count = count_result.count
+            else:
+                info = await self.client.get_collection_info(self.collection_name)
+                total_count = info["points_count"]
+
+            logger.info(f"Listed {len(documents)} documents (offset={offset}, total={total_count})")
+
+            return {
+                "documents": documents,
+                "total_count": total_count,
+                "limit": limit,
+                "offset": offset,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to list documents: {e}")
+            raise RuntimeError(f"Failed to list documents: {str(e)}")
 
     async def update_document(
         self,

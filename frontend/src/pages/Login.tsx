@@ -32,7 +32,12 @@ export default function Login() {
 
             const data = await response.json()
             setToken(data.access_token)
-            setUser({ id: data.user.id, username: data.user.username })
+            setUser({
+                id: data.user.id,
+                username: data.user.username,
+                email: data.user.email,
+                role: data.user.role,
+            })
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed')
         } finally {
@@ -180,12 +185,6 @@ export default function Login() {
                             {isLoading ? 'Signing in...' : 'Sign In'}
                         </button>
                     </form>
-
-                    <div className="login-demo">
-                        <p className="demo-credentials">
-                            <strong>Demo:</strong> admin / admin
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
