@@ -16,7 +16,7 @@ export default function Login() {
         setIsLoading(true)
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6008/api/v1'
+            const apiUrl = import.meta.env.VITE_API_URL || '/v2/api'
             const response = await fetch(
                 `${apiUrl}/auth/login`,
                 {
@@ -27,10 +27,16 @@ export default function Login() {
             )
 
             if (!response.ok) {
-                throw new Error('Invalid credentials')
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.detail || errorData.message || `Login failed: ${response.status} ${response.statusText}`)
             }
 
             const data = await response.json()
+            
+            if (!data.access_token) {
+                throw new Error('No access token received from server')
+            }
+
             setToken(data.access_token)
             setUser({
                 id: data.user.id,
@@ -38,8 +44,12 @@ export default function Login() {
                 email: data.user.email,
                 role: data.user.role,
             })
+
+            // Force re-render by reloading the page (App component will detect token)
+            window.location.reload()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed')
+            console.error('Login error:', err)
+            setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.')
         } finally {
             setIsLoading(false)
         }

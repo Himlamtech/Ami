@@ -13,6 +13,7 @@ from app.api.auth_routes import router as auth_router
 from app.api.chat_history_routes import router as chat_history_router
 from app.api.config_routes import router as config_router
 from app.api.crawl_routes import router as crawl_router
+from app.api.crawler_routes import router as crawler_router
 from app.api.generate_routes import router as generate_router
 from app.api.image_routes import router as image_router
 from app.api.log_routes import router as log_router
@@ -110,6 +111,7 @@ app.include_router(image_router, prefix="/api/v1")
 app.include_router(log_router, prefix="/api/v1")
 # app.include_router(stt_router)  # Already has /api/v1 prefix
 app.include_router(crawl_router, prefix="/api/v1")
+app.include_router(crawler_router, prefix="/api/v1")
 app.include_router(generate_router, prefix="/api/v1")
 app.include_router(vectordb_router, prefix="/api/v1")
 app.include_router(config_router, prefix="/api/v1")

@@ -3,8 +3,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Build argument for API URL
-ARG VITE_API_URL=https://ami.ptit.edu.vn/v2
+# Build argument for API URL (using relative URL for flexibility)
+ARG VITE_API_URL=/v2/api
 
 # Copy package files
 COPY package*.json ./

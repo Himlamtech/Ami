@@ -43,14 +43,44 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)
 
 
-class UserInDB(UserBase):
-    """User model as stored in database."""
-    
-    id: str = Field(alias="_id")
+class UserInDB(BaseModel):
+    """User model in database with RBAC support."""
+
+    # Core fields
+    id: str
+    username: str
+    email: str
+    full_name: Optional[str] = None
     hashed_password: str
+    is_active: bool = True
+    is_admin: bool = False  # Deprecated: use role_ids instead
+    
+    # RBAC fields
+    role_ids: List[str] = Field(default_factory=list, description="List of assigned role IDs")
+    
+    # Profile enhancement
+    department: Optional[str] = Field(None, description="User's department")
+    organization: Optional[str] = Field(None, description="User's organization")
+    avatar_url: Optional[str] = Field(None, description="URL to user's avatar image")
+    
+    # Localization
+    timezone: str = Field(default="UTC", description="User's timezone")
+    language: str = Field(default="vi", description="Preferred language (vi, en)")
+    
+    # Preferences
+    preferences: Dict[str, Any] = Field(default_factory=dict, description="UI/UX preferences")
+    
+    # Usage tracking
+    usage_quota: Optional[Dict[str, Any]] = Field(None, description="Usage quotas and limits")
+    last_login: Optional[datetime] = Field(None, description="Last login timestamp")
+    login_count: int = Field(default=0, description="Total login count")
+    
+    # Security
+    two_factor_enabled: bool = Field(default=False, description="2FA enabled status")
+    
+    # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
-    last_login: Optional[datetime] = None
 
     class Config:
         populate_by_name = True
@@ -507,3 +537,166 @@ class LogStatsResponse(BaseModel):
     by_action: Dict[str, int]
     recent_errors: int
     active_users: int
+
+
+# ============================================================================
+# CRAWLER MANAGEMENT MODELS
+# ============================================================================
+
+
+class CrawlJobStatus(str, Enum):
+    """Status of a crawl job."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    SCHEDULED = "scheduled"
+
+
+class CrawlJobType(str, Enum):
+    """Type of crawl job."""
+
+    SCRAPE = "scrape"  # Single page scrape
+    CRAWL = "crawl"    # Multi-page crawl
+    BATCH = "batch"    # Batch crawl from CSV
+
+
+class CrawlJobBase(BaseModel):
+    """Base crawl job model."""
+
+    job_type: CrawlJobType
+    url: Optional[str] = None  # For scrape/crawl
+    csv_path: Optional[str] = None  # For batch
+    collection: str = "web_content"
+    max_depth: int = 2
+    limit: int = 10
+    auto_ingest: bool = True
+    schedule_cron: Optional[str] = None  # Cron expression for scheduling
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CrawlJobCreate(CrawlJobBase):
+    """Model for creating a new crawl job."""
+    pass
+
+
+class CrawlJobInDB(CrawlJobBase):
+    """Crawl job model as stored in database."""
+
+    id: str = Field(alias="_id")
+    status: CrawlJobStatus = CrawlJobStatus.PENDING
+    created_by: str  # User ID
+    created_at: datetime = Field(default_factory=datetime.now)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error: Optional[str] = None
+
+    # Results
+    total_pages: int = 0
+    successful_pages: int = 0
+    failed_pages: int = 0
+    ingested_pages: int = 0
+
+    # Performance
+    duration_seconds: float = 0.0
+
+    class Config:
+        populate_by_name = True
+
+
+class CrawlJobResponse(BaseModel):
+    """Crawl job model for API responses."""
+
+    id: str
+    job_type: CrawlJobType
+    status: CrawlJobStatus
+    url: Optional[str] = None
+    csv_path: Optional[str] = None
+    collection: str
+    max_depth: int
+    limit: int
+    auto_ingest: bool
+    schedule_cron: Optional[str] = None
+    metadata: Dict[str, Any]
+    created_by: str
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error: Optional[str] = None
+    total_pages: int
+    successful_pages: int
+    failed_pages: int
+    ingested_pages: int
+    duration_seconds: float
+
+
+class CrawlHistoryBase(BaseModel):
+    """Base crawl history model."""
+
+    job_id: Optional[str] = None  # Reference to CrawlJob if exists
+    url: str
+    status: str  # success, failed, skipped
+    content_length: int = 0
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CrawlHistoryInDB(CrawlHistoryBase):
+    """Crawl history model as stored in database."""
+
+    id: str = Field(alias="_id")
+    crawled_by: str  # User ID
+    crawled_at: datetime = Field(default_factory=datetime.now)
+    duration_seconds: float = 0.0
+    saved_path: Optional[str] = None
+    ingested: bool = False
+    doc_id: Optional[str] = None  # MongoDB document ID if ingested
+    chunk_count: int = 0
+
+    class Config:
+        populate_by_name = True
+
+
+class CrawlHistoryResponse(BaseModel):
+    """Crawl history model for API responses."""
+
+    id: str
+    job_id: Optional[str] = None
+    url: str
+    status: str
+    content_length: int
+    error: Optional[str] = None
+    metadata: Dict[str, Any]
+    crawled_by: str
+    crawled_at: datetime
+    duration_seconds: float
+    saved_path: Optional[str] = None
+    ingested: bool
+    doc_id: Optional[str] = None
+    chunk_count: int
+
+
+class CrawlerStatsResponse(BaseModel):
+    """Crawler statistics response."""
+
+    total_jobs: int
+    jobs_by_status: Dict[str, int]
+    total_crawled_pages: int
+    total_ingested_pages: int
+    total_failed_pages: int
+    recent_jobs: List[CrawlJobResponse]
+    recent_history: List[CrawlHistoryResponse]
+    crawled_urls_count: int
+    avg_duration_seconds: float
+
+
+class WebsiteInfoResponse(BaseModel):
+    """Website structure information response."""
+
+    total_urls: int
+    urls_by_category: Dict[str, int]
+    urls_by_status: Dict[str, int]  # crawled, pending, failed
+    categories: List[str]
+    url_tree: List[Dict[str, Any]]  # Hierarchical structure

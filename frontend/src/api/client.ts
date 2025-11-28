@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:6008/api/v1'
+const API_URL = import.meta.env.VITE_API_URL || '/v2/api'
 
 // Types
 export interface Message {
@@ -226,6 +226,78 @@ class APIClient {
     async generateChat(request: ChatRequest): Promise<ChatResponse> {
         const response = await this.client.post<ChatResponse>('/generate/chat', request)
         return response.data
+    }
+
+    async streamChat(
+        request: ChatRequest,
+        onChunk: (chunk: string) => void,
+        onDone: () => void,
+        onError: (error: Error) => void,
+        signal?: AbortSignal
+    ): Promise<void> {
+        try {
+            const response = await fetch(`${API_URL}/generate/stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+                },
+                body: JSON.stringify(request),
+                signal,
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const reader = response.body?.getReader()
+            const decoder = new TextDecoder()
+
+            if (!reader) {
+                throw new Error('Response body is null')
+            }
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) {
+                    break
+                }
+
+                const chunk = decoder.decode(value, { stream: true })
+                const lines = chunk.split('\n\n')
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6)
+                        if (data === '[DONE]') {
+                            onDone()
+                            return
+                        }
+
+                        try {
+                            const parsed = JSON.parse(data)
+                            if (parsed.content) {
+                                onChunk(parsed.content)
+                            } else if (parsed.done) {
+                                onDone()
+                                return
+                            } else if (parsed.error) {
+                                onError(new Error(parsed.error))
+                                return
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE data:', e)
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('Stream aborted')
+            } else {
+                onError(error as Error)
+            }
+        }
     }
 
     // ============= Chat History Endpoints =============
@@ -532,6 +604,143 @@ class APIClient {
     async clearOldLogs(days = 90): Promise<void> {
         await this.client.delete('/logs', { params: { days } })
     }
+
+    // ============= Crawler Management Endpoints =============
+    async createCrawlJob(jobData: {
+        job_type: 'scrape' | 'crawl' | 'batch'
+        url?: string
+        csv_path?: string
+        collection?: string
+        max_depth?: number
+        limit?: number
+        auto_ingest?: boolean
+        schedule_cron?: string
+        metadata?: Record<string, unknown>
+    }): Promise<CrawlJob> {
+        const response = await this.client.post<CrawlJob>('/crawler/jobs', jobData)
+        return response.data
+    }
+
+    async listCrawlJobs(
+        skip = 0,
+        limit = 50,
+        status?: string,
+        jobType?: string
+    ): Promise<CrawlJob[]> {
+        const response = await this.client.get<CrawlJob[]>('/crawler/jobs', {
+            params: { skip, limit, status, type: jobType },
+        })
+        return response.data
+    }
+
+    async getCrawlJob(jobId: string): Promise<CrawlJob> {
+        const response = await this.client.get<CrawlJob>(`/crawler/jobs/${jobId}`)
+        return response.data
+    }
+
+    async getCrawlHistory(
+        skip = 0,
+        limit = 100,
+        jobId?: string,
+        status?: string
+    ): Promise<CrawlHistory[]> {
+        const response = await this.client.get<CrawlHistory[]>('/crawler/history', {
+            params: { skip, limit, job_id: jobId, status },
+        })
+        return response.data
+    }
+
+    async getCrawlerStats(): Promise<CrawlerStats> {
+        const response = await this.client.get<CrawlerStats>('/crawler/stats')
+        return response.data
+    }
+
+    async getWebsiteInfo(csvPath = 'assets/data_sheet.csv'): Promise<WebsiteInfo> {
+        const response = await this.client.get<WebsiteInfo>('/crawler/website-info', {
+            params: { csv_path: csvPath },
+        })
+        return response.data
+    }
+
+    // ============= STT Endpoints =============
+    async transcribeAudio(file: File, language = 'vi'): Promise<{ text: string }> {
+        const formData = new FormData()
+        formData.append('audio', file)
+        formData.append('language', language)
+
+        const response = await this.client.post<{ text: string }>('/api/v1/stt/transcribe', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        })
+        return response.data
+    }
+}
+
+// Crawler types
+export interface CrawlJob {
+    id: string
+    job_type: 'scrape' | 'crawl' | 'batch'
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'scheduled'
+    url?: string
+    csv_path?: string
+    collection: string
+    max_depth: number
+    limit: number
+    auto_ingest: boolean
+    schedule_cron?: string
+    metadata: Record<string, unknown>
+    created_by: string
+    created_at: string
+    started_at?: string
+    completed_at?: string
+    error?: string
+    total_pages: number
+    successful_pages: number
+    failed_pages: number
+    ingested_pages: number
+    duration_seconds: number
+}
+
+export interface CrawlHistory {
+    id: string
+    job_id?: string
+    url: string
+    status: string
+    content_length: number
+    error?: string
+    metadata: Record<string, unknown>
+    crawled_by: string
+    crawled_at: string
+    duration_seconds: number
+    saved_path?: string
+    ingested: boolean
+    doc_id?: string
+    chunk_count: number
+}
+
+export interface CrawlerStats {
+    total_jobs: number
+    jobs_by_status: Record<string, number>
+    total_crawled_pages: number
+    total_ingested_pages: number
+    total_failed_pages: number
+    recent_jobs: CrawlJob[]
+    recent_history: CrawlHistory[]
+    crawled_urls_count: number
+    avg_duration_seconds: number
+}
+
+export interface WebsiteInfo {
+    total_urls: number
+    urls_by_category: Record<string, number>
+    urls_by_status: Record<string, number>
+    categories: string[]
+    url_tree: Array<{
+        category: string
+        count: number
+        urls: unknown[]
+    }>
 }
 
 export const apiClient = new APIClient()

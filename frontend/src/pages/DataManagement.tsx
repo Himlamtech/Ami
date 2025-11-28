@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Database, Globe, History, AlertTriangle, X } from 'lucide-react'
+import { Database, Globe, History, AlertTriangle, X, Activity } from 'lucide-react'
 import { useDataStore } from '../store/dataStore'
 import { apiClient } from '../api/client'
 import DataStats from '../components/__data__/DataStats'
 import FileUpload from '../components/__data__/FileUpload'
 import WebCrawler from '../components/__data__/WebCrawler'
 import DocumentsList from '../components/__data__/DocumentsList'
+import CrawlerDashboard from '../components/__data__/CrawlerDashboard'
+import WebsiteOverview from '../components/__data__/WebsiteOverview'
 import '../styles/__data__/DataManagement.css'
 
 export default function DataManagement() {
@@ -22,7 +24,9 @@ export default function DataManagement() {
         setError,
     } = useDataStore()
 
-    const [activeTab, setActiveTab] = useState<'management' | 'crawler' | 'history'>('management')
+    const [activeTab, setActiveTab] = useState<
+        'management' | 'crawler' | 'dashboard' | 'website' | 'history'
+    >('management')
 
     useEffect(() => {
         loadInitialData()
@@ -102,11 +106,25 @@ export default function DataManagement() {
                     <span>Management</span>
                 </button>
                 <button
+                    className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dashboard')}
+                >
+                    <Activity size={18} />
+                    <span>Crawler Dashboard</span>
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'website' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('website')}
+                >
+                    <Globe size={18} />
+                    <span>Website Overview</span>
+                </button>
+                <button
                     className={`tab-button ${activeTab === 'crawler' ? 'active' : ''}`}
                     onClick={() => setActiveTab('crawler')}
                 >
                     <Globe size={18} />
-                    <span>Crawler</span>
+                    <span>Web Crawler</span>
                 </button>
                 <button
                     className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
@@ -136,6 +154,18 @@ export default function DataManagement() {
                             <h2>Upload Files</h2>
                             <FileUpload collection={selectedCollection} onSuccess={loadStats} />
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'dashboard' && (
+                    <div className="dashboard-tab">
+                        <CrawlerDashboard />
+                    </div>
+                )}
+
+                {activeTab === 'website' && (
+                    <div className="website-tab">
+                        <WebsiteOverview />
                     </div>
                 )}
 

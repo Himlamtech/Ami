@@ -8,7 +8,7 @@ from app.domain.entities.user import User
 from app.domain.exceptions.user_exceptions import UserAlreadyExistsException
 from app.application.interfaces.repositories.user_repository import IUserRepository
 from app.infrastructure.db.mongodb.mappers import UserMapper
-from app.core.mongodb_models import UserInDB
+from app.infrastructure.db.mongodb.models import UserInDB
 
 
 class MongoDBUserRepository(IUserRepository):

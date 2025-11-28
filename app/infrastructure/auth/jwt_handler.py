@@ -19,10 +19,10 @@ class JWTHandler:
         algorithm: str = "HS256",
         access_token_expire_minutes: int = None,
     ):
-        self.secret_key = secret_key or settings.secret_key
+        self.secret_key = secret_key or settings.jwt_secret_key
         self.algorithm = algorithm
         self.access_token_expire_minutes = (
-            access_token_expire_minutes or settings.access_token_expire_minutes
+            access_token_expire_minutes or settings.jwt_access_token_expire_minutes
         )
     
     def create_access_token(

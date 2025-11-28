@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { ChatSession, ChatMessage } from '../api/client'
 
 interface ChatConfig {
@@ -20,6 +21,8 @@ interface ChatState {
     error: string | null
     config: ChatConfig
     isUploadingFile: boolean
+    isStreaming: boolean
+    abortController: AbortController | null
 
     setCurrentSession: (session: ChatSession | null) => void
     setSessions: (sessions: ChatSession[]) => void
@@ -30,6 +33,11 @@ interface ChatState {
     updateConfig: (config: Partial<ChatConfig>) => void
     setIsUploadingFile: (loading: boolean) => void
     clearState: () => void
+
+    // Streaming actions
+    setIsStreaming: (isStreaming: boolean) => void
+    setAbortController: (controller: AbortController | null) => void
+    updateLastMessage: (content: string) => void
 }
 
 const defaultConfig: ChatConfig = {
@@ -42,35 +50,59 @@ const defaultConfig: ChatConfig = {
     collection: 'default',
 }
 
-export const useChatStore = create<ChatState>((set) => ({
-    currentSession: null,
-    sessions: [],
-    currentMessages: [],
-    loading: false,
-    error: null,
-    config: defaultConfig,
-    isUploadingFile: false,
-
-    setCurrentSession: (session) => set({ currentSession: session }),
-    setSessions: (sessions) => set({ sessions }),
-    addMessage: (message) =>
-        set((state) => ({
-            currentMessages: [...state.currentMessages, message],
-        })),
-    setCurrentMessages: (messages) => set({ currentMessages: messages }),
-    setLoading: (loading) => set({ loading }),
-    setError: (error) => set({ error }),
-    updateConfig: (config) =>
-        set((state) => ({
-            config: { ...state.config, ...config },
-        })),
-    setIsUploadingFile: (loading) => set({ isUploadingFile: loading }),
-    clearState: () =>
-        set({
+export const useChatStore = create<ChatState>()(
+    persist(
+        (set) => ({
             currentSession: null,
             sessions: [],
             currentMessages: [],
             loading: false,
             error: null,
+            config: defaultConfig,
+            isUploadingFile: false,
+            isStreaming: false,
+            abortController: null,
+
+            setCurrentSession: (session) => set({ currentSession: session }),
+            setSessions: (sessions) => set({ sessions }),
+            addMessage: (message) =>
+                set((state) => ({
+                    currentMessages: [...state.currentMessages, message],
+                })),
+            setCurrentMessages: (messages) => set({ currentMessages: messages }),
+            setLoading: (loading) => set({ loading }),
+            setError: (error) => set({ error }),
+            updateConfig: (config) =>
+                set((state) => ({
+                    config: { ...state.config, ...config },
+                })),
+            setIsUploadingFile: (loading) => set({ isUploadingFile: loading }),
+            clearState: () =>
+                set({
+                    currentSession: null,
+                    sessions: [],
+                    currentMessages: [],
+                    loading: false,
+                    error: null,
+                }),
+
+            setIsStreaming: (isStreaming) => set({ isStreaming }),
+            setAbortController: (controller) => set({ abortController: controller }),
+            updateLastMessage: (content) =>
+                set((state) => {
+                    const messages = [...state.currentMessages]
+                    if (messages.length > 0) {
+                        const lastMsg = messages[messages.length - 1]
+                        if (lastMsg.role === 'assistant') {
+                            lastMsg.content = content
+                        }
+                    }
+                    return { currentMessages: messages }
+                }),
         }),
-}))
+        {
+            name: 'ami-chat-storage',
+            partialize: (state) => ({ config: state.config }), // Only persist config
+        }
+    )
+)

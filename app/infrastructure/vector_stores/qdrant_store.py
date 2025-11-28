@@ -202,16 +202,31 @@ class QdrantVectorStore(IVectorStore):
             if must_conditions:
                 query_filter = Filter(must=must_conditions)
 
-            # Search in Qdrant
-            search_results = await self.client.client.search(
-                collection_name=self.collection_name,
-                query_vector=query_embedding,
-                limit=top_k,
-                query_filter=query_filter,
-                score_threshold=similarity_threshold if similarity_threshold > 0 else None,
-                with_payload=True,
-                with_vectors=False,
-            )
+            # Search in Qdrant - use query_points for newer client versions
+            try:
+                # Try new API first (qdrant-client >= 1.7.0)
+                from qdrant_client.models import QueryRequest, VectorParams as QueryVectorParams
+                
+                search_results = await self.client.client.query_points(
+                    collection_name=self.collection_name,
+                    query=query_embedding,
+                    limit=top_k,
+                    query_filter=query_filter,
+                    score_threshold=similarity_threshold if similarity_threshold > 0 else None,
+                    with_payload=True,
+                    with_vectors=False,
+                ).points
+            except (AttributeError, ImportError):
+                # Fallback to old API (qdrant-client < 1.7.0)
+                search_results = await self.client.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=query_embedding,
+                    limit=top_k,
+                    query_filter=query_filter,
+                    score_threshold=similarity_threshold if similarity_threshold > 0 else None,
+                    with_payload=True,
+                    with_vectors=False,
+                )
 
             # Format results
             formatted_results = []

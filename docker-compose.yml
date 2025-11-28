@@ -74,10 +74,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ami_backend
+    container_name: amiver2-backend
     restart: unless-stopped
     environment:
       - ENV=${ENV:-production}
+      - APP_PORT=${APP_PORT:-8802}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
       - MONGODB_URL=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-admin_password}@mongodb:27017
@@ -98,9 +99,9 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-this-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:6009,http://localhost:6008,http://127.0.0.1:6009,http://127.0.0.1:6008}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8801,http://localhost:8802,http://127.0.0.1:8801,http://127.0.0.1:8802}
     ports:
-      - "127.0.0.1:6008:6008"
+      - "${APP_PORT:-8802}:8802"
     volumes:
       - ./app:/app/app:ro
       - ./assets:/app/assets
@@ -110,7 +111,7 @@ services:
       - mongodb
       - minio
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:6008/api/v1/config/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8802/api/v1/config/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -123,11 +124,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://127.0.0.1:6008/api/v1
-    container_name: ami_frontend
+        VITE_API_URL: /v2/api
+    container_name: amiver2-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6009:80"
+      - "8801:80"
     depends_on:
       - backend
     healthcheck:

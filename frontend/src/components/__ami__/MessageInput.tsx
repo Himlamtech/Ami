@@ -1,17 +1,25 @@
 import { useState, useRef } from 'react'
-import { Paperclip, Mic, Send, X } from 'lucide-react'
+import { Paperclip, Mic, Send, X, Square } from 'lucide-react'
+import { apiClient } from '../../api/client'
 import '@styles/__ami__/MessageInput.css'
 
 interface MessageInputProps {
     onSendMessage: (message: string, files?: File[]) => void
     disabled: boolean
+    isStreaming?: boolean
+    onStopGeneration?: () => void
 }
 
-export default function MessageInput({ onSendMessage, disabled }: MessageInputProps) {
+export default function MessageInput({ onSendMessage, disabled, isStreaming = false, onStopGeneration }: MessageInputProps) {
     const [message, setMessage] = useState('')
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+    const [isRecording, setIsRecording] = useState(false)
+    const [isTranscribing, setIsTranscribing] = useState(false)
+
     const fileInputRef = useRef<HTMLInputElement>(null)
     const textAreaRef = useRef<HTMLTextAreaElement>(null)
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+    const audioChunksRef = useRef<Blob[]>([])
 
     const handleSendMessage = () => {
         if (message.trim() || uploadedFiles.length > 0) {
@@ -51,6 +59,65 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
         setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
     }
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const mediaRecorder = new MediaRecorder(stream)
+            mediaRecorderRef.current = mediaRecorder
+            audioChunksRef.current = []
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunksRef.current.push(event.data)
+            }
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+                const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' })
+
+                setIsTranscribing(true)
+                try {
+                    const result = await apiClient.transcribeAudio(audioFile)
+                    setMessage((prev) => (prev ? prev + ' ' + result.text : result.text))
+
+                    // Auto-resize after adding text
+                    setTimeout(() => {
+                        if (textAreaRef.current) {
+                            textAreaRef.current.style.height = 'auto'
+                            textAreaRef.current.style.height = Math.min(textAreaRef.current.scrollHeight, 200) + 'px'
+                        }
+                    }, 0)
+                } catch (error) {
+                    console.error('Transcription failed:', error)
+                    alert('Failed to transcribe audio')
+                } finally {
+                    setIsTranscribing(false)
+                    stream.getTracks().forEach(track => track.stop())
+                }
+            }
+
+            mediaRecorder.start()
+            setIsRecording(true)
+        } catch (error) {
+            console.error('Error accessing microphone:', error)
+            alert('Could not access microphone')
+        }
+    }
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop()
+            setIsRecording(false)
+        }
+    }
+
+    const toggleRecording = () => {
+        if (isRecording) {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+
     return (
         <div className="message-input-area">
             {uploadedFiles.length > 0 && (
@@ -71,15 +138,15 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
                 </div>
             )}
 
-            <div className="message-input-wrapper">
+            <div className={`message-input-wrapper ${isRecording ? 'recording' : ''}`}>
                 <textarea
                     ref={textAreaRef}
                     className="message-input"
-                    placeholder="Nhập tin nhắn... (Shift+Enter để xuống dòng)"
+                    placeholder={isRecording ? "Đang ghi âm..." : isTranscribing ? "Đang chuyển văn bản..." : "Nhập tin nhắn... (Shift+Enter để xuống dòng)"}
                     value={message}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    disabled={disabled}
+                    disabled={disabled || isRecording || isTranscribing}
                     rows={1}
                 />
 
@@ -87,7 +154,7 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
                     <button
                         className="btn-icon"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={disabled}
+                        disabled={disabled || isRecording || isTranscribing}
                         title="Đính kèm tệp"
                     >
                         <Paperclip size={18} />
@@ -102,21 +169,34 @@ export default function MessageInput({ onSendMessage, disabled }: MessageInputPr
                     />
 
                     <button
-                        className="btn-icon"
-                        disabled={disabled}
-                        title="Ghi âm"
+                        className={`btn-icon ${isRecording ? 'recording-active' : ''}`}
+                        onClick={toggleRecording}
+                        disabled={disabled || isTranscribing}
+                        title={isRecording ? "Dừng ghi âm" : "Ghi âm"}
                     >
-                        <Mic size={18} />
+                        {isRecording ? <Square size={18} fill="currentColor" /> : <Mic size={18} />}
                     </button>
 
-                    <button
-                        className="btn-send"
-                        onClick={handleSendMessage}
-                        disabled={disabled || (!message.trim() && uploadedFiles.length === 0)}
-                    >
-                        <Send size={16} />
-                        <span>Gửi</span>
-                    </button>
+
+                    {isStreaming ? (
+                        <button
+                            className="btn-stop"
+                            onClick={onStopGeneration}
+                            title="Dừng tạo phản hồi"
+                        >
+                            <Square size={16} fill="currentColor" />
+                            <span>Dừng</span>
+                        </button>
+                    ) : (
+                        <button
+                            className="btn-send"
+                            onClick={handleSendMessage}
+                            disabled={disabled || (!message.trim() && uploadedFiles.length === 0) || isRecording || isTranscribing}
+                        >
+                            <Send size={16} />
+                            <span>Gửi</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

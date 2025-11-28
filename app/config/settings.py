@@ -32,25 +32,25 @@ class Settings(BaseSettings):
     firecrawl_api_key: str = os.getenv("FIRECRAWL_API_KEY", "")
 
     # MongoDB Configuration (Document & User Management)
-    mongodb_url: str | None = None  # If set, this takes precedence
-    mongodb_host: str = Field(default="localhost")
+    mongodb_url: str | None = Field(default=os.getenv("MONGODB_URL"))  # If set, this takes precedence
+    mongodb_host: str = Field(default=os.getenv("MONGODB_HOST", "localhost"))
     mongodb_port: int = Field(default=27017, ge=1, le=65535)
     mongodb_user: str = Field(default=os.getenv("MONGO_USER", "admin"))
     mongodb_password: str = Field(default=os.getenv("MONGO_PASSWORD", "admin_password"))
     mongodb_db: str = Field(default=os.getenv("MONGO_DB", "ami_db"))
 
     # Redis Configuration (Caching)
-    redis_host: str = Field(default="localhost")
+    redis_host: str = Field(default=os.getenv("REDIS_HOST", "localhost"))
     redis_port: int = Field(default=6379, ge=1, le=65535)
-    redis_password: str = Field(default="redis_password")
+    redis_password: str = Field(default=os.getenv("REDIS_PASSWORD", "redis_password"))
     redis_db: int = Field(default=0, ge=0)
     redis_max_connections: int = Field(default=50, ge=1)
 
     # Qdrant Configuration (Vector Store)
-    qdrant_host: str = Field(default="localhost")
+    qdrant_host: str = Field(default=os.getenv("QDRANT_HOST", "localhost"))
     qdrant_port: int = Field(default=6333, ge=1, le=65535)
     qdrant_grpc_port: int = Field(default=6334, ge=1, le=65535)
-    qdrant_api_key: str = Field(default="himlam")
+    qdrant_api_key: str = Field(default=os.getenv("QDRANT_API_KEY", "himlam"))
     qdrant_collection_name: str = Field(default="ami_documents")
 
     # MinIO Configuration (File Storage)
@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = Field(default=1440, ge=1)  # 24 hours
 
     # CORS
-    cors_origins: str = Field(default="http://localhost:6009,http://localhost:6010,http://localhost:6008")
+    cors_origins: str = Field(default="http://localhost:6009,http://localhost:6010,http://localhost:6008,http://localhost:8801,http://localhost:8802,http://127.0.0.1:6009,http://127.0.0.1:6010,http://127.0.0.1:6008,http://127.0.0.1:8801,http://127.0.0.1:8802,http://127.0.0.1:5557")
     
     @property
     def cors_origins_list(self) -> list[str]:

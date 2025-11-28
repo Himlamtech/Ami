@@ -7,7 +7,7 @@ from bson import ObjectId
 from app.domain.entities.document import Document
 from app.application.interfaces.repositories.document_repository import IDocumentRepository
 from app.infrastructure.db.mongodb.mappers import DocumentMapper
-from app.core.mongodb_models import DocumentInDB
+from app.infrastructure.db.mongodb.models import DocumentInDB
 
 
 class MongoDBDocumentRepository(IDocumentRepository):

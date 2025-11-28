@@ -10,7 +10,7 @@ from app.domain.entities.user import User
 from app.domain.entities.document import Document
 from app.domain.entities.chat_session import ChatSession
 from app.domain.entities.chat_message import ChatMessage
-from app.core.mongodb_models import (
+from app.infrastructure.db.mongodb.models import (
     UserInDB,
     DocumentInDB,
     ChatSessionInDB,
@@ -176,7 +176,7 @@ class ChatMessageMapper:
     @staticmethod
     def to_model(entity: ChatMessage) -> ChatMessageInDB:
         """Convert domain entity to MongoDB model."""
-        from app.core.mongodb_models import ChatMessageRole as DBRole
+        from app.infrastructure.db.mongodb.models import ChatMessageRole as DBRole
         
         return ChatMessageInDB(
             id=entity.id or "",

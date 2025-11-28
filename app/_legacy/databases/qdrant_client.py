@@ -200,12 +200,23 @@ class QdrantClient:
             except AttributeError:
                 pass
             
+            # Safely get vectors_count (compatibility with different Qdrant versions)
+            vectors_count = 0
+            try:
+                if hasattr(info, 'vectors_count'):
+                    vectors_count = info.vectors_count
+                elif hasattr(info, 'points_count'):
+                    # Fallback: use points_count as approximation
+                    vectors_count = info.points_count
+            except AttributeError:
+                pass
+            
             return {
                 "name": collection_name,
-                "vectors_count": info.vectors_count,
-                "points_count": info.points_count,
-                "segments_count": info.segments_count,
-                "status": info.status.value,
+                "vectors_count": vectors_count,
+                "points_count": info.points_count if hasattr(info, 'points_count') else 0,
+                "segments_count": info.segments_count if hasattr(info, 'segments_count') else 0,
+                "status": info.status.value if hasattr(info, 'status') else "unknown",
                 "optimizer_status": optimizer_status,
             }
         except Exception as e:
@@ -213,4 +224,3 @@ class QdrantClient:
                 f"Failed to get collection info for '{collection_name}': {e}"
             )
             raise RuntimeError(f"Failed to get collection info: {str(e)}")
-

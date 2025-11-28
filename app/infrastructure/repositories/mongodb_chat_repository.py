@@ -8,7 +8,7 @@ from app.domain.entities.chat_session import ChatSession
 from app.domain.entities.chat_message import ChatMessage
 from app.application.interfaces.repositories.chat_repository import IChatRepository
 from app.infrastructure.db.mongodb.mappers import ChatSessionMapper, ChatMessageMapper
-from app.core.mongodb_models import ChatSessionInDB, ChatMessageInDB
+from app.infrastructure.db.mongodb.models import ChatSessionInDB, ChatMessageInDB
 
 
 class MongoDBChatRepository(IChatRepository):
