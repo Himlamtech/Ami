@@ -107,7 +107,7 @@ Default credentials for demo:
 Create a `.env` file in the frontend directory:
 
 ```env
-VITE_API_URL=http://localhost:6008/api/v1
+VITE_API_URL=http://localhost:11121/api/v1
 ```
 
 ### API Integration

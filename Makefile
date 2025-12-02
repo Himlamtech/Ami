@@ -21,8 +21,8 @@ help:
 	@echo "  make clean        - Clean up containers and volumes"
 	@echo ""
 	@echo "🔧 Development:"
-	@echo "  make dev          - Run backend (port 6008)"
-	@echo "  make frontend     - Run React admin UI (port 6009)"
+	@echo "  make dev          - Run backend (port 11121)"
+	@echo "  make frontend     - Run React admin UI (port 11120)"
 	@echo ""
 	@echo "🧪 Testing:"
 	@echo "  make health       - Check system health"
@@ -37,9 +37,9 @@ help:
 	@echo "  make clean        - Remove temp files and caches"
 	@echo ""
 	@echo "Service URLs:"
-	@echo "  Backend API:  http://localhost:6008"
-	@echo "  API Docs:     http://localhost:6008/docs"
-	@echo "  Admin UI:     http://localhost:6009"
+	@echo "  Backend API:  http://localhost:11121"
+	@echo "  API Docs:     http://localhost:11121/docs"
+	@echo "  Admin UI:     http://localhost:11120"
 	@echo "  Qdrant UI:    http://localhost:6333/dashboard"
 
 install:
@@ -72,13 +72,13 @@ down:
 
 dev:
 	@echo "🔧 Starting backend development server..."
-	@echo "📡 Backend will be available at: http://localhost:6008"
-	@echo "📚 API Docs: http://localhost:6008/docs"
-	uv run uvicorn app.api.main:app --reload --host 0.0.0.0 --port 6008
+	@echo "📡 Backend will be available at: http://localhost:11121"
+	@echo "📚 API Docs: http://localhost:11121/docs"
+	uv run uvicorn app.api.main:app --reload --host 0.0.0.0 --port 11121
 
 frontend:
 	@echo "🎨 Starting React Admin UI..."
-	@echo "🌐 UI will be available at: http://localhost:6009"
+	@echo "🌐 UI will be available at: http://localhost:11120"
 	cd frontend && npm run dev
 
 create-admin:
@@ -91,7 +91,7 @@ migrate:
 
 health:
 	@echo "🏥 Checking system health..."
-	@curl -s http://localhost:6008/api/v1/config/health | python -m json.tool || \
+	@curl -s http://localhost:11121/api/v1/config/health | python -m json.tool || \
 	(echo "❌ Backend not responding. Make sure to run 'make dev' first" && exit 1)
 
 logs:
@@ -158,8 +158,8 @@ info:
 	@docker-compose ps
 	@echo ""
 	@echo "Port Bindings:"
-	@echo "  6008  - Backend API"
-	@echo "  6009  - React Admin UI"
+	@echo "  11121  - Backend API"
+	@echo "  11120  - React Admin UI"
 	@echo "  27017 - MongoDB"
 	@echo "  6333  - Qdrant HTTP"
 	@echo "  6334  - Qdrant gRPC"
@@ -167,8 +167,8 @@ info:
 
 ports:
 	@echo "🔌 Checking ports..."
-	@lsof -i :6008 || echo "Port 6008 (Backend): Free"
-	@lsof -i :6009 || echo "Port 6009 (Frontend): Free"
+	@lsof -i :11121 || echo "Port 11121 (Backend): Free"
+	@lsof -i :11120 || echo "Port 11120 (Frontend): Free"
 	@lsof -i :27017 || echo "Port 27017 (MongoDB): Free"
 	@lsof -i :6333 || echo "Port 6333 (Qdrant): Free"
 	@lsof -i :6379 || echo "Port 6379 (Redis): Free"

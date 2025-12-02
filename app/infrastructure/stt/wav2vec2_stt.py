@@ -18,12 +18,12 @@ from transformers import Wav2Vec2ProcessorWithLM
 from transformers.file_utils import cached_path, hf_bucket_url
 from importlib.machinery import SourceFileLoader
 
-from app.core.interfaces import ISTTProvider
+from app.application.interfaces.services.stt_service import ISTTService
 
 logger = logging.getLogger(__name__)
 
 
-class Wav2Vec2STT(ISTTProvider):
+class Wav2Vec2STTService(ISTTService):
     """
     Vietnamese Speech-to-Text provider using Wav2Vec2.
     
@@ -65,7 +65,7 @@ class Wav2Vec2STT(ISTTProvider):
         self._loading_lock = asyncio.Lock()
         
         logger.info(
-            f"Wav2Vec2STT initialized (model: {model_name}, device: {self.device}, "
+            f"Wav2Vec2STTService initialized (model: {model_name}, device: {self.device}, "
             f"lazy_load: {lazy_load})"
         )
         

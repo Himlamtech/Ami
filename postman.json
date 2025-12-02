@@ -1,13 +1,13 @@
 {
 	"info": {
 		"name": "AMI RAG System - PTIT Assistant API",
-		"description": "Comprehensive API testing collection for AMI RAG System with RAG-powered Q&A, document management, authentication, and chat history.\n\nBase URL: http://localhost:6008\n\n## Features:\n- JWT Authentication\n- RAG-powered Chat with 3 thinking modes\n- Document Management (Admin)\n- Chat History & Sessions\n- Image Generation & Vision\n- Web Crawling (Firecrawl)\n- Vector Database Operations\n- Health & Config Endpoints",
+		"description": "Comprehensive API testing collection for AMI RAG System with RAG-powered Q&A, document management, authentication, and chat history.\n\nBase URL: http://localhost:11121\n\n## Features:\n- JWT Authentication\n- RAG-powered Chat with 3 thinking modes\n- Document Management (Admin)\n- Chat History & Sessions\n- Image Generation & Vision\n- Web Crawling (Firecrawl)\n- Vector Database Operations\n- Health & Config Endpoints",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:6008",
+			"value": "http://localhost:11121",
 			"type": "string"
 		},
 		{

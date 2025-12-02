@@ -1,15 +1,15 @@
 """
 CSV parser for extracting crawl tasks from data sheet.
-Parses CSV file and generates CrawlTask objects for URLs that need crawling.
+Parses CSV file and generates crawl task data for URLs that need crawling.
 """
 
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 import pandas as pd
 
-from app.core.models import CrawlStatus, CrawlTask
+from app.domain.enums.crawl_status import CrawlStatus
 
 
 class DataSheetParser:
@@ -19,7 +19,7 @@ class DataSheetParser:
         self.csv_path = Path(csv_path)
         self.df: Optional[pd.DataFrame] = None
 
-    def parse(self) -> List[CrawlTask]:
+    def parse(self) -> List[Dict[str, Any]]:
         """Parse CSV and extract crawl tasks."""
         if not self.csv_path.exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
@@ -34,7 +34,7 @@ class DataSheetParser:
 
         return tasks
 
-    def _parse_row(self, row: pd.Series, idx: int) -> Optional[CrawlTask]:
+    def _parse_row(self, row: pd.Series, idx: int) -> Optional[Dict[str, Any]]:
         """Parse single CSV row into CrawlTask."""
         url = self._get_value(row, "Link (Nếu Có)")
         ban_text = self._get_value(row, "Bản text")
@@ -64,13 +64,14 @@ class DataSheetParser:
             "csv_index": idx,
         }
 
-        return CrawlTask(
-            url=url.strip(),
-            title=title,
-            metadata=metadata,
-            output_filename=filename,
-            status=CrawlStatus.PENDING,
-        )
+        # Return dict instead of CrawlTask object
+        return {
+            "url": url.strip(),
+            "title": title,
+            "metadata": metadata,
+            "output_filename": filename,
+            "status": CrawlStatus.PENDING,
+        }
 
     def _get_value(self, row: pd.Series, column: str, default: str = "") -> str:
         """Get value from row safely."""

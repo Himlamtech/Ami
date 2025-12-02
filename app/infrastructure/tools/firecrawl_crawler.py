@@ -5,16 +5,17 @@ Uses FireCrawl API to crawl and extract content from URLs.
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from firecrawl import FirecrawlApp
 
+from app.application.interfaces.processors.web_crawler import IWebCrawler
 from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 
-class FireCrawlCrawler:
+class FireCrawlCrawler(IWebCrawler):
     """Crawler using FireCrawl API to extract content from URLs."""
 
     def __init__(self, api_key: Optional[str] = None):
@@ -35,8 +36,8 @@ class FireCrawlCrawler:
     async def scrape_url(
         self,
         url: str,
-        formats: list[str] = None,
-        only_main_content: bool = True
+        formats: List[str] = None,
+        timeout: int = 60000
     ) -> Dict[str, Any]:
         """
         Scrape a single URL and extract content.
@@ -44,7 +45,7 @@ class FireCrawlCrawler:
         Args:
             url: URL to scrape
             formats: Output formats (default: ["markdown"])
-            only_main_content: Extract only main content (default: True)
+            timeout: Timeout in milliseconds
             
         Returns:
             Dictionary with scraped data including markdown content
@@ -58,8 +59,8 @@ class FireCrawlCrawler:
             result = self.client.scrape(
                 url,
                 formats=formats or ["markdown"],
-                only_main_content=only_main_content,
-                timeout=self.timeout,
+                only_main_content=True,
+                timeout=timeout,
             )
             
             duration = time.time() - start_time
@@ -105,13 +106,12 @@ class FireCrawlCrawler:
                 "duration_seconds": duration,
             }
 
-    async def crawl_url(
+    async def crawl_website(
         self,
         url: str,
         max_depth: int = 2,
         limit: int = 10,
-        formats: list[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Crawl a URL and its linked pages.
         
@@ -119,10 +119,9 @@ class FireCrawlCrawler:
             url: Starting URL
             max_depth: Maximum crawl depth
             limit: Maximum number of pages to crawl
-            formats: Output formats
             
         Returns:
-            Dictionary with crawl results
+            List of scraped pages
         """
         start_time = time.time()
         
@@ -132,7 +131,7 @@ class FireCrawlCrawler:
             # Create scrape options
             from firecrawl.v2.types import ScrapeOptions
             scrape_opts = ScrapeOptions(
-                formats=formats or ["markdown"],
+                formats=["markdown"],
                 only_main_content=True,
                 timeout=self.timeout,
             )
@@ -156,24 +155,21 @@ class FireCrawlCrawler:
                 f"Crawl completed in {duration:.2f}s, found {total_pages} pages"
             )
             
-            return {
-                "success": True,
-                "url": url,
-                "total_pages": total_pages,
-                "pages": pages,
-                "duration_seconds": duration,
-            }
+            # Format pages to match interface
+            formatted_pages = []
+            for page in pages:
+                formatted_pages.append({
+                    "content": page.markdown if hasattr(page, 'markdown') else page.get("markdown", ""),
+                    "metadata": page.metadata if hasattr(page, 'metadata') else page.get("metadata", {}),
+                    "success": True,
+                })
+            
+            return formatted_pages
             
         except Exception as e:
             duration = time.time() - start_time
             logger.error(f"Failed to crawl {url}: {str(e)}")
-            
-            return {
-                "success": False,
-                "url": url,
-                "error": str(e),
-                "duration_seconds": duration,
-            }
+            return []
 
     def validate_content(self, content: str) -> tuple[bool, Optional[str]]:
         """

@@ -1,632 +1,497 @@
 """
-Qdrant vector store implementation following SOLID principles.
-Implements IVectorStore interface for Qdrant vector database.
+Qdrant Vector Store - Full-featured implementation for Ami.
+Supports multi-collection, CRUD operations, pagination, and more.
 """
 
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-from qdrant_client.models import Distance, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance, 
+    PointStruct, 
+    Filter, 
+    FieldCondition, 
+    MatchValue, 
+    VectorParams,
+    PointIdsList,
+    FilterSelector,
+)
 
-from app.core.interfaces import IVectorStore
-from app.infrastructure.databases.qdrant_client import QdrantClient
+from app.application.interfaces.services.vector_store_service import IVectorStoreService
+from app.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
-class QdrantVectorStore(IVectorStore):
+class QdrantVectorStore(IVectorStoreService):
     """
-    Qdrant-based vector store implementation.
-    Follows SRP: Only responsible for vector storage and retrieval operations.
+    Qdrant vector store with full CRUD and multi-collection support.
+    
+    Features:
+    - Multi-collection management (create, delete, list)
+    - Document CRUD (add, search, update, delete)
+    - Pagination/Scroll support
+    - Bulk operations
+    - Health check
     """
+    
+    settings = Settings()
 
-    def __init__(
-        self,
-        qdrant_client: QdrantClient,
-        collection_name: str = "ami_documents",
-        vector_size: int = 1536,
-    ):
+    def __init__(self, default_collection: str = "ami_documents"):
         """
-        Initialize Qdrant vector store.
-
+        Initialize Qdrant client.
+        
         Args:
-            qdrant_client: QdrantClient instance
-            collection_name: Name of the collection
-            vector_size: Dimension of embedding vectors
+            default_collection: Default collection name for operations
         """
-        self.client = qdrant_client
-        self.collection_name = collection_name
-        self.vector_size = vector_size
-        logger.info(
-            f"Initialized QdrantVectorStore (collection={collection_name}, "
-            f"vector_size={vector_size})"
+        # Use HTTP URL to avoid SSL issues with local Qdrant
+        self.client = QdrantClient(
+            url=f"http://{self.settings.qdrant_host}:{self.settings.qdrant_port}",
+            api_key=self.settings.qdrant_api_key if self.settings.qdrant_api_key else None,
+            timeout=30,  # Increase timeout for slow operations
         )
+        self.default_collection = default_collection
+        self.vector_size = self.settings.embedding_dimension
+        
+        # Ensure default collection exists
+        self._ensure_collection(default_collection)
+        logger.info(f"QdrantVectorStore initialized (default: {default_collection})")
 
-    async def initialize(self) -> None:
+    # =============================================
+    # HEALTH CHECK
+    # =============================================
+    
+    def is_healthy(self) -> bool:
+        """Check if Qdrant connection is healthy."""
+        try:
+            self.client.get_collections()
+            return True
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return False
+
+    # =============================================
+    # COLLECTION MANAGEMENT
+    # =============================================
+    
+    def _ensure_collection(self, collection_name: str) -> None:
+        """Create collection if not exists."""
+        try:
+            if not self.collection_exists(collection_name):
+                self.create_collection(collection_name)
+        except Exception as e:
+            logger.error(f"Error ensuring collection '{collection_name}': {e}")
+
+    def collection_exists(self, collection_name: str) -> bool:
+        """Check if collection exists."""
+        try:
+            collections = self.client.get_collections().collections
+            return any(c.name == collection_name for c in collections)
+        except Exception as e:
+            logger.error(f"Error checking collection: {e}")
+            return False
+
+    def create_collection(
+        self, 
+        collection_name: str, 
+        vector_size: Optional[int] = None
+    ) -> bool:
         """
-        Initialize vector store by creating collection if needed.
+        Create a new collection.
+        
+        Args:
+            collection_name: Name of collection to create
+            vector_size: Vector dimension (uses default if not specified)
         """
         try:
-            # Create collection if it doesn't exist
-            await self.client.create_collection(
-                collection_name=self.collection_name,
-                vector_size=self.vector_size,
-                distance=Distance.COSINE,
-                on_disk_payload=True,
+            # Check if already exists first
+            if self.collection_exists(collection_name):
+                logger.warning(f"Collection '{collection_name}' already exists")
+                return False
+                
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=vector_size or self.vector_size,
+                    distance=Distance.COSINE,
+                ),
             )
-
-            # Get collection info
-            info = await self.client.get_collection_info(self.collection_name)
-            logger.info(
-                f"✓ Qdrant vector store initialized: {info['points_count']} points"
-            )
-
+            logger.info(f"Created collection: {collection_name}")
+            return True
         except Exception as e:
-            logger.error(f"Failed to initialize Qdrant vector store: {e}")
-            raise RuntimeError(f"Vector store initialization failed: {str(e)}")
+            logger.error(f"Failed to create collection '{collection_name}': {e}")
+            return False
+
+    def delete_collection(self, collection_name: str) -> bool:
+        """Delete a collection."""
+        try:
+            self.client.delete_collection(collection_name)
+            logger.info(f"Deleted collection: {collection_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete collection '{collection_name}': {e}")
+            return False
+
+    def list_collections(self) -> List[str]:
+        """List all collection names."""
+        try:
+            collections = self.client.get_collections().collections
+            return [c.name for c in collections]
+        except Exception as e:
+            logger.error(f"Failed to list collections: {e}")
+            return []
+
+    def get_collection_info(self, collection_name: Optional[str] = None) -> Dict[str, Any]:
+        """Get collection statistics."""
+        name = collection_name or self.default_collection
+        try:
+            info = self.client.get_collection(name)
+            return {
+                "name": name,
+                "points_count": info.points_count,
+                "vectors_count": info.vectors_count,
+                "status": info.status.value,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get collection info: {e}")
+            return {"name": name, "error": str(e)}
+
+    # =============================================
+    # DOCUMENT OPERATIONS - CREATE
+    # =============================================
 
     async def add_documents(
         self,
         documents: List[Dict[str, Any]],
         embeddings: List[List[float]],
-        **kwargs,
+        collection: Optional[str] = None,
     ) -> List[str]:
         """
-        Add documents with embeddings to Qdrant.
-
+        Add documents with embeddings.
+        
         Args:
-            documents: List of document dicts with 'content' and 'metadata'
-            embeddings: List of embedding vectors
-            **kwargs: Additional arguments (collection, doc_metadata, etc.)
-
+            documents: List of dicts with 'content' and optional 'metadata'
+            embeddings: Corresponding embedding vectors
+            collection: Target collection (uses default if not specified)
+        
         Returns:
-            List of point IDs (UUIDs)
-
-        Raises:
-            ValueError: If documents and embeddings count mismatch
-            RuntimeError: If operation fails
+            List of generated point IDs
         """
         if len(documents) != len(embeddings):
-            raise ValueError(
-                f"Documents ({len(documents)}) and embeddings "
-                f"({len(embeddings)}) count mismatch"
-            )
+            raise ValueError("Documents and embeddings count mismatch")
+        
+        if not documents:
+            return []
+
+        collection_name = collection or self.default_collection
+        self._ensure_collection(collection_name)
 
         try:
-            # Extract optional parameters
-            collection = kwargs.get("collection", "default")
-            doc_metadata = kwargs.get("doc_metadata", {})
-
-            # Prepare points for batch upload
             points = []
             point_ids = []
 
             for doc, embedding in zip(documents, embeddings):
-                # Generate unique ID
                 point_id = str(uuid.uuid4())
                 point_ids.append(point_id)
 
-                # Prepare payload (metadata)
                 payload = {
-                    "content": doc["content"],
-                    "collection": collection,
-                    "is_active": True,  # Always set active by default
+                    "content": doc.get("content", ""),
                     **doc.get("metadata", {}),
-                    **doc_metadata,
                 }
 
-                # Create point
-                point = PointStruct(
+                points.append(PointStruct(
                     id=point_id,
                     vector=embedding,
                     payload=payload,
-                )
-                points.append(point)
+                ))
 
-            # Check if we have any points to add
-            if not points:
-                logger.warning(f"No valid documents to add to collection '{collection}'")
-                return []
-
-            # Batch upsert to Qdrant
-            await self.client.client.upsert(
-                collection_name=self.collection_name,
+            self.client.upsert(
+                collection_name=collection_name,
                 points=points,
                 wait=True,
             )
 
-            logger.info(
-                f"Added {len(point_ids)} documents to collection '{collection}'"
-            )
+            logger.info(f"Added {len(point_ids)} documents to '{collection_name}'")
             return point_ids
 
         except Exception as e:
-            logger.error(f"Failed to add documents to Qdrant: {e}")
-            raise RuntimeError(f"Failed to add documents: {str(e)}")
+            logger.error(f"Failed to add documents: {e}")
+            raise RuntimeError(f"Add documents failed: {str(e)}")
+
+    # =============================================
+    # DOCUMENT OPERATIONS - READ/SEARCH
+    # =============================================
 
     async def search(
         self,
         query_embedding: List[float],
         top_k: int = 5,
-        **kwargs,
+        collection: Optional[str] = None,
+        score_threshold: Optional[float] = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Search for similar vectors in Qdrant.
-
-        Args:
-            query_embedding: Query embedding vector
-            top_k: Number of results to return
-            **kwargs: Additional filters (collection, similarity_threshold, metadata_filter)
-
-        Returns:
-            List of matching documents with content, metadata, and similarity scores
-        """
-        try:
-            # Extract optional parameters
-            collection = kwargs.get("collection")
-            similarity_threshold = kwargs.get("similarity_threshold", 0.0)
-            metadata_filter = kwargs.get("metadata_filter")
-
-            # Build filter conditions
-            must_conditions = []
-
-            # Always filter out soft-deleted documents (is_active != False)
-            # Only include documents where is_active is True or not set
-            must_conditions.append(
-                FieldCondition(
-                    key="is_active",
-                    match=MatchValue(value=True),
-                )
-            )
-
-            if collection:
-                must_conditions.append(
-                    FieldCondition(
-                        key="collection",
-                        match=MatchValue(value=collection),
-                    )
-                )
-
-            if metadata_filter:
-                for key, value in metadata_filter.items():
-                    must_conditions.append(
-                        FieldCondition(
-                            key=key,
-                            match=MatchValue(value=value),
-                        )
-                    )
-
-            # Create filter object if we have conditions
-            query_filter = None
-            if must_conditions:
-                query_filter = Filter(must=must_conditions)
-
-            # Search in Qdrant - use query_points for newer client versions
-            try:
-                # Try new API first (qdrant-client >= 1.7.0)
-                from qdrant_client.models import QueryRequest, VectorParams as QueryVectorParams
-                
-                search_results = await self.client.client.query_points(
-                    collection_name=self.collection_name,
-                    query=query_embedding,
-                    limit=top_k,
-                    query_filter=query_filter,
-                    score_threshold=similarity_threshold if similarity_threshold > 0 else None,
-                    with_payload=True,
-                    with_vectors=False,
-                ).points
-            except (AttributeError, ImportError):
-                # Fallback to old API (qdrant-client < 1.7.0)
-                search_results = await self.client.client.search(
-                    collection_name=self.collection_name,
-                    query_vector=query_embedding,
-                    limit=top_k,
-                    query_filter=query_filter,
-                    score_threshold=similarity_threshold if similarity_threshold > 0 else None,
-                    with_payload=True,
-                    with_vectors=False,
-                )
-
-            # Format results
-            formatted_results = []
-            for result in search_results:
-                formatted_results.append(
-                    {
-                        "id": str(result.id),
-                        "content": result.payload.get("content", ""),
-                        "metadata": {
-                            k: v
-                            for k, v in result.payload.items()
-                            if k != "content"
-                        },
-                        "similarity": float(result.score),
-                    }
-                )
-
-            logger.debug(
-                f"Search returned {len(formatted_results)} results "
-                f"(threshold: {similarity_threshold})"
-            )
-            return formatted_results
-
-        except Exception as e:
-            logger.error(f"Qdrant search failed: {e}")
-            raise RuntimeError(f"Vector search failed: {str(e)}")
-
-    async def delete(self, doc_ids: List[str]) -> None:
-        """
-        Delete documents by point IDs.
-
-        Args:
-            doc_ids: List of point IDs (UUIDs) to delete
-
-        Raises:
-            RuntimeError: If deletion fails
-        """
-        try:
-            if not doc_ids:
-                return
-
-            # Delete points from Qdrant
-            await self.client.client.delete(
-                collection_name=self.collection_name,
-                points_selector=doc_ids,
-                wait=True,
-            )
-
-            logger.info(f"Deleted {len(doc_ids)} documents from Qdrant")
-
-        except Exception as e:
-            logger.error(f"Failed to delete documents from Qdrant: {e}")
-            raise RuntimeError(f"Failed to delete documents: {str(e)}")
-
-    async def get_stats(self, collection: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Get statistics about stored documents.
-
-        Args:
-            collection: Optional collection filter
-
-        Returns:
-            Dictionary with counts and stats
-        """
-        try:
-            # Get collection info from Qdrant
-            info = await self.client.get_collection_info(self.collection_name)
-
-            stats = {
-                "total_documents": info["points_count"],
-                "vectors_count": info["vectors_count"],
-                "collection": collection or "all",
-                "status": info["status"],
-            }
-
-            # If filtering by collection, count matching points
-            if collection:
-                # Scroll through collection to count filtered points
-                # This is a simplified version - in production might want to optimize
-                scroll_result = await self.client.client.scroll(
-                    collection_name=self.collection_name,
-                    scroll_filter=Filter(
-                        must=[
-                            FieldCondition(
-                                key="collection",
-                                match=MatchValue(value=collection),
-                            )
-                        ]
-                    ),
-                    limit=1,
-                    with_payload=False,
-                    with_vectors=False,
-                )
-                # Note: For accurate count, would need to scroll through all
-                # For now, just report total
-                pass
-
-            return stats
-
-        except Exception as e:
-            logger.error(f"Failed to get Qdrant stats: {e}")
-            return {
-                "total_documents": 0,
-                "vectors_count": 0,
-                "collection": collection or "all",
-            }
-
-    async def clear_collection(self) -> None:
-        """
-        Clear all documents from the collection.
-        Useful for testing and cleanup.
-        """
-        try:
-            # Delete and recreate collection
-            await self.client.delete_collection(self.collection_name)
-            await self.client.create_collection(
-                collection_name=self.collection_name,
-                vector_size=self.vector_size,
-                distance=Distance.COSINE,
-            )
-            logger.info(f"✓ Cleared collection '{self.collection_name}'")
-
-        except Exception as e:
-            logger.error(f"Failed to clear collection: {e}")
-            raise RuntimeError(f"Failed to clear collection: {str(e)}")
-
-    async def collection_exists(self) -> bool:
-        """
-        Check if the collection exists.
-
-        Returns:
-            True if collection exists, False otherwise
-        """
-        return await self.client.collection_exists(self.collection_name)
-
-    async def get_document_collections(self) -> List[str]:
-        """
-        Get list of unique collection values from document payloads.
-
-        Returns:
-            List of unique collection names from documents
-        """
-        try:
-            logger.info(f"Getting document collections from '{self.collection_name}'")
-
-            # Scroll through all points to get unique collection values
-            collections_set = set()
-            next_offset = None
-            scroll_count = 0
-
-            while True:
-                logger.debug(f"Scrolling batch {scroll_count + 1}, offset: {next_offset}")
-
-                scroll_result = await self.client.client.scroll(
-                    collection_name=self.collection_name,
-                    limit=100,
-                    offset=next_offset,
-                    with_payload=True,
-                    with_vectors=False,
-                )
-
-                points, next_offset = scroll_result
-                logger.debug(f"Got {len(points)} points in batch {scroll_count + 1}")
-
-                for point in points:
-                    if point.payload and 'collection' in point.payload:
-                        collections_set.add(point.payload['collection'])
-
-                scroll_count += 1
-
-                if next_offset is None:
-                    break
-
-            collection_names = sorted(list(collections_set))
-            logger.info(f"Found {len(collection_names)} unique document collections: {collection_names}")
-            return collection_names
-
-        except Exception as e:
-            logger.error(f"Failed to get document collections: {e}", exc_info=True)
-            return []
-
-    async def list_documents(
-        self,
-        collection: Optional[str] = None,
-        limit: int = 50,
-        offset: int = 0,
-    ) -> Dict[str, Any]:
-        """
-        List documents from Qdrant with pagination.
-
-        Args:
-            collection: Optional collection filter
-            limit: Maximum number of documents to return
-            offset: Number of documents to skip
-
-        Returns:
-            Dictionary with documents list and total count
-        """
-        try:
-            # Build filter if collection specified
-            scroll_filter = None
-            if collection:
-                scroll_filter = Filter(
-                    must=[
-                        FieldCondition(
-                            key="collection",
-                            match=MatchValue(value=collection),
-                        )
-                    ]
-                )
-
-            # Qdrant scroll doesn't support offset directly, need to scroll through
-            # For simplicity, we'll scroll all and slice (not optimal for large datasets)
-            # TODO: Implement proper cursor-based pagination for production
-            all_points = []
-            next_offset = None
-
-            # Scroll through all points (or until we have enough for pagination)
-            while True:
-                scroll_result = await self.client.client.scroll(
-                    collection_name=self.collection_name,
-                    scroll_filter=scroll_filter,
-                    limit=100,  # Fetch in batches of 100
-                    offset=next_offset,
-                    with_payload=True,
-                    with_vectors=False,
-                )
-
-                points, next_offset = scroll_result
-                all_points.extend(points)
-
-                # Stop if we have enough points or no more points
-                if next_offset is None or len(all_points) >= offset + limit:
-                    break
-
-            # Apply pagination by slicing
-            paginated_points = all_points[offset:offset + limit]
-
-            # Extract documents from points
-            documents = []
-            for point in paginated_points:
-                payload = point.payload or {}
-                documents.append({
-                    "id": str(point.id),
-                    "content": payload.get("content", ""),
-                    "metadata": {k: v for k, v in payload.items() if k not in ["content", "collection", "is_active", "created_at"]},
-                    "collection": payload.get("collection", "default"),
-                    "created_at": payload.get("created_at"),
-                    "embedding_dims": None,  # Not included in payload
-                })
-
-            # Get total count
-            if collection:
-                count_result = await self.client.client.count(
-                    collection_name=self.collection_name,
-                    count_filter=scroll_filter,
-                    exact=True,
-                )
-                total_count = count_result.count
-            else:
-                info = await self.client.get_collection_info(self.collection_name)
-                total_count = info["points_count"]
-
-            logger.info(f"Listed {len(documents)} documents (offset={offset}, total={total_count})")
-
-            return {
-                "documents": documents,
-                "total_count": total_count,
-                "limit": limit,
-                "offset": offset,
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to list documents: {e}")
-            raise RuntimeError(f"Failed to list documents: {str(e)}")
-
-    async def update_document(
-        self,
-        doc_id: str,
-        content: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        embedding: Optional[List[float]] = None,
-    ) -> None:
-        """
-        Update an existing document in Qdrant.
-        Can update content, metadata, and/or embedding.
+        Search similar vectors.
         
         Args:
-            doc_id: Point ID (UUID) to update
-            content: New content (optional)
-            metadata: New metadata to merge (optional)
-            embedding: New embedding vector (optional)
-            
-        Raises:
-            RuntimeError: If update fails
+            query_embedding: Query vector
+            top_k: Number of results
+            collection: Target collection
+            score_threshold: Minimum similarity score
+            metadata_filter: Filter by metadata fields
+        
+        Returns:
+            List of results with id, content, metadata, score
         """
+        collection_name = collection or self.default_collection
+        
         try:
-            if not any([content, metadata, embedding]):
-                logger.warning("No fields to update")
-                return
-            
-            # Get existing point
-            points = await self.client.client.retrieve(
-                collection_name=self.collection_name,
-                ids=[doc_id],
+            # Build filter
+            query_filter = self._build_filter(metadata_filter)
+
+            results = self.client.search(
+                collection_name=collection_name,
+                query_vector=query_embedding,
+                limit=top_k,
+                query_filter=query_filter,
+                score_threshold=score_threshold,
                 with_payload=True,
-                with_vectors=True if not embedding else False,
+            )
+
+            formatted = []
+            for r in results:
+                formatted.append({
+                    "id": str(r.id),
+                    "content": r.payload.get("content", ""),
+                    "metadata": {k: v for k, v in r.payload.items() if k != "content"},
+                    "score": float(r.score),
+                })
+
+            logger.debug(f"Search returned {len(formatted)} results from '{collection_name}'")
+            return formatted
+
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            raise RuntimeError(f"Search failed: {str(e)}")
+
+    def scroll(
+        self,
+        collection: Optional[str] = None,
+        limit: int = 100,
+        offset: Optional[str] = None,
+        metadata_filter: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """
+        Scroll/paginate through documents.
+        
+        Args:
+            collection: Target collection
+            limit: Number of documents per page
+            offset: Pagination offset (from previous scroll)
+            metadata_filter: Filter by metadata
+        
+        Returns:
+            Tuple of (documents, next_offset)
+        """
+        collection_name = collection or self.default_collection
+        
+        try:
+            query_filter = self._build_filter(metadata_filter)
+            
+            points, next_offset = self.client.scroll(
+                collection_name=collection_name,
+                limit=limit,
+                offset=offset,
+                scroll_filter=query_filter,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            documents = []
+            for p in points:
+                documents.append({
+                    "id": str(p.id),
+                    "content": p.payload.get("content", ""),
+                    "metadata": {k: v for k, v in p.payload.items() if k != "content"},
+                })
+
+            return documents, next_offset
+
+        except Exception as e:
+            logger.error(f"Scroll failed: {e}")
+            return [], None
+
+    def get_by_id(
+        self, 
+        point_id: str, 
+        collection: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get document by ID."""
+        collection_name = collection or self.default_collection
+        
+        try:
+            points = self.client.retrieve(
+                collection_name=collection_name,
+                ids=[point_id],
+                with_payload=True,
+                with_vectors=False,
             )
             
             if not points:
-                raise ValueError(f"Document {doc_id} not found")
+                return None
             
-            existing_point = points[0]
+            p = points[0]
+            return {
+                "id": str(p.id),
+                "content": p.payload.get("content", ""),
+                "metadata": {k: v for k, v in p.payload.items() if k != "content"},
+            }
             
-            # Prepare updated payload
-            updated_payload = dict(existing_point.payload)
-            if content:
-                updated_payload["content"] = content
-            if metadata:
-                # Merge metadata
-                for key, value in metadata.items():
-                    updated_payload[key] = value
-            
-            # Use new embedding or keep existing
-            vector = embedding if embedding else existing_point.vector
-            
-            # Upsert (update) the point
-            from qdrant_client.models import PointStruct
-            
-            updated_point = PointStruct(
-                id=doc_id,
-                vector=vector,
-                payload=updated_payload,
-            )
-            
-            await self.client.client.upsert(
-                collection_name=self.collection_name,
-                points=[updated_point],
+        except Exception as e:
+            logger.error(f"Get by ID failed: {e}")
+            return None
+
+    # =============================================
+    # DOCUMENT OPERATIONS - UPDATE
+    # =============================================
+
+    def update_metadata(
+        self,
+        point_id: str,
+        metadata: Dict[str, Any],
+        collection: Optional[str] = None,
+    ) -> bool:
+        """
+        Update document metadata (payload).
+        
+        Args:
+            point_id: Document ID
+            metadata: New metadata to merge
+            collection: Target collection
+        """
+        collection_name = collection or self.default_collection
+        
+        try:
+            self.client.set_payload(
+                collection_name=collection_name,
+                payload=metadata,
+                points=[point_id],
                 wait=True,
             )
-            
-            logger.info(f"Updated document {doc_id}")
-            
+            logger.debug(f"Updated metadata for point {point_id}")
+            return True
         except Exception as e:
-            logger.error(f"Failed to update document {doc_id}: {e}")
-            raise RuntimeError(f"Failed to update document: {str(e)}")
+            logger.error(f"Update metadata failed: {e}")
+            return False
 
-    async def soft_delete(self, doc_ids: List[str]) -> None:
+    def update_vector(
+        self,
+        point_id: str,
+        new_vector: List[float],
+        collection: Optional[str] = None,
+    ) -> bool:
         """
-        Soft delete documents by setting is_active=False metadata flag.
-        Does NOT actually delete from Qdrant - just marks as inactive.
+        Update document vector.
         
         Args:
-            doc_ids: List of point IDs (UUIDs) to soft delete
-            
-        Raises:
-            RuntimeError: If soft delete fails
+            point_id: Document ID
+            new_vector: New embedding vector
+            collection: Target collection
         """
-        try:
-            if not doc_ids:
-                return
-            
-            # Update each document with is_active=False
-            for doc_id in doc_ids:
-                await self.update_document(
-                    doc_id=doc_id,
-                    metadata={"is_active": False}
-                )
-            
-            logger.info(f"Soft deleted {len(doc_ids)} documents")
-            
-        except Exception as e:
-            logger.error(f"Failed to soft delete documents: {e}")
-            raise RuntimeError(f"Failed to soft delete documents: {str(e)}")
-
-    async def restore(self, doc_ids: List[str]) -> None:
-        """
-        Restore soft-deleted documents by setting is_active=True.
+        collection_name = collection or self.default_collection
         
-        Args:
-            doc_ids: List of point IDs (UUIDs) to restore
-            
-        Raises:
-            RuntimeError: If restore fails
-        """
         try:
-            if not doc_ids:
-                return
+            # Get existing payload
+            existing = self.get_by_id(point_id, collection_name)
+            if not existing:
+                logger.error(f"Point {point_id} not found")
+                return False
             
-            # Update each document with is_active=True
-            for doc_id in doc_ids:
-                await self.update_document(
-                    doc_id=doc_id,
-                    metadata={"is_active": True}
-                )
+            # Rebuild payload
+            payload = {"content": existing["content"], **existing["metadata"]}
             
-            logger.info(f"Restored {len(doc_ids)} documents")
-            
+            self.client.upsert(
+                collection_name=collection_name,
+                points=[PointStruct(id=point_id, vector=new_vector, payload=payload)],
+                wait=True,
+            )
+            logger.debug(f"Updated vector for point {point_id}")
+            return True
         except Exception as e:
-            logger.error(f"Failed to restore documents: {e}")
-            raise RuntimeError(f"Failed to restore documents: {str(e)}")
+            logger.error(f"Update vector failed: {e}")
+            return False
 
+    # =============================================
+    # DOCUMENT OPERATIONS - DELETE
+    # =============================================
 
+    async def delete(
+        self, 
+        doc_ids: List[str],
+        collection: Optional[str] = None,
+    ) -> None:
+        """Delete documents by IDs."""
+        if not doc_ids:
+            return
+
+        collection_name = collection or self.default_collection
+
+        try:
+            self.client.delete(
+                collection_name=collection_name,
+                points_selector=PointIdsList(points=doc_ids),
+                wait=True,
+            )
+            logger.info(f"Deleted {len(doc_ids)} documents from '{collection_name}'")
+
+        except Exception as e:
+            logger.error(f"Delete failed: {e}")
+            raise RuntimeError(f"Delete failed: {str(e)}")
+
+    def delete_by_filter(
+        self,
+        metadata_filter: Dict[str, Any],
+        collection: Optional[str] = None,
+    ) -> bool:
+        """
+        Bulk delete documents matching filter.
+        
+        Example: delete_by_filter({"user_id": "123"})
+        """
+        collection_name = collection or self.default_collection
+        query_filter = self._build_filter(metadata_filter)
+        
+        if not query_filter:
+            logger.warning("No filter provided for bulk delete")
+            return False
+
+        try:
+            self.client.delete(
+                collection_name=collection_name,
+                points_selector=FilterSelector(filter=query_filter),
+                wait=True,
+            )
+            logger.info(f"Deleted documents matching filter from '{collection_name}'")
+            return True
+        except Exception as e:
+            logger.error(f"Bulk delete failed: {e}")
+            return False
+
+    # =============================================
+    # HELPERS
+    # =============================================
+
+    def _build_filter(self, metadata_filter: Optional[Dict[str, Any]]) -> Optional[Filter]:
+        """Build Qdrant filter from metadata dict."""
+        if not metadata_filter:
+            return None
+        
+        conditions = []
+        for key, value in metadata_filter.items():
+            conditions.append(
+                FieldCondition(key=key, match=MatchValue(value=value))
+            )
+        
+        return Filter(must=conditions) if conditions else None

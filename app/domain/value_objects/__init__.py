@@ -7,6 +7,13 @@ from .generation_config import GenerationConfig
 from .web_search_config import WebSearchConfig
 from .email import Email
 from .password import Password
+from .chat_response import (
+    ResponseIntent,
+    SourceType,
+    SourceReference,
+    ArtifactReference,
+    RichChatResponse,
+)
 
 __all__ = [
     "ThinkingMode",
@@ -16,4 +23,9 @@ __all__ = [
     "WebSearchConfig",
     "Email",
     "Password",
+    "ResponseIntent",
+    "SourceType",
+    "SourceReference",
+    "ArtifactReference",
+    "RichChatResponse",
 ]

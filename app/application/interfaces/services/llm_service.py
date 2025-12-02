@@ -1,14 +1,16 @@
 """LLM service interface."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, AsyncIterator
+
+from app.domain.enums.llm_mode import LLMMode
 
 
 class ILLMService(ABC):
     """
     Interface for Large Language Model providers.
     
-    Renamed from ILLMProvider for consistency.
+    Simple interface: generate and stream_generate with mode support.
     """
     
     @abstractmethod
@@ -16,6 +18,7 @@ class ILLMService(ABC):
         self,
         prompt: str,
         context: Optional[str] = None,
+        mode: Optional[LLMMode] = None,
         **kwargs
     ) -> str:
         """
@@ -24,6 +27,7 @@ class ILLMService(ABC):
         Args:
             prompt: User prompt/question
             context: Optional context (RAG results, conversation history, etc.)
+            mode: QA or REASONING (default: QA)
             **kwargs: Additional generation parameters (temperature, max_tokens, etc.)
             
         Returns:
@@ -32,18 +36,20 @@ class ILLMService(ABC):
         pass
     
     @abstractmethod
-    async def stream_generate(
+    def stream_generate(
         self,
         prompt: str,
         context: Optional[str] = None,
+        mode: Optional[LLMMode] = None,
         **kwargs
-    ):
+    ) -> AsyncIterator[str]:
         """
         Stream text generation (async generator).
         
         Args:
             prompt: User prompt/question
             context: Optional context
+            mode: QA or REASONING (default: QA)
             **kwargs: Additional generation parameters
             
         Yields:

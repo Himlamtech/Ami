@@ -1,12 +1,5 @@
 """Domain exceptions."""
 
-from .user_exceptions import (
-    UserNotFoundException,
-    UserAlreadyExistsException,
-    InvalidCredentialsException,
-    UserNotActiveException,
-    InsufficientPermissionsException,
-)
 from .document_exceptions import (
     DocumentNotFoundException,
     DocumentAlreadyExistsException,
@@ -20,12 +13,6 @@ from .chat_exceptions import (
 )
 
 __all__ = [
-    # User exceptions
-    "UserNotFoundException",
-    "UserAlreadyExistsException",
-    "InvalidCredentialsException",
-    "UserNotActiveException",
-    "InsufficientPermissionsException",
     # Document exceptions
     "DocumentNotFoundException",
     "DocumentAlreadyExistsException",

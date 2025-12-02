@@ -93,12 +93,12 @@
 ```
 ┌─────────────────────────────────────────┐
 │           Frontend (React)              │
-│         Port: 6009 (Dev/Prod)           │
+│         Port: 11120 (Dev/Prod)           │
 └─────────────────┬───────────────────────┘
                   │ HTTP/REST
 ┌─────────────────▼───────────────────────┐
 │         Backend (FastAPI)               │
-│            Port: 6008                   │
+│            Port: 11121                   │
 └─────┬───────┬───────┬──────────┬────────┘
       │       │       │          │
 ┌─────▼──┐ ┌──▼───┐ ┌▼──────┐ ┌─▼──────┐
@@ -108,8 +108,8 @@
 ```
 
 ### **Ports**
-- **Frontend**: `6009` (Vite dev server)
-- **Backend**: `6008` (FastAPI/Uvicorn)
+- **Frontend**: `11120` (Vite dev server)
+- **Backend**: `11121` (FastAPI/Uvicorn)
 - **MongoDB**: `27017`
 - **Redis**: `6379`
 - **Qdrant**: `6333` (HTTP), `6334` (gRPC)
@@ -122,7 +122,7 @@
 - **Protected Routes**: All except login
 
 ### **CORS Configuration**
-- Allowed Origins: `localhost:6009`, `localhost:6010`, `localhost:6008`
+- Allowed Origins: `localhost:11120`, `localhost:6010`, `localhost:11121`
 - Methods: GET, POST, PUT, DELETE, OPTIONS
 - Headers: Authorization, Content-Type
 

@@ -4,7 +4,6 @@ from .llm_service import ILLMService
 from .embedding_service import IEmbeddingService
 from .vector_store_service import IVectorStoreService
 from .storage_service import IStorageService
-from .cache_service import ICacheService
 from .image_service import IImageService
 from .stt_service import ISTTService
 
@@ -13,7 +12,6 @@ __all__ = [
     "IEmbeddingService",
     "IVectorStoreService",
     "IStorageService",
-    "ICacheService",
     "IImageService",
     "ISTTService",
 ]

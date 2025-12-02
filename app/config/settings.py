@@ -22,11 +22,16 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = "AMI RAG System - PTIT Assistant"
-    app_port: int = Field(default=6008, ge=1, le=65535)
+    app_port: int = Field(default=11121, ge=1, le=65535)
     debug: bool = False
 
-    # OpenAI (Only LLM Provider)
+    # Admin API Key (for protected admin routes)
+    admin_api_key: str = os.getenv("ADMIN_API_KEY","")
+
+    # LLM Providers API Keys
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     
     # Firecrawl (Web Scraping)
     firecrawl_api_key: str = os.getenv("FIRECRAWL_API_KEY", "")
@@ -38,13 +43,6 @@ class Settings(BaseSettings):
     mongodb_user: str = Field(default=os.getenv("MONGO_USER", "admin"))
     mongodb_password: str = Field(default=os.getenv("MONGO_PASSWORD", "admin_password"))
     mongodb_db: str = Field(default=os.getenv("MONGO_DB", "ami_db"))
-
-    # Redis Configuration (Caching)
-    redis_host: str = Field(default=os.getenv("REDIS_HOST", "localhost"))
-    redis_port: int = Field(default=6379, ge=1, le=65535)
-    redis_password: str = Field(default=os.getenv("REDIS_PASSWORD", "redis_password"))
-    redis_db: int = Field(default=0, ge=0)
-    redis_max_connections: int = Field(default=50, ge=1)
 
     # Qdrant Configuration (Vector Store)
     qdrant_host: str = Field(default=os.getenv("QDRANT_HOST", "localhost"))
@@ -62,14 +60,26 @@ class Settings(BaseSettings):
 
     # Embedding Model (HuggingFace for Vietnamese)
     huggingface_embedding_model: str = os.getenv(
-        "HUGGINGFACE_EMBEDDING_MODEL", "keepitreal/vietnamese-sbert"
+        "HUGGINGFACE_EMBEDDING_MODEL", "dangvantuan/vietnamese-document-embedding"
     )
     embedding_dimension: int = 768  # HuggingFace model dimension
 
-    # OpenAI Models for Thinking Modes
-    openai_model_fast: str = os.getenv("OPENAI_MODEL_FAST", "gpt-4-1106-preview")
-    openai_model_balance: str = os.getenv("OPENAI_MODEL_BALANCE", "gpt-4-0125-preview")
-    openai_model_thinking: str = os.getenv("OPENAI_MODEL_THINKING", "o4-mini")
+    # LLM Models Configuration (2 modes: QA and Reasoning)
+    # OpenAI Models
+    openai_model_qa: str = os.getenv("OPENAI_MODEL_QA", "gpt-4.1-nano")
+    openai_model_reasoning: str = os.getenv("OPENAI_MODEL_REASONING", "o4-mini")
+    
+    # Gemini Models
+    gemini_model_qa: str = os.getenv("GEMINI_MODEL_QA", "gemini-2.0-flash")
+    gemini_model_reasoning: str = os.getenv("GEMINI_MODEL_REASONING", "gemini-2.5-pro-preview-05-06")
+    
+    # Anthropic Models
+    anthropic_model_qa: str = os.getenv("ANTHROPIC_MODEL_QA", "claude-3-5-haiku-20241022")
+    anthropic_model_reasoning: str = os.getenv("ANTHROPIC_MODEL_REASONING", "claude-sonnet-4-20250514")
+    
+    # Default LLM Provider and Mode
+    default_llm_provider: str = os.getenv("DEFAULT_LLM_PROVIDER", "openai")
+    default_llm_mode: str = os.getenv("DEFAULT_LLM_MODE", "qa")
 
     # Chunking Configuration
     chunk_size: int = Field(default=512, ge=100, le=2000)
@@ -79,17 +89,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = Field(default=5, ge=1, le=20)
     similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 
-    # Cache Configuration
-    cache_ttl: int = Field(default=3600, ge=0)  # seconds
-    enable_cache: bool = True
-
-    # Authentication & Security
-    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = Field(default=1440, ge=1)  # 24 hours
-
     # CORS
-    cors_origins: str = Field(default="http://localhost:6009,http://localhost:6010,http://localhost:6008,http://localhost:8801,http://localhost:8802,http://127.0.0.1:6009,http://127.0.0.1:6010,http://127.0.0.1:6008,http://127.0.0.1:8801,http://127.0.0.1:8802,http://127.0.0.1:5557")
+    cors_origins: str = Field(default="http://localhost:11120,http://localhost:6010,http://localhost:11121,http://localhost:11120,http://localhost:11121,http://127.0.0.1:11120,http://127.0.0.1:6010,http://127.0.0.1:11121,http://127.0.0.1:11120,http://127.0.0.1:11121,http://127.0.0.1:5557")
     
     @property
     def cors_origins_list(self) -> list[str]:
@@ -102,13 +103,6 @@ class Settings(BaseSettings):
         if self.mongodb_url:
             return self.mongodb_url
         return f"mongodb://{self.mongodb_user}:{self.mongodb_password}@{self.mongodb_host}:{self.mongodb_port}/?authSource=admin"
-
-    @property
-    def redis_url(self) -> str:
-        """Redis connection URL."""
-        if self.redis_password:
-            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
-        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     @property
     def qdrant_url(self) -> str:

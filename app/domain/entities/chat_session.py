@@ -6,12 +6,36 @@ from typing import List, Optional, Dict, Any
 
 
 @dataclass
+class ConversationContext:
+    """Context accumulated from conversation."""
+    topics: List[str] = field(default_factory=list)  # Main topics discussed
+    entities: Dict[str, Any] = field(default_factory=dict)  # Key entities extracted
+    unresolved_questions: List[str] = field(default_factory=list)  # Questions not fully answered
+    last_intent: Optional[str] = None
+    
+    def add_topic(self, topic: str) -> None:
+        if topic not in self.topics:
+            self.topics.append(topic)
+    
+    def add_entity(self, key: str, value: Any) -> None:
+        self.entities[key] = value
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "topics": self.topics,
+            "entities": self.entities,
+            "unresolved_questions": self.unresolved_questions,
+            "last_intent": self.last_intent,
+        }
+
+
+@dataclass
 class ChatSession:
     """
     Pure domain chat session entity.
     
     Represents a conversation session with business rules
-    for session lifecycle and message management.
+    for session lifecycle, message management, and context tracking.
     """
     
     # Identity
@@ -21,6 +45,9 @@ class ChatSession:
     # Info
     title: str = "New Conversation"
     summary: Optional[str] = None
+    
+    # Conversation context (for memory)
+    context: ConversationContext = field(default_factory=ConversationContext)
     
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -33,6 +60,10 @@ class ChatSession:
     # Statistics
     message_count: int = 0
     last_message_at: Optional[datetime] = None
+    
+    # Summary generation tracking
+    last_summary_at: Optional[datetime] = None
+    summary_message_count: int = 0  # Message count when summary was generated
     
     # Timestamps
     created_at: datetime = field(default_factory=datetime.now)
@@ -95,6 +126,39 @@ class ChatSession:
         """Get session age in days."""
         age = datetime.now() - self.created_at
         return age.days
+    
+    def needs_summary_update(self, threshold: int = 5) -> bool:
+        """Check if summary needs to be regenerated."""
+        messages_since_summary = self.message_count - self.summary_message_count
+        return messages_since_summary >= threshold
+    
+    def update_summary_tracking(self) -> None:
+        """Update tracking after summary generation."""
+        self.last_summary_at = datetime.now()
+        self.summary_message_count = self.message_count
+        self.updated_at = datetime.now()
+    
+    def add_topic(self, topic: str) -> None:
+        """Add a topic to conversation context."""
+        self.context.add_topic(topic)
+        self.updated_at = datetime.now()
+    
+    def add_context_entity(self, key: str, value: Any) -> None:
+        """Add an entity to conversation context."""
+        self.context.add_entity(key, value)
+        self.updated_at = datetime.now()
+    
+    def get_context_for_llm(self) -> str:
+        """Get context summary for LLM prompt building."""
+        parts = []
+        if self.summary:
+            parts.append(f"Session Summary: {self.summary}")
+        if self.context.topics:
+            parts.append(f"Topics Discussed: {', '.join(self.context.topics)}")
+        if self.context.entities:
+            entities_str = ", ".join(f"{k}: {v}" for k, v in self.context.entities.items())
+            parts.append(f"Key Information: {entities_str}")
+        return "\n".join(parts)
     
     def __repr__(self) -> str:
         return f"ChatSession(id={self.id}, title={self.title}, messages={self.message_count})"

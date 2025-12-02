@@ -1,20 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: ami_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - ami_network
-
   qdrant:
     image: qdrant/qdrant:latest
     container_name: ami_qdrant
@@ -78,14 +62,11 @@ services:
     restart: unless-stopped
     environment:
       - ENV=${ENV:-production}
-      - APP_PORT=${APP_PORT:-8802}
+      - APP_PORT=${APP_PORT:-11121}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
       - MONGODB_URL=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-admin_password}@mongodb:27017
       - MONGO_DB=${MONGO_DB:-ami_db}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:-himlam}
@@ -95,23 +76,22 @@ services:
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-admin_password}
       - MINIO_BUCKET=${MINIO_BUCKET:-ami-uploads}
       - MINIO_SECURE=false
-      - HF_EMBEDDING_MODEL=${HF_EMBEDDING_MODEL:-keepitreal/vietnamese-sbert}
+      - HF_EMBEDDING_MODEL=${HF_EMBEDDING_MODEL:-dangvantuan/vietnamese-document-embedding}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-this-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8801,http://localhost:8802,http://127.0.0.1:8801,http://127.0.0.1:8802}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:11120,http://localhost:11121,http://127.0.0.1:11120,http://127.0.0.1:11121}
     ports:
-      - "${APP_PORT:-8802}:8802"
+      - "${APP_PORT:-11121}:11121"
     volumes:
       - ./app:/app/app:ro
       - ./assets:/app/assets
     depends_on:
-      - redis
       - qdrant
       - mongodb
       - minio
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8802/api/v1/config/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:11121/api/v1/config/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,7 +108,7 @@ services:
     container_name: amiver2-frontend
     restart: unless-stopped
     ports:
-      - "8801:80"
+      - "11120:80"
     depends_on:
       - backend
     healthcheck:
@@ -143,8 +123,6 @@ services:
   # See NGINX_CONFIG.md for configuration examples
 
 volumes:
-  redis_data:
-    driver: local
   qdrant_data:
     driver: local
   mongodb_data:

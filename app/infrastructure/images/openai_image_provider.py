@@ -9,12 +9,12 @@ from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
-from app.core.interfaces import IImageProvider
+from app.application.interfaces.services.image_service import IImageService
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAIImageProvider(IImageProvider):
+class OpenAIImageService(IImageService):
     """
     OpenAI image generation and vision provider.
     - Generation: GPT-4.1-mini with image_generation tool

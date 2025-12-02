@@ -42,12 +42,12 @@ RUN useradd -m -u 1000 ami && chown -R ami:ami /app
 USER ami
 
 # Expose port
-EXPOSE 8802
+EXPOSE 11121
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8802/api/v1/config/health || exit 1
+    CMD curl -f http://localhost:11121/api/v1/config/health || exit 1
 
 # Run application
-CMD sh -c "uvicorn app.api.main:app --host 0.0.0.0 --port ${APP_PORT:-8802}"
+CMD sh -c "uvicorn app.api.main:app --host 0.0.0.0 --port ${APP_PORT:-11121}"
 

@@ -1,168 +1,194 @@
 """Provider Factory for Dependency Injection.
 
-This factory creates and manages instances of repositories and services,
-implementing the Dependency Inversion Principle.
+Simple factory - config lấy từ settings.py
 """
 
+from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 # Repositories
-from app.infrastructure.repositories.mongodb_user_repository import MongoDBUserRepository
 from app.infrastructure.repositories.mongodb_chat_repository import MongoDBChatRepository
 from app.infrastructure.repositories.mongodb_document_repository import MongoDBDocumentRepository
 from app.infrastructure.repositories.mongodb_file_repository import MongoDBFileRepository
 from app.infrastructure.repositories.mongodb_crawler_repository import MongoDBCrawlerRepository
+from app.infrastructure.repositories.mongodb_data_source_repository import MongoDBDataSourceRepository
+from app.infrastructure.repositories.mongodb_pending_update_repository import MongoDBPendingUpdateRepository
 
-# Auth
-from app.infrastructure.auth import JWTHandler, PasswordHasher
+# LLM providers
+from app.domain.enums.llm_mode import LLMMode
+from app.infrastructure.llms import OpenAILLMService, AnthropicLLMService, GeminiLLMService
+from app.application.interfaces.services.llm_service import ILLMService
 
-# External services (if available)
+# External services
 try:
-    from app.infrastructure.llms.openai_provider import OpenAIProvider as LLMService
-except ImportError:
-    LLMService = None
-
-try:
-    from app.infrastructure.embeddings.sentence_transformer import SentenceTransformerEmbedding as EmbeddingService
+    from app.infrastructure.db.mongodb.embeddings.huggingface_embeddings import HuggingFaceEmbeddings as EmbeddingService
 except ImportError:
     EmbeddingService = None
 
 try:
-    from app.infrastructure.vector_stores.qdrant import QdrantVectorStore as VectorStoreService
+    from app.infrastructure.vector_stores.qdrant_store import QdrantVectorStore as VectorStoreService
 except ImportError:
     VectorStoreService = None
 
+try:
+    from app.infrastructure.storage.minio_storage import MinIOStorage
+except ImportError:
+    MinIOStorage = None
+
+try:
+    from app.infrastructure.scheduler.apscheduler_service import APSchedulerService
+except ImportError:
+    APSchedulerService = None
+
 
 class ProviderFactory:
-    """
-    Factory for creating service instances.
-    
-    Centralizes dependency injection and instance management.
-    """
+    """Factory for creating service instances."""
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         
         # Singleton instances
-        self._user_repo = None
         self._chat_repo = None
         self._document_repo = None
         self._file_repo = None
         self._crawler_repo = None
-        self._password_hasher = None
-        self._jwt_handler = None
-        self._llm_service = None
+        self._data_source_repo = None
+        self._pending_update_repo = None
+        self._llm_instances = {}
         self._embedding_service = None
         self._vector_store = None
+        self._storage_service = None
+        self._scheduler_service = None
+    
+    # ===== Repository Properties (for easy access) =====
+    
+    @property
+    def document_repository(self) -> MongoDBDocumentRepository:
+        """Get document repository."""
+        return self.get_document_repository()
+    
+    @property
+    def chat_repository(self) -> MongoDBChatRepository:
+        """Get chat repository."""
+        return self.get_chat_repository()
+    
+    @property
+    def data_source_repository(self) -> MongoDBDataSourceRepository:
+        """Get data source repository."""
+        return self.get_data_source_repository()
+    
+    @property
+    def pending_update_repository(self) -> MongoDBPendingUpdateRepository:
+        """Get pending update repository."""
+        return self.get_pending_update_repository()
     
     # ===== Repositories =====
     
-    def get_user_repository(self) -> MongoDBUserRepository:
-        """Get user repository instance."""
-        if self._user_repo is None:
-            self._user_repo = MongoDBUserRepository(self.db)
-        return self._user_repo
-    
     def get_chat_repository(self) -> MongoDBChatRepository:
-        """Get chat repository instance."""
         if self._chat_repo is None:
             self._chat_repo = MongoDBChatRepository(self.db)
         return self._chat_repo
     
     def get_document_repository(self) -> MongoDBDocumentRepository:
-        """Get document repository instance."""
         if self._document_repo is None:
             self._document_repo = MongoDBDocumentRepository(self.db)
         return self._document_repo
     
     def get_file_repository(self) -> MongoDBFileRepository:
-        """Get file repository instance."""
         if self._file_repo is None:
             self._file_repo = MongoDBFileRepository(self.db)
         return self._file_repo
     
     def get_crawler_repository(self) -> MongoDBCrawlerRepository:
-        """Get crawler repository instance."""
         if self._crawler_repo is None:
             self._crawler_repo = MongoDBCrawlerRepository(self.db)
         return self._crawler_repo
     
-    # ===== Auth =====
+    def get_data_source_repository(self) -> MongoDBDataSourceRepository:
+        if self._data_source_repo is None:
+            self._data_source_repo = MongoDBDataSourceRepository(self.db)
+        return self._data_source_repo
     
-    def get_password_hasher(self) -> PasswordHasher:
-        """Get password hasher instance."""
-        if self._password_hasher is None:
-            self._password_hasher = PasswordHasher()
-        return self._password_hasher
+    def get_pending_update_repository(self) -> MongoDBPendingUpdateRepository:
+        if self._pending_update_repo is None:
+            self._pending_update_repo = MongoDBPendingUpdateRepository(self.db)
+        return self._pending_update_repo
     
-    def get_jwt_handler(self) -> JWTHandler:
-        """Get JWT handler instance."""
-        if self._jwt_handler is None:
-            self._jwt_handler = JWTHandler()
-        return self._jwt_handler
+    # ===== LLM Services =====
+    
+    def get_llm_service(
+        self,
+        provider: str = "openai",
+        default_mode: LLMMode = LLMMode.QA,
+    ) -> ILLMService:
+        """
+        Get LLM service instance.
+        Config tự động lấy từ settings.py
+        
+        Args:
+            provider: "openai", "anthropic", "gemini"
+            default_mode: QA hoặc REASONING
+        """
+        provider = provider.lower()
+        
+        # Return cached instance
+        if provider in self._llm_instances:
+            return self._llm_instances[provider]
+        
+        if provider == "openai":
+            llm = OpenAILLMService(default_mode=default_mode)
+        elif provider == "anthropic":
+            llm = AnthropicLLMService(default_mode=default_mode)
+        elif provider == "gemini":
+            llm = GeminiLLMService(default_mode=default_mode)
+        else:
+            raise ValueError(f"Unknown provider: {provider}")
+        
+        self._llm_instances[provider] = llm
+        return llm
     
     # ===== External Services =====
     
-    def get_llm_service(self):
-        """Get LLM service instance."""
-        if self._llm_service is None and LLMService:
-            self._llm_service = LLMService()
-        return self._llm_service
-    
     def get_embedding_service(self):
-        """Get embedding service instance."""
         if self._embedding_service is None and EmbeddingService:
             self._embedding_service = EmbeddingService()
         return self._embedding_service
     
     def get_vector_store(self):
-        """Get vector store instance."""
         if self._vector_store is None and VectorStoreService:
-            self._vector_store = VectorStoreService()
+            from app.config.settings import settings
+            
+            # QdrantVectorStore tự tạo client từ settings
+            self._vector_store = VectorStoreService(
+                default_collection=settings.qdrant_collection_name
+            )
         return self._vector_store
     
-    # ===== Use Cases =====
+    def get_storage_service(self):
+        """Get MinIO storage service."""
+        if self._storage_service is None and MinIOStorage:
+            self._storage_service = MinIOStorage()
+        return self._storage_service
     
-    def create_login_use_case(self):
-        """Create LoginUserUseCase with dependencies."""
-        from app.application.use_cases.auth import LoginUserUseCase
-        
-        return LoginUserUseCase(
-            user_repository=self.get_user_repository(),
-            password_hasher=self.get_password_hasher(),
-        )
-    
-    def create_register_use_case(self):
-        """Create RegisterUserUseCase with dependencies."""
-        from app.application.use_cases.auth import RegisterUserUseCase
-        
-        return RegisterUserUseCase(
-            user_repository=self.get_user_repository(),
-            password_hasher=self.get_password_hasher(),
-        )
-    
-    def create_verify_token_use_case(self):
-        """Create VerifyTokenUseCase with dependencies."""
-        from app.application.use_cases.auth import VerifyTokenUseCase
-        
-        return VerifyTokenUseCase(
-            user_repository=self.get_user_repository(),
-            jwt_handler=self.get_jwt_handler(),
-        )
+    def get_scheduler_service(self):
+        """Get APScheduler service."""
+        if self._scheduler_service is None and APSchedulerService:
+            self._scheduler_service = APSchedulerService()
+        return self._scheduler_service
 
 
-# Global factory instance (will be initialized in main.py)
+# Global factory instance
 _factory: ProviderFactory = None
 
 
 def initialize_factory(db: AsyncIOMotorDatabase):
-    """Initialize global factory instance."""
+    """Initialize global factory."""
     global _factory
     _factory = ProviderFactory(db)
 
 
 def get_factory() -> ProviderFactory:
-    """Get global factory instance."""
+    """Get global factory."""
     if _factory is None:
-        raise RuntimeError("Factory not initialized. Call initialize_factory() first.")
+        raise RuntimeError("Factory not initialized.")
     return _factory

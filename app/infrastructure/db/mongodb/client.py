@@ -665,3 +665,46 @@ class MongoDBClient:
         )
         return result.modified_count
 
+
+# ============================================================================
+# Singleton Factory Functions
+# ============================================================================
+
+# Global singleton instance
+_mongodb_client: Optional[MongoDBClient] = None
+
+
+async def get_mongodb_client() -> MongoDBClient:
+    """
+    Get or create MongoDB client singleton.
+    
+    Returns:
+        MongoDBClient instance
+    """
+    global _mongodb_client
+    
+    if _mongodb_client is None:
+        from app.config.settings import settings
+        
+        _mongodb_client = MongoDBClient(
+            host=settings.mongodb_host,
+            port=settings.mongodb_port,
+            user=settings.mongodb_user,
+            password=settings.mongodb_password,
+            database=settings.mongodb_db,
+            connection_url=settings.get_mongodb_url(),
+        )
+        await _mongodb_client.connect()
+    
+    return _mongodb_client
+
+
+async def get_database() -> AsyncIOMotorDatabase:
+    """
+    Get MongoDB database instance.
+    
+    Returns:
+        AsyncIOMotorDatabase instance
+    """
+    client = await get_mongodb_client()
+    return client.db

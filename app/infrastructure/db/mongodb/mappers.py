@@ -6,72 +6,14 @@ and MongoDB models (Pydantic with database-specific fields).
 
 from typing import Optional
 from datetime import datetime
-from app.domain.entities.user import User
 from app.domain.entities.document import Document
 from app.domain.entities.chat_session import ChatSession
 from app.domain.entities.chat_message import ChatMessage
 from app.infrastructure.db.mongodb.models import (
-    UserInDB,
     DocumentInDB,
     ChatSessionInDB,
     ChatMessageInDB,
 )
-
-
-class UserMapper:
-    """Mapper for User entity ↔ MongoDB model."""
-    
-    @staticmethod
-    def to_entity(model: UserInDB) -> User:
-        """Convert MongoDB model to domain entity."""
-        return User(
-            id=model.id,
-            username=model.username,
-            email=model.email,
-            hashed_password=model.hashed_password,
-            full_name=model.full_name,
-            department=model.department,
-            organization=model.organization,
-            avatar_url=model.avatar_url,
-            is_active=model.is_active,
-            is_admin=model.is_admin,
-            role_ids=model.role_ids,
-            timezone=model.timezone,
-            language=model.language,
-            preferences=model.preferences,
-            usage_quota=model.usage_quota,
-            two_factor_enabled=model.two_factor_enabled,
-            last_login=model.last_login,
-            login_count=model.login_count,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-    
-    @staticmethod
-    def to_model(entity: User) -> UserInDB:
-        """Convert domain entity to MongoDB model."""
-        return UserInDB(
-            id=entity.id or "",
-            username=entity.username,
-            email=entity.email,
-            hashed_password=entity.hashed_password,
-            full_name=entity.full_name,
-            department=entity.department,
-            organization=entity.organization,
-            avatar_url=entity.avatar_url,
-            is_active=entity.is_active,
-            is_admin=entity.is_admin,
-            role_ids=entity.role_ids,
-            timezone=entity.timezone,
-            language=entity.language,
-            preferences=entity.preferences,
-            usage_quota=entity.usage_quota,
-            two_factor_enabled=entity.two_factor_enabled,
-            last_login=entity.last_login,
-            login_count=entity.login_count,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-        )
 
 
 class DocumentMapper:

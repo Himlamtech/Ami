@@ -5,9 +5,8 @@ from contextlib import asynccontextmanager
 from app.config.settings import settings
 from app.infrastructure.db.mongodb.client import get_mongodb_client, get_database
 from app.infrastructure.factory import initialize_factory
-from app.presentation.api.middleware import LoggingMiddleware
-from app.presentation.api.routes import (
-    auth_router,
+from app.api.middleware import LoggingMiddleware
+from app.api.routes import (
     chat_router,
     generate_router,
     vectordb_router,
@@ -15,6 +14,14 @@ from app.presentation.api.routes import (
     admin_router,
     crawler_router,
     config_router,
+    admin_vectordb_router,
+    admin_data_source_router,
+    admin_approval_router,
+    smart_query_router,
+    admin_sync_router,
+    profile_router,
+    feedback_router,
+    multimodal_router,
 )
 
 @asynccontextmanager
@@ -58,7 +65,6 @@ app.add_middleware(LoggingMiddleware)
 
 # Routes
 api_v1 = "/api/v1"
-app.include_router(auth_router, prefix=api_v1)
 app.include_router(chat_router, prefix=api_v1)
 app.include_router(generate_router, prefix=api_v1)
 app.include_router(vectordb_router, prefix=api_v1)
@@ -66,6 +72,14 @@ app.include_router(image_router, prefix=api_v1)
 app.include_router(admin_router, prefix=api_v1)
 app.include_router(crawler_router, prefix=api_v1)
 app.include_router(config_router, prefix=api_v1)
+app.include_router(admin_vectordb_router, prefix=api_v1)
+app.include_router(admin_data_source_router, prefix=api_v1)
+app.include_router(admin_approval_router, prefix=api_v1)
+app.include_router(smart_query_router, prefix=api_v1)
+app.include_router(admin_sync_router, prefix=api_v1)
+app.include_router(profile_router, prefix=api_v1)
+app.include_router(feedback_router, prefix=api_v1)
+app.include_router(multimodal_router, prefix=api_v1)
 
 @app.get("/health")
 async def health_check():
