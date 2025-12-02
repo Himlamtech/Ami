@@ -67,7 +67,7 @@ def get_profile_repository():
     """Get student profile repository dependency."""
     from app.infrastructure.factory.provider_factory import ProviderFactory
     factory = ProviderFactory()
-    from app.infrastructure.repositories.mongodb_student_profile_repository import MongoDBStudentProfileRepository
+    from app.infrastructure.persistence.mongodb.repositories import MongoDBStudentProfileRepository
     return MongoDBStudentProfileRepository(factory.mongodb_database)
 
 

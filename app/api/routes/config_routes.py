@@ -1,7 +1,7 @@
 """Configuration routes."""
 
 from fastapi import APIRouter
-from app.config.settings import settings
+from app.config import app_config
 
 
 router = APIRouter(prefix="/config", tags=["configuration"])
@@ -13,7 +13,7 @@ async def get_config_info():
     return {
         "app_name": "AMI RAG System",
         "version": "2.0.0-refactored",
-        "environment": settings.environment,
+        "environment": app_config.environment,
         "features": {
             "rag": True,
             "chat": True,

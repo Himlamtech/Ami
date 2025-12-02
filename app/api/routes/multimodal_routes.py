@@ -43,7 +43,7 @@ router = APIRouter(prefix="/multimodal", tags=["Multimodal"])
 
 def get_stt_service():
     """Get STT service."""
-    from app.infrastructure.stt.wav2vec2_stt import Wav2Vec2STTService
+    from app.infrastructure.ai.stt import Wav2Vec2STTService
     return Wav2Vec2STTService()
 
 

@@ -1,42 +1,44 @@
 """Provider Factory for Dependency Injection.
 
-Simple factory - config lấy từ settings.py
+Centralized factory for creating service instances.
+All config is loaded from settings.py.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-# Repositories
-from app.infrastructure.repositories.mongodb_chat_repository import MongoDBChatRepository
-from app.infrastructure.repositories.mongodb_document_repository import MongoDBDocumentRepository
-from app.infrastructure.repositories.mongodb_file_repository import MongoDBFileRepository
-from app.infrastructure.repositories.mongodb_crawler_repository import MongoDBCrawlerRepository
-from app.infrastructure.repositories.mongodb_data_source_repository import MongoDBDataSourceRepository
-from app.infrastructure.repositories.mongodb_pending_update_repository import MongoDBPendingUpdateRepository
+# Repositories (from persistence layer)
+from app.infrastructure.persistence.mongodb.repositories import (
+    MongoDBChatRepository,
+    MongoDBDocumentRepository,
+    MongoDBFileRepository,
+    MongoDBCrawlerRepository,
+    MongoDBDataSourceRepository,
+    MongoDBPendingUpdateRepository,
+)
 
-# LLM providers
+# LLM providers - lazy import inside get_llm_service() to avoid missing dependencies
 from app.domain.enums.llm_mode import LLMMode
-from app.infrastructure.llms import OpenAILLMService, AnthropicLLMService, GeminiLLMService
 from app.application.interfaces.services.llm_service import ILLMService
 
-# External services
+# External services (lazy imports to avoid circular dependencies)
 try:
-    from app.infrastructure.db.mongodb.embeddings.huggingface_embeddings import HuggingFaceEmbeddings as EmbeddingService
+    from app.infrastructure.ai.embeddings import HuggingFaceEmbeddings as EmbeddingService
 except ImportError:
     EmbeddingService = None
 
 try:
-    from app.infrastructure.vector_stores.qdrant_store import QdrantVectorStore as VectorStoreService
+    from app.infrastructure.persistence.qdrant import QdrantVectorStore as VectorStoreService
 except ImportError:
     VectorStoreService = None
 
 try:
-    from app.infrastructure.storage.minio_storage import MinIOStorage
+    from app.infrastructure.persistence.minio import MinIOStorage
 except ImportError:
     MinIOStorage = None
 
 try:
-    from app.infrastructure.scheduler.apscheduler_service import APSchedulerService
+    from app.infrastructure.scheduling import APSchedulerService
 except ImportError:
     APSchedulerService = None
 
@@ -123,11 +125,11 @@ class ProviderFactory:
     ) -> ILLMService:
         """
         Get LLM service instance.
-        Config tự động lấy từ settings.py
+        Config is loaded from settings.py automatically.
         
         Args:
             provider: "openai", "anthropic", "gemini"
-            default_mode: QA hoặc REASONING
+            default_mode: QA or REASONING
         """
         provider = provider.lower()
         
@@ -135,11 +137,15 @@ class ProviderFactory:
         if provider in self._llm_instances:
             return self._llm_instances[provider]
         
+        # Lazy import LLM providers to avoid missing optional dependencies
         if provider == "openai":
+            from app.infrastructure.ai.llm.openai_llm import OpenAILLMService
             llm = OpenAILLMService(default_mode=default_mode)
         elif provider == "anthropic":
+            from app.infrastructure.ai.llm.anthropic_llm import AnthropicLLMService
             llm = AnthropicLLMService(default_mode=default_mode)
         elif provider == "gemini":
+            from app.infrastructure.ai.llm.gemini_llm import GeminiLLMService
             llm = GeminiLLMService(default_mode=default_mode)
         else:
             raise ValueError(f"Unknown provider: {provider}")
@@ -156,11 +162,11 @@ class ProviderFactory:
     
     def get_vector_store(self):
         if self._vector_store is None and VectorStoreService:
-            from app.config.settings import settings
+            from app.config import qdrant_config
             
-            # QdrantVectorStore tự tạo client từ settings
+            # QdrantVectorStore auto-creates client from config
             self._vector_store = VectorStoreService(
-                default_collection=settings.qdrant_collection_name
+                default_collection=qdrant_config.collection_name
             )
         return self._vector_store
     

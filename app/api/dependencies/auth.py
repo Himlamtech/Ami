@@ -3,7 +3,7 @@
 from fastapi import Header, HTTPException, status, Depends
 from typing import Optional
 
-from app.config.settings import settings
+from app.config import app_config
 
 
 def verify_admin_api_key(
@@ -28,7 +28,7 @@ def verify_admin_api_key(
             detail="X-Admin-API-Key header is required for admin operations",
         )
     
-    if x_admin_api_key != settings.admin_api_key:
+    if x_admin_api_key != app_config.admin_api_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid admin API key",

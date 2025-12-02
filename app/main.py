@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.config.settings import settings
-from app.infrastructure.db.mongodb.client import get_mongodb_client, get_database
+from app.config import app_config
+from app.infrastructure.persistence.mongodb.client import get_mongodb_client, get_database
 from app.infrastructure.factory import initialize_factory
 from app.api.middleware import LoggingMiddleware
 from app.api.routes import (
@@ -41,15 +41,15 @@ async def lifespan(app: FastAPI):
     # Shutdown
     try:
         client = await get_mongodb_client()
-        client.close()
+        await client.disconnect()
         print("✅ Database connection closed")
     except Exception as e:
         print(f"❌ Error during shutdown: {e}")
 
 app = FastAPI(
-    title="AMI RAG System",
-    description="Advanced RAG System with Clean Architecture",
-    version="2.0.0",
+    title="Ami Digital Assistant",
+    description="Ami Digital Assistant from PTIT",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -86,6 +86,6 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "version": "2.0.0",
+        "version": "1.0.0",
         "architecture": "Clean Architecture",
     }
