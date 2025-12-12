@@ -4,7 +4,40 @@
 
 ---
 
+## 🎯 Vision
+
+AMI là chatbot AI thông minh dành cho sinh viên PTIT, tích hợp vào tài khoản cá nhân để cung cấp hỗ trợ được cá nhân hóa. Mục tiêu:
+- **Expose API** để tích hợp vào các hệ thống khác
+- **Multi-modal**: Text, Voice, Image input
+- **Personalized**: Adapt theo profile và behavior của user
+- **Observable**: Full analytics và monitoring cho admin
+
+---
+
 ## 📋 Use Cases
+
+### 👤 USER Features
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Smart Q&A** | RAG với personalization theo profile | ✅ |
+| **Voice Query** | STT → RAG → TTS (optional) | ✅ |
+| **Image Query** | Vision AI phân tích → RAG | ✅ |
+| **Bookmark** | Lưu Q&A quan trọng | 🔄 |
+| **Sessions** | CRUD conversations, search, export | ✅ |
+| **Feedback** | 👍👎, rating, categories | ✅ |
+| **Suggestions** | Related questions, popular topics | 🔄 |
+| **Profile** | Major, level, preferences | ✅ |
+
+### 🔧 ADMIN Features  
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **History** | View/filter/export conversations | 🔄 |
+| **Feedback Dashboard** | Analytics, trends, issues | 🔄 |
+| **Usage Analytics** | Requests, users, latency | 🔄 |
+| **Cost Tracking** | LLM tokens, cost breakdown | 🔄 |
+| **Knowledge Quality** | Gaps, coverage, confidence | 🔄 |
+| **Documents** | Upload, version, approve | ✅ |
+| **Data Sources** | Crawl, schedule, sync | ✅ |
 
 ### 1. **Chat (Question Answering)**
 - **Input Types:**
@@ -93,12 +126,12 @@
 ```
 ┌─────────────────────────────────────────┐
 │           Frontend (React)              │
-│         Port: 6009 (Dev/Prod)           │
+│         Port: 11120 (Dev/Prod)           │
 └─────────────────┬───────────────────────┘
                   │ HTTP/REST
 ┌─────────────────▼───────────────────────┐
 │         Backend (FastAPI)               │
-│            Port: 6008                   │
+│            Port: 11121                   │
 └─────┬───────┬───────┬──────────┬────────┘
       │       │       │          │
 ┌─────▼──┐ ┌──▼───┐ ┌▼──────┐ ┌─▼──────┐
@@ -108,8 +141,8 @@
 ```
 
 ### **Ports**
-- **Frontend**: `6009` (Vite dev server)
-- **Backend**: `6008` (FastAPI/Uvicorn)
+- **Frontend**: `11120` (Vite dev server)
+- **Backend**: `11121` (FastAPI/Uvicorn)
 - **MongoDB**: `27017`
 - **Redis**: `6379`
 - **Qdrant**: `6333` (HTTP), `6334` (gRPC)
@@ -122,7 +155,7 @@
 - **Protected Routes**: All except login
 
 ### **CORS Configuration**
-- Allowed Origins: `localhost:6009`, `localhost:6010`, `localhost:6008`
+- Allowed Origins: `localhost:11120`, `localhost:6010`, `localhost:11121`
 - Methods: GET, POST, PUT, DELETE, OPTIONS
 - Headers: Authorization, Content-Type
 
@@ -291,3 +324,4 @@ See [STT_SETUP_GUIDE.md](./STT_SETUP_GUIDE.md) for:
 - Production checklist
 
 ---
+

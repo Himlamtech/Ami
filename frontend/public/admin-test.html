@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin API Test</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #444;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e5e5;
+        }
+        .success {
+            border-left: 4px solid #10b981;
+        }
+        .error {
+            border-left: 4px solid #ef4444;
+        }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.logged-out {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.logged-in {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-right: 10px;
+            width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Admin API Test Tool</h1>
+        <p class="subtitle">Test admin authentication and API endpoints</p>
+
+        <!-- Auth Status -->
+        <div class="section">
+            <h2>Authentication Status</h2>
+            <div id="authStatus">
+                <span class="status logged-out">Not Logged In</span>
+            </div>
+            <div style="margin-top: 15px;">
+                <input type="email" id="emailInput" placeholder="admin@ptit.edu.vn" value="admin@ptit.edu.vn">
+                <input type="password" id="passwordInput" placeholder="password" value="admin123">
+                <button onclick="login()">Login</button>
+                <button onclick="logout()">Logout</button>
+            </div>
+            <div id="loginResult"></div>
+        </div>
+
+        <!-- Test Endpoints -->
+        <div class="section">
+            <h2>Test Admin Endpoints</h2>
+            <button onclick="testStats()">Test /admin/stats</button>
+            <button onclick="testAnalytics()">Test /admin/analytics/overview</button>
+            <button onclick="testAll()">Test All</button>
+            <div id="testResults"></div>
+        </div>
+
+        <!-- LocalStorage Viewer -->
+        <div class="section">
+            <h2>LocalStorage Data</h2>
+            <button onclick="viewLocalStorage()">View ami-auth</button>
+            <button onclick="clearLocalStorage()">Clear ami-auth</button>
+            <div id="storageResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+
+        function updateAuthStatus() {
+            const authData = localStorage.getItem('ami-auth');
+            const statusDiv = document.getElementById('authStatus');
+            
+            if (authData) {
+                try {
+                    const { state } = JSON.parse(authData);
+                    if (state?.user) {
+                        statusDiv.innerHTML = `
+                            <span class="status logged-in">Logged In</span>
+                            <div style="margin-top: 10px;">
+                                <strong>User:</strong> ${state.user.displayName || state.user.email}<br>
+                                <strong>Role:</strong> ${state.user.role || 'student'}<br>
+                                <strong>Token:</strong> ${state.token ? state.token.substring(0, 20) + '...' : 'N/A'}
+                            </div>
+                        `;
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Error parsing auth data:', e);
+                }
+            }
+            
+            statusDiv.innerHTML = '<span class="status logged-out">Not Logged In</span>';
+        }
+
+        async function login() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Save to localStorage like the app does
+                    const authState = {
+                        state: {
+                            user: {
+                                id: data.user_id,
+                                email: data.email,
+                                displayName: data.full_name,
+                                role: data.role
+                            },
+                            token: data.token,
+                            isAuthenticated: true
+                        }
+                    };
+                    localStorage.setItem('ami-auth', JSON.stringify(authState));
+
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>✓ Login Successful</strong>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    updateAuthStatus();
+                } else {
+                    throw new Error(data.detail || 'Login failed');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>✗ Login Failed</strong>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('ami-auth');
+            document.getElementById('loginResult').innerHTML = `
+                <div class="result success">
+                    <strong>✓ Logged Out</strong>
+                </div>
+            `;
+            updateAuthStatus();
+        }
+
+        async function makeAuthenticatedRequest(endpoint) {
+            const authData = localStorage.getItem('ami-auth');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (authData) {
+                try {
+                    const { state } = JSON.parse(authData);
+                    if (state?.user?.id) {
+                        headers['X-User-ID'] = state.user.id;
+                    }
+                    if (state?.token && state?.user?.role === 'admin') {
+                        headers['X-Admin-API-Key'] = state.token;
+                    }
+                } catch (e) {
+                    console.error('Error parsing auth:', e);
+                }
+            }
+
+            const response = await fetch(`${API_BASE}${endpoint}`, { headers });
+            return { response, data: await response.json() };
+        }
+
+        async function testStats() {
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+
+            try {
+                const { response, data } = await makeAuthenticatedRequest('/admin/stats');
+                
+                resultDiv.innerHTML = `
+                    <div class="result ${response.ok ? 'success' : 'error'}">
+                        <strong>${response.ok ? '✓' : '✗'} GET /admin/stats (${response.status})</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>✗ Error</strong>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAnalytics() {
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+
+            try {
+                const { response, data } = await makeAuthenticatedRequest('/admin/analytics/overview?period=today');
+                
+                resultDiv.innerHTML = `
+                    <div class="result ${response.ok ? 'success' : 'error'}">
+                        <strong>${response.ok ? '✓' : '✗'} GET /admin/analytics/overview (${response.status})</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>✗ Error</strong>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAll() {
+            const resultDiv = document.getElementById('testResults');
+            resultDiv.innerHTML = '<p>Testing all endpoints...</p>';
+
+            try {
+                const [stats, analytics] = await Promise.all([
+                    makeAuthenticatedRequest('/admin/stats'),
+                    makeAuthenticatedRequest('/admin/analytics/overview?period=today')
+                ]);
+
+                resultDiv.innerHTML = `
+                    <div class="result ${stats.response.ok ? 'success' : 'error'}">
+                        <strong>${stats.response.ok ? '✓' : '✗'} GET /admin/stats (${stats.response.status})</strong>
+                        <pre>${JSON.stringify(stats.data, null, 2)}</pre>
+                    </div>
+                    <div class="result ${analytics.response.ok ? 'success' : 'error'}" style="margin-top: 15px;">
+                        <strong>${analytics.response.ok ? '✓' : '✗'} GET /admin/analytics/overview (${analytics.response.status})</strong>
+                        <pre>${JSON.stringify(analytics.data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>✗ Error</strong>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function viewLocalStorage() {
+            const authData = localStorage.getItem('ami-auth');
+            const resultDiv = document.getElementById('storageResult');
+
+            if (authData) {
+                try {
+                    const parsed = JSON.parse(authData);
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>ami-auth data:</strong>
+                            <pre>${JSON.stringify(parsed, null, 2)}</pre>
+                        </div>
+                    `;
+                } catch (e) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>Invalid JSON in localStorage</strong>
+                            <pre>${authData}</pre>
+                        </div>
+                    `;
+                }
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>No ami-auth data found</strong>
+                    </div>
+                `;
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('ami-auth');
+            document.getElementById('storageResult').innerHTML = `
+                <div class="result success">
+                    <strong>✓ Cleared ami-auth</strong>
+                </div>
+            `;
+            updateAuthStatus();
+        }
+
+        // Initialize
+        updateAuthStatus();
+    </script>
+</body>
+</html>

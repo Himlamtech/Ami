@@ -1,58 +1,57 @@
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
-*.egg-info/
-dist/
-build/
+
+# Virtual environments
 .venv/
 venv/
-env/
+ENV/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Documentation
-docs/
-*.md
-!README.md
+.cursor/
 
 # Git
 .git/
 .gitignore
-.gitattributes
+.github/
 
-# Assets (processed data)
-assets/raw/
-assets/*.json
+# Documentation
+*.md
+README*
+docs/
 
-# Environment
-.env.local
-.env.*.local
+# Tests
+tests/
+test_*.py
+*_test.py
+pytest_cache/
+
+# Environment files
+.env
+.env.*
+!.env.example
 
 # Logs
-*.log
 logs/
+*.log
 
-# OS
-.DS_Store
-Thumbs.db
+# Assets (if not needed in container)
+# Uncomment if assets are mounted as volume
+# assets/
 
-# Frontend
-frontend/
-node_modules/
+# Development files (KEEP pyproject.toml for Docker build!)
+Makefile
+# pyproject.toml  # NEEDED FOR DOCKER BUILD
+uv.lock
+# *.toml  # NEEDED FOR DOCKER BUILD
 
-# Docker
-docker-compose.override.yml
-
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
