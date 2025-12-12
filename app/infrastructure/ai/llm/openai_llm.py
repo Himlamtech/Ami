@@ -1,6 +1,5 @@
 """
-OpenAI LLM provider - Simple implementation.
-Config from centralized config module.
+OpenAI LLM provider - Simple, config-driven implementation.
 Supports Vision (GPT-4 Vision) for image QA.
 """
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAILLMService(ILLMService):
-    """OpenAI LLM provider."""
+    """OpenAI LLM provider - wraps OpenAI API."""
 
     def __init__(self, config: OpenAIConfig = None, default_mode: LLMMode = LLMMode.QA):
         """
@@ -41,34 +40,8 @@ class OpenAILLMService(ILLMService):
         }
         self._current_mode = default_mode
         logger.info(
-            f"Initialized OpenAILLMService - QA: {self.config.model_qa}, "
-            f"Reasoning: {self.config.model_reasoning}"
+            f"OpenAI initialized - QA: {self.config.model_qa}, Reasoning: {self.config.model_reasoning}"
         )
-
-    def get_model_for_mode(self, mode: LLMMode) -> str:
-        """Get the model name for a specific mode."""
-        return self._models.get(mode, self._models[LLMMode.QA])
-
-    def set_mode(self, mode: LLMMode) -> None:
-        """Set the current operation mode."""
-        self._current_mode = mode
-        logger.debug(f"OpenAI mode set to: {mode.value}")
-
-    def get_current_mode(self) -> LLMMode:
-        """Get the current operation mode."""
-        return self._current_mode
-
-    def get_available_models(self) -> dict:
-        """Get all available models for this provider."""
-        return self._models.copy()
-
-    def _get_model(self, mode: Optional[LLMMode] = None) -> str:
-        """Get model name for the mode."""
-        return self._models[mode or self._current_mode]
-
-    def _is_reasoning_model(self, model: str) -> bool:
-        """Check if model is reasoning type (o1, o3, o4 series)."""
-        return model.startswith(("o1", "o3", "o4"))
 
     async def generate(
         self,
@@ -77,51 +50,45 @@ class OpenAILLMService(ILLMService):
         mode: Optional[LLMMode] = None,
         **kwargs,
     ) -> str:
-        """Generate completion."""
-        model = self._get_model(mode)
+        """
+        Generate completion.
+        
+        Note: Context formatting should be done in Application layer (Use Cases).
+        This method accepts pre-formatted prompt or separate context.
+        """
+        model = self._models[mode or self._current_mode]
 
         try:
+            # Build messages - simple passthrough
             messages = []
             if context:
-                messages.append(
-                    {
-                        "role": "system",
-                        "content": f"Use the following context to answer:\n{context}",
-                    }
-                )
+                messages.append({"role": "system", "content": context})
             messages.append({"role": "user", "content": prompt})
 
-            # Reasoning models không hỗ trợ temperature
-            if self._is_reasoning_model(model):
-                kwargs.pop("temperature", None)
-                kwargs.pop("top_p", None)
+            kwargs.setdefault("max_tokens", 4096)
 
-            # Set default max_tokens if not provided
-            if "max_tokens" not in kwargs:
-                kwargs["max_tokens"] = 4096
-
-            logger.debug(f"Generating with model: {model}")
+            logger.debug(f"Generating with {model}")
 
             response = await self.client.chat.completions.create(
                 model=model, messages=messages, **kwargs
             )
 
             result = response.choices[0].message.content
-            logger.debug(f"Generated: {len(result)} chars")
+            logger.debug(f"Generated {len(result)} chars")
             return result
 
         except RateLimitError as e:
             logger.error(f"Rate limit: {e}")
-            raise RuntimeError("Rate limit exceeded.")
+            raise RuntimeError("Rate limit exceeded")
         except APITimeoutError as e:
             logger.error(f"Timeout: {e}")
-            raise RuntimeError("Request timeout.")
+            raise RuntimeError("Request timeout")
         except APIError as e:
             logger.error(f"API error: {e}")
             raise RuntimeError(f"API error: {str(e)}")
         except Exception as e:
             logger.error(f"Error: {e}")
-            raise RuntimeError(f"Failed: {str(e)}")
+            raise RuntimeError(f"Generation failed: {str(e)}")
 
     async def stream_generate(
         self,
@@ -131,28 +98,17 @@ class OpenAILLMService(ILLMService):
         **kwargs,
     ):
         """Stream completion."""
-        model = self._get_model(mode)
+        model = self._models[mode or self._current_mode]
 
         try:
             messages = []
             if context:
-                messages.append(
-                    {
-                        "role": "system",
-                        "content": f"Use the following context to answer:\n{context}",
-                    }
-                )
+                messages.append({"role": "system", "content": context})
             messages.append({"role": "user", "content": prompt})
 
-            if self._is_reasoning_model(model):
-                kwargs.pop("temperature", None)
-                kwargs.pop("top_p", None)
+            kwargs.setdefault("max_tokens", 4096)
 
-            # Set default max_tokens if not provided
-            if "max_tokens" not in kwargs:
-                kwargs["max_tokens"] = 4096
-
-            logger.debug(f"Streaming with model: {model}")
+            logger.debug(f"Streaming with {model}")
 
             stream = await self.client.chat.completions.create(
                 model=model, messages=messages, stream=True, **kwargs
@@ -184,7 +140,7 @@ class OpenAILLMService(ILLMService):
         Returns:
             Answer about the image
         """
-        model = self._get_model(mode)
+        model = self._models[mode or self._current_mode]
 
         try:
             # Prepare image URL for OpenAI format
@@ -215,16 +171,9 @@ class OpenAILLMService(ILLMService):
                 }
             ]
 
-            # Set default max_tokens
-            if "max_tokens" not in kwargs:
-                kwargs["max_tokens"] = 4096
+            kwargs.setdefault("max_tokens", 4096)
 
-            # Reasoning models don't support vision well, use QA model
-            if self._is_reasoning_model(model):
-                model = self._models[LLMMode.QA]
-                logger.debug(f"Switched to {model} for vision task")
-
-            logger.debug(f"Image QA with model: {model}")
+            logger.debug(f"Image QA with {model}")
 
             response = await self.client.chat.completions.create(
                 model=model, messages=messages, **kwargs
@@ -253,7 +202,7 @@ if __name__ == "__main__":
 
     async def main():
         llm = OpenAILLMService()
-        response = await llm.generate("What is PTIT")
+        response = await llm.generate("What is PTIT? How many majors does it have, and what is the score for the IT major?")
         print("Response:", response)
 
     asyncio.run(main())

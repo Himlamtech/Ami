@@ -14,7 +14,7 @@ from app.api.schemas.bookmark_dto import (
     BookmarkExportResponse,
 )
 from app.domain.entities.bookmark import Bookmark
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/bookmarks", tags=["Bookmarks"])
@@ -26,8 +26,7 @@ async def create_bookmark(
     user_id: str = Depends(get_user_id),
 ):
     """Create a new bookmark from a Q&A pair."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmark = Bookmark(
         user_id=user_id,
@@ -55,8 +54,7 @@ async def list_bookmarks(
     include_archived: bool = Query(default=False),
 ):
     """List user's bookmarks (pinned first, then by date)."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmarks = await repo.get_by_user(
         user_id=user_id,
@@ -79,8 +77,7 @@ async def get_pinned_bookmarks(
     user_id: str = Depends(get_user_id),
 ):
     """Get user's pinned bookmarks."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmarks = await repo.get_pinned(user_id)
     return [_to_response(b) for b in bookmarks]
@@ -91,8 +88,7 @@ async def get_user_tags(
     user_id: str = Depends(get_user_id),
 ):
     """Get all unique tags used by user."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     tags = await repo.get_tags_by_user(user_id)
     return BookmarkTagsResponse(tags=tags, total=len(tags))
@@ -103,8 +99,7 @@ async def get_user_folders(
     user_id: str = Depends(get_user_id),
 ):
     """Get all unique folders used by user."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     folders = await repo.get_folders_by_user(user_id)
     return BookmarkFoldersResponse(folders=folders, total=len(folders))
@@ -120,8 +115,7 @@ async def search_bookmarks(
     limit: int = Query(default=50, ge=1, le=100),
 ):
     """Search bookmarks by query, tags, or folder."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     tag_list = None
     if tags:
@@ -152,8 +146,7 @@ async def get_bookmark(
     user_id: str = Depends(get_user_id),
 ):
     """Get a specific bookmark by ID."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmark = await repo.get_by_id(bookmark_id)
     if not bookmark:
@@ -178,8 +171,7 @@ async def update_bookmark(
     user_id: str = Depends(get_user_id),
 ):
     """Update a bookmark."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmark = await repo.get_by_id(bookmark_id)
     if not bookmark:
@@ -213,8 +205,7 @@ async def delete_bookmark(
     user_id: str = Depends(get_user_id),
 ):
     """Delete a bookmark."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmark = await repo.get_by_id(bookmark_id)
     if not bookmark:
@@ -239,8 +230,7 @@ async def export_bookmark(
     user_id: str = Depends(get_user_id),
 ):
     """Export a bookmark (placeholder)."""
-    factory = get_factory()
-    repo = factory.get_bookmark_repository()
+    repo = ServiceRegistry.get_bookmark_repository()
 
     bookmark = await repo.get_by_id(bookmark_id)
     if not bookmark:

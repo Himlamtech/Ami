@@ -84,7 +84,7 @@ export default {
                 },
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
+                sans: ['"Charter"', 'Charter', '"Charter BT"', '"Bitstream Charter"', 'Georgia', 'serif'],
                 mono: ['JetBrains Mono', 'monospace'],
             },
             fontSize: {

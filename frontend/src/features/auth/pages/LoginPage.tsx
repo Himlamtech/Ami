@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { Bot, Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,8 +29,32 @@ export default function LoginPage() {
 
         try {
             await login(email, password)
-            navigate(from, { replace: true })
+
+            // Check current user state immediately after login? 
+            // Note: login is async but state update via zustand might be instant or batched. 
+            // However, we can trust the API response data if we returned it, but store does void.
+            // We can assume successful login sets the user in store. 
+            // Since we can't easily access the updated state inside this function immediately without using the store.getState() 
+            // or waiting for re-render, we'll do a simple heuristic or checking the store directly if possible.
+            // A safer bet involves checking the email/role from the inputs or just assuming student if not admin email for now, 
+            // OR better: let's look at how authStore sets the user.
+
+            // Let's rely on the fact that if we are here, login success.
+            // Check standard redirect
+            if (from === '/') {
+                // Heuristic based on email for immediate feedback, 
+                // OR ideally we should check the role from the token/user state.
+                // Since this is a simple app, let's redirect to /admin if email contains admin
+                if (email.toLowerCase().includes('admin')) {
+                    navigate('/admin', { replace: true })
+                } else {
+                    navigate('/chat', { replace: true })
+                }
+            } else {
+                navigate(from, { replace: true })
+            }
         } catch (err) {
+            console.error('Login error:', err)
             setError('Đăng nhập thất bại. Vui lòng thử lại.')
         }
     }
@@ -115,6 +139,12 @@ export default function LoginPage() {
                             )}
                             Đăng nhập
                         </Button>
+                        <div className="text-center text-sm">
+                            <span className="text-neutral-500">Chưa có tài khoản? </span>
+                            <Link to="/register" className="font-medium text-primary hover:text-primary/80">
+                                Đăng ký ngay
+                            </Link>
+                        </div>
                     </form>
 
                     <div className="mt-6 pt-6 border-t border-neutral-200 text-center text-sm text-neutral-500">

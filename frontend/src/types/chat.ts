@@ -6,6 +6,7 @@ export interface Message {
     sources?: Source[]
     feedback?: Feedback
     isStreaming?: boolean
+    attachments?: Attachment[]
 }
 
 export interface Source {
@@ -57,6 +58,8 @@ export interface SuggestedQuestion {
     text: string
     category?: string
 }
+
+export type ThinkingMode = 'fast' | 'thinking'
 
 export interface UserProfile {
     id: string

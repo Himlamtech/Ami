@@ -5,8 +5,33 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '../api/adminApi'
+
 export default function AnalyticsPage() {
     const [activeTab, setActiveTab] = useState('costs')
+
+    const costQuery = useQuery({
+        queryKey: ['admin', 'analytics-costs'],
+        queryFn: () => adminApi.getCostBreakdown({ period: 'month' }),
+    })
+
+    const usageQuery = useQuery({
+        queryKey: ['admin', 'analytics-usage'],
+        queryFn: () => adminApi.getAnalytics({ period: 'month' }),
+    })
+
+    const costData = (costQuery.data as Record<string, number>) || {}
+    const usageData = (usageQuery.data as Record<string, number>) || {}
+    const loadingCosts = costQuery.isLoading
+    const loadingUsage = usageQuery.isLoading
+
+    const totalSpent = costData.total_spent ?? costData.total ?? 0
+    const budget = costData.budget ?? 200
+    const remaining = budget - totalSpent
+    const projected = costData.projected ?? totalSpent
+    const budgetUsedPercent = budget > 0 ? Math.min(100, Math.max(0, (totalSpent / budget) * 100)) : 0
+    const remainingPercent = 100 - budgetUsedPercent
 
     return (
         <div className="space-y-6">
@@ -36,24 +61,38 @@ export default function AnalyticsPage() {
                         <CardContent>
                             <div className="grid grid-cols-4 gap-6 mb-6">
                                 <div className="text-center p-4 bg-neutral-50 rounded-lg">
-                                    <p className="text-3xl font-bold text-primary">$127.45</p>
+                                    <p className="text-3xl font-bold text-primary">
+                                        {loadingCosts ? '...' : `$${totalSpent.toFixed(2)}`}
+                                    </p>
                                     <p className="text-sm text-neutral-500">Total Spent</p>
-                                    <p className="text-xs text-neutral-400">63%</p>
+                                    <p className="text-xs text-neutral-400">
+                                        {loadingCosts ? '--' : `${budgetUsedPercent.toFixed(0)}%`}
+                                    </p>
                                 </div>
                                 <div className="text-center p-4 bg-neutral-50 rounded-lg">
-                                    <p className="text-3xl font-bold">$200.00</p>
+                                    <p className="text-3xl font-bold">
+                                        {loadingCosts ? '...' : `$${budget.toFixed(2)}`}
+                                    </p>
                                     <p className="text-sm text-neutral-500">Budget</p>
                                     <p className="text-xs text-neutral-400">100%</p>
                                 </div>
                                 <div className="text-center p-4 bg-neutral-50 rounded-lg">
-                                    <p className="text-3xl font-bold text-success">$72.55</p>
+                                    <p className="text-3xl font-bold text-success">
+                                        {loadingCosts ? '...' : `$${Math.max(0, remaining).toFixed(2)}`}
+                                    </p>
                                     <p className="text-sm text-neutral-500">Remaining</p>
-                                    <p className="text-xs text-neutral-400">37%</p>
+                                    <p className="text-xs text-neutral-400">
+                                        {loadingCosts ? '--' : `${remainingPercent.toFixed(0)}%`}
+                                    </p>
                                 </div>
                                 <div className="text-center p-4 bg-neutral-50 rounded-lg">
-                                    <p className="text-3xl font-bold text-warning">$185.00</p>
+                                    <p className="text-3xl font-bold text-warning">
+                                        {loadingCosts ? '...' : `$${projected.toFixed(2)}`}
+                                    </p>
                                     <p className="text-sm text-neutral-500">Projected</p>
-                                    <p className="text-xs text-neutral-400">93%</p>
+                                    <p className="text-xs text-neutral-400">
+                                        {loadingCosts ? '--' : `${Math.min(100, ((projected / budget) * 100 || 0)).toFixed(0)}%`}
+                                    </p>
                                 </div>
                             </div>
 
@@ -61,10 +100,12 @@ export default function AnalyticsPage() {
                             <div className="h-4 bg-neutral-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-primary to-primary-600 rounded-full"
-                                    style={{ width: '63%' }}
+                                    style={{ width: `${budgetUsedPercent}%` }}
                                 />
                             </div>
-                            <p className="text-sm text-neutral-500 mt-2 text-center">63% of budget used</p>
+                            <p className="text-sm text-neutral-500 mt-2 text-center">
+                                {loadingCosts ? 'Loading cost data...' : `${budgetUsedPercent.toFixed(0)}% of budget used`}
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -202,8 +243,22 @@ export default function AnalyticsPage() {
 
                 <TabsContent value="usage">
                     <Card>
-                        <CardContent className="p-6">
-                            <p className="text-neutral-500">Usage analytics coming soon...</p>
+                        <CardHeader>
+                            <CardTitle className="text-base">Usage Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[
+                                { label: 'Requests', value: usageData.requests ?? usageData.total_requests ?? 0 },
+                                { label: 'Tokens', value: usageData.tokens ?? usageData.total_tokens ?? 0 },
+                                { label: 'Avg Latency (ms)', value: usageData.avg_latency ?? usageData.avg_latency_ms ?? 0 },
+                            ].map((item) => (
+                                <div key={item.label} className="p-4 rounded-lg bg-neutral-50 text-center">
+                                    <p className="text-2xl font-semibold">
+                                        {loadingUsage ? '...' : item.value}
+                                    </p>
+                                    <p className="text-sm text-neutral-500">{item.label}</p>
+                                </div>
+                            ))}
                         </CardContent>
                     </Card>
                 </TabsContent>

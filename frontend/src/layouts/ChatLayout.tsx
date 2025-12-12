@@ -9,14 +9,14 @@ export default function ChatLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
-        <div className="flex h-screen bg-gradient-to-br from-neutral-50 to-neutral-100/50">
+        <div className="flex h-screen bg-[var(--bg)] text-[var(--text)]">
             {/* Mobile header */}
-            <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-neutral-200/50 flex items-center px-4 gap-3 lg:hidden z-30">
+            <header className="fixed top-0 left-0 right-0 h-14 bg-[var(--surface)]/95 backdrop-blur-lg flex items-center px-4 gap-3 lg:hidden z-30 shadow-sm">
                 <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setSidebarOpen(true)}
-                    className="hover:bg-neutral-100"
+                    className="hover:bg-[var(--surface2)]"
                 >
                     <Menu className="h-5 w-5" />
                 </Button>
@@ -31,7 +31,7 @@ export default function ChatLayout() {
             {/* Sidebar */}
             <aside
                 className={`
-                    fixed inset-y-0 left-0 z-40 w-[280px] transform bg-white border-r border-neutral-200/50 transition-transform duration-300 ease-out shadow-xl lg:shadow-none
+                    fixed inset-y-0 left-0 z-40 w-[280px] transform bg-[var(--panel)] border-r border-[color:var(--border)] transition-transform duration-300 ease-out shadow-md lg:shadow-sm
                     lg:relative lg:translate-x-0
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                 `}
@@ -48,7 +48,7 @@ export default function ChatLayout() {
             )}
 
             {/* Main content */}
-            <main className="flex-1 flex flex-col min-w-0 pt-14 pb-14 lg:pt-0 lg:pb-0">
+            <main className="flex-1 flex flex-col min-w-0 pt-14 pb-14 lg:pt-0 lg:pb-0 bg-[var(--bg)]">
                 <Outlet />
             </main>
 

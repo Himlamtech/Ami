@@ -14,8 +14,11 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
         return <Navigate to="/login" state={{ from: location.pathname }} replace />
     }
 
-    if (requireAdmin && user?.email && !user.email.toLowerCase().includes('admin')) {
-        return <Navigate to="/" replace />
+    if (requireAdmin) {
+        const isAdmin = user?.role === 'admin' || user?.email?.toLowerCase().includes('admin')
+        if (!isAdmin) {
+            return <Navigate to="/chat" replace />
+        }
     }
 
     return <>{children}</>

@@ -49,13 +49,13 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
             )}
 
             {/* Message content */}
-            <div className={cn('flex flex-col max-w-[75%]', isUser ? 'items-end' : 'items-start')}>
+            <div className={cn('flex flex-col max-w-[80%]', isUser ? 'items-end' : 'items-start')}>
                 <div
                     className={cn(
-                        'rounded-2xl px-4 py-3',
+                        'rounded-2xl px-4 py-3 text-sm leading-relaxed',
                         isUser
-                            ? 'bg-primary text-white rounded-br-md'
-                            : 'bg-white border border-neutral-200 rounded-bl-md shadow-sm'
+                            ? 'bg-[var(--surface)] text-neutral-900 rounded-br-md shadow-sm'
+                            : 'bg-[var(--surface2)] text-neutral-900 rounded-bl-md shadow-sm'
                     )}
                 >
                     {message.isStreaming ? (
@@ -68,7 +68,7 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                             </div>
                         </div>
                     ) : (
-                        <div className={cn('prose prose-sm max-w-none', isUser && 'prose-invert')}>
+                        <div className="text-[15px] leading-7 text-neutral-900 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_a]:text-primary hover:[&_a]:underline [&_a]:underline-offset-2">
                             <ReactMarkdown
                                 components={{
                                     code({ className, children, ...props }) {
@@ -78,7 +78,7 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                                             <code
                                                 className={cn(
                                                     'px-1.5 py-0.5 rounded text-sm font-mono',
-                                                    isUser ? 'bg-white/20' : 'bg-neutral-100'
+                                                    'bg-[var(--surface)]'
                                                 )}
                                                 {...props}
                                             >
@@ -98,7 +98,7 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                                     table({ children }) {
                                         return (
                                             <div className="overflow-x-auto my-2">
-                                                <table className="min-w-full border-collapse border border-neutral-200">
+                                                <table className="min-w-full border-collapse border border-[color:var(--border)]">
                                                     {children}
                                                 </table>
                                             </div>
@@ -106,14 +106,14 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                                     },
                                     th({ children }) {
                                         return (
-                                            <th className="border border-neutral-200 px-3 py-2 bg-neutral-50 text-left font-medium">
+                                            <th className="border border-[color:var(--border)] px-3 py-2 bg-[var(--surface2)] text-left font-medium">
                                                 {children}
                                             </th>
                                         )
                                     },
                                     td({ children }) {
                                         return (
-                                            <td className="border border-neutral-200 px-3 py-2">{children}</td>
+                                            <td className="border border-[color:var(--border)] px-3 py-2">{children}</td>
                                         )
                                     },
                                 }}
@@ -126,8 +126,8 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
 
                 {/* Sources */}
                 {!isUser && message.sources && message.sources.length > 0 && (
-                    <div className="mt-2 p-3 bg-neutral-50 rounded-lg border border-neutral-200 w-full">
-                        <p className="text-xs font-medium text-neutral-500 mb-2">📄 Nguồn tham khảo:</p>
+                    <div className="mt-2 p-2.5 bg-[var(--surface2)] rounded-xl shadow-sm w-full">
+                        <p className="text-xs font-medium text-neutral-400 mb-1.5">📄 Nguồn:</p>
                         <div className="space-y-1">
                             {message.sources.map((source, index) => (
                                 <SourceItem key={source.id} source={source} index={index + 1} />
@@ -221,7 +221,9 @@ function SourceItem({ source, index }: { source: Source; index: number }) {
         >
             <span className="text-neutral-400">[{index}]</span>
             <span className="flex-1 truncate">{source.title}</span>
-            <span className="text-neutral-400">(score: {source.score.toFixed(2)})</span>
+            {source.score !== undefined && (
+                <span className="text-neutral-400">(score: {source.score.toFixed(2)})</span>
+            )}
             <ExternalLink className="w-3 h-3" />
         </a>
     )

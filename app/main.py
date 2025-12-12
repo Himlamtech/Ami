@@ -8,7 +8,7 @@ from app.infrastructure.persistence.mongodb.client import (
 )
 from app.config.services import ServiceRegistry
 from app.api.middleware import LoggingMiddleware
-from app.api.v1 import chat_api_router, admin_api_router
+from app.api.v1 import chat_api_router, admin_api_router, auth_api_router
 from app.api.v1.admin.config import router as config_router
 
 
@@ -52,10 +52,17 @@ app.add_middleware(
 )
 app.add_middleware(LoggingMiddleware)
 
+# Usage Tracking Middleware (Optional - Uncomment to enable analytics tracking)
+# This will log all API requests to the usage_metrics collection for analytics
+# from app.api.middleware import usage_tracking_middleware
+# app.middleware("http")(usage_tracking_middleware)
+
+
 # Routes
 api_v1 = "/api/v1"
 app.include_router(chat_api_router, prefix=api_v1)
 app.include_router(admin_api_router, prefix=api_v1)
+app.include_router(auth_api_router, prefix=api_v1)
 app.include_router(config_router, prefix=api_v1)
 
 

@@ -9,7 +9,7 @@ from app.application.services.feedback_service import (
     FeedbackType,
     FeedbackCategory,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 from app.api.schemas.feedback_dto import (
     SubmitFeedbackRequest,
     FeedbackResponse,
@@ -20,7 +20,6 @@ router = APIRouter(prefix="/feedback", tags=["Feedback"])
 
 
 def _get_feedback_service():
-    factory = get_factory()
     return FeedbackService(factory.db)
 
 

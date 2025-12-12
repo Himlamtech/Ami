@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     async def test():
         service = GeminiWebSearchService()
-        response = await service.search("Điểm chuẩn PTIT 2025")
+        response = await service.search("Điểm chuẩn PTIT 2025 và năm trước đó là bao nhiêu?")
         print(f"Answer: {response.answer}")
         print(f"\nSources ({len(response.sources)}):")
         for src in response.sources:

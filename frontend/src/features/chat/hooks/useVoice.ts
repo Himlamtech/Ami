@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { chatApi } from '../api/chatApi'
 
 interface UseVoiceOptions {
     onResult?: (text: string) => void
@@ -124,20 +125,8 @@ export function useVoice({
                 // Process with API
                 setIsProcessing(true)
                 try {
-                    const formData = new FormData()
-                    formData.append('audio', audioBlob, 'recording.webm')
-
-                    const response = await fetch('/api/v1/chat/voice', {
-                        method: 'POST',
-                        body: formData,
-                    })
-
-                    if (!response.ok) {
-                        throw new Error('Failed to process audio')
-                    }
-
-                    const data = await response.json()
-                    const transcription = data.text || ''
+                    const response = await chatApi.sendVoiceQuery(audioBlob)
+                    const transcription = response.transcription || ''
 
                     onResult?.(transcription)
                     resolve(transcription)

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '../api/adminApi'
 import {
     Search,
     Filter,
@@ -21,51 +23,18 @@ import {
 import { formatDate } from '@/lib/utils'
 import type { AdminUser } from '@/types/admin'
 
-// Mock data
-const mockUsers: AdminUser[] = [
-    {
-        id: '1',
-        name: 'Nguyen Van A',
-        studentId: 'B21DCCN001',
-        major: 'CNTT',
-        year: 'K66',
-        sessionCount: 45,
-        avgRating: 4.5,
-        lastActive: new Date().toISOString(),
-        topInterests: ['học phí', 'đăng ký môn'],
-    },
-    {
-        id: '2',
-        name: 'Tran Thi B',
-        studentId: 'B21DCCN045',
-        major: 'ATTT',
-        year: 'K66',
-        sessionCount: 32,
-        avgRating: 4.2,
-        lastActive: new Date(Date.now() - 3600000).toISOString(),
-        topInterests: ['thực tập', 'mẫu đơn'],
-    },
-    {
-        id: '3',
-        name: 'Le Van C',
-        studentId: 'B20DCCN102',
-        major: 'CNTT',
-        year: 'K65',
-        sessionCount: 18,
-        avgRating: 3.8,
-        lastActive: new Date(Date.now() - 86400000).toISOString(),
-        topInterests: ['học bổng', 'tài chính'],
-    },
-]
 
 export default function UsersPage() {
     const [searchQuery, setSearchQuery] = useState('')
 
-    const filteredUsers = mockUsers.filter(
-        (user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.studentId.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const { data } = useQuery({
+        queryKey: ['admin', 'users', searchQuery],
+        queryFn: () => adminApi.getUsers({
+            search: searchQuery
+        }),
+    })
+
+    const filteredUsers: AdminUser[] = data?.data || []
 
     return (
         <div className="space-y-6">
@@ -189,7 +158,7 @@ export default function UsersPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between p-4 border-t">
                         <p className="text-sm text-neutral-500">
-                            Showing 1-{filteredUsers.length} of 567 users
+                            Showing 1-{filteredUsers.length} of {data?.total || 0} users
                         </p>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" disabled>

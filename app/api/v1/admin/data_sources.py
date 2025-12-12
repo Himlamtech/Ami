@@ -38,7 +38,7 @@ from app.application.use_cases.data_source.delete_data_source import (
     DeleteDataSourceInput,
 )
 from app.application.use_cases.data_source.test_data_source import TestDataSourceInput
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/data-sources", tags=["admin-data-sources"])
@@ -120,8 +120,7 @@ async def create_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Create a new data source."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     use_case = CreateDataSourceUseCase(repo)
 
@@ -163,8 +162,7 @@ async def list_data_sources(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """List all data sources."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     use_case = ListDataSourcesUseCase(repo)
 
@@ -195,8 +193,7 @@ async def get_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get a single data source by ID."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     source = await repo.get_by_id(source_id)
     if not source:
@@ -215,8 +212,7 @@ async def update_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Update a data source."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     use_case = UpdateDataSourceUseCase(repo)
 
@@ -264,8 +260,7 @@ async def delete_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Delete a data source."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     use_case = DeleteDataSourceUseCase(repo)
 
@@ -288,8 +283,7 @@ async def activate_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Activate a data source."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     source = await repo.get_by_id(source_id)
     if not source:
@@ -310,8 +304,7 @@ async def pause_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Pause a data source."""
-    factory = get_factory()
-    repo = factory.get_data_source_repository()
+    repo = ServiceRegistry.get_data_source_repository()
 
     source = await repo.get_by_id(source_id)
     if not source:
@@ -332,8 +325,6 @@ async def test_data_source(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Test crawling a URL before saving."""
-    factory = get_factory()
-
     # Get crawler from factory
     crawler = factory.get_firecrawl_crawler()
 

@@ -139,18 +139,17 @@ class ImageQueryOutput:
 class ImageQueryUseCase:
     """Process image query with Vision + RAG."""
 
-    def __init__(self, llm_service, embedding_service, vector_store):
+    def __init__(self, llm_service, embedding_service, vector_store, image_service):
         self.llm_service = llm_service
         self.embedding_service = embedding_service
         self.vector_store = vector_store
+        self.image_service = image_service
 
     async def execute(self, input_data: ImageQueryInput) -> ImageQueryOutput:
         """Execute image query."""
-        from app.infrastructure.ai.vision import GeminiVisionService
-
         try:
             # 1. Vision: Analyze image
-            vision_service = GeminiVisionService()
+            vision_service = self.image_service
             
             if input_data.question:
                 # Answer specific question about image

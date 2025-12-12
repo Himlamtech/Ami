@@ -1,7 +1,7 @@
 """Chat DTOs."""
 
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -17,6 +17,8 @@ class SendMessageRequest(BaseModel):
     session_id: str
     content: str
     role: str = "user"
+    attachments: Optional[List[Dict[str, Any]]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class ChatMessageResponse(BaseModel):
@@ -27,6 +29,8 @@ class ChatMessageResponse(BaseModel):
     role: str
     content: str
     created_at: datetime
+    attachments: List[Dict[str, Any]] = Field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

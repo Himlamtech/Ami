@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import random
 
 from app.api.dependencies.auth import get_user_id
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 from app.api.schemas.suggestion_dto import SuggestionItem, SuggestionsResponse
 
 
@@ -39,12 +39,11 @@ async def get_suggestions(
     include_personalized: bool = Query(default=True),
 ):
     """Get personalized suggestions based on user profile and popular topics."""
-    factory = get_factory()
     suggestions: List[SuggestionItem] = []
 
     try:
         if include_personalized:
-            profile_repo = factory.get_student_profile_repository()
+            profile_repo = ServiceRegistry.get_student_profile_repository()
             profile = await profile_repo.find_by_user_id(user_id)
 
             if profile:

@@ -286,3 +286,20 @@ if __name__ == "__main__":
         # print(f"Transcription: {result['text']}")
 
     asyncio.run(test_stt())
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_stt():
+        service = GeminiSTTService()
+
+        # Health check
+        status = await service.health_check()
+        print(f"Health: {status}")
+
+        # Test with a file if available
+        # result = await service.transcribe_file("test.wav", language="vi")
+        # print(f"Transcription: {result['text']}")
+
+    asyncio.run(test_stt())

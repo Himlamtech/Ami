@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { UserProfile } from '@/types/chat'
+import { authApi } from '@/features/auth/api/authApi'
 
 interface AuthState {
-    user: UserProfile | null
+    user: (UserProfile & { role?: string }) | null
+    token: string | null
     isAuthenticated: boolean
     isLoading: boolean
     login: (email: string, password: string) => Promise<void>
+    register: (data: { email: string; password: string; full_name: string }) => Promise<void>
     logout: () => void
     setUser: (user: UserProfile | null) => void
 }
@@ -15,31 +18,71 @@ export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
             user: null,
+            token: null,
             isAuthenticated: false,
             isLoading: false,
 
-            login: async (email: string, _password: string) => {
+            login: async (email: string, password: string) => {
                 set({ isLoading: true })
+                try {
+                    const response = await authApi.login({ email, password })
 
-                // Simulate API call - Replace with real backend auth
-                await new Promise(resolve => setTimeout(resolve, 800))
+                    const user: UserProfile & { role?: string } = {
+                        id: response.user_id,
+                        email: response.email,
+                        displayName: response.full_name,
+                        major: 'Công nghệ thông tin', // Default
+                        academicLevel: 'undergraduate', // Default
+                        interests: [],
+                        role: response.role
+                    }
 
-                // Demo: admin@ptit.edu.vn is admin, others are user
-                const isAdmin = email.toLowerCase().includes('admin')
-                const user: UserProfile = {
-                    id: '1',
-                    email,
-                    displayName: isAdmin ? 'Admin PTIT' : 'Sinh viên PTIT',
-                    major: 'Công nghệ thông tin',
-                    academicLevel: 'undergraduate',
-                    interests: [],
+                    set({
+                        user,
+                        token: response.token,
+                        isAuthenticated: true,
+                        isLoading: false
+                    })
+                } catch (error) {
+                    set({ isLoading: false })
+                    throw error
                 }
+            },
 
-                set({ user, isAuthenticated: true, isLoading: false })
+            register: async (data) => {
+                set({ isLoading: true })
+                try {
+                    const response = await authApi.register({
+                        email: data.email,
+                        password: data.password,
+                        password_confirmation: data.password, // Frontend validates match
+                        full_name: data.full_name
+                    })
+
+                    const user: UserProfile & { role?: string } = {
+                        id: response.user_id,
+                        email: response.email,
+                        displayName: response.full_name,
+                        major: 'Công nghệ thông tin',
+                        academicLevel: 'undergraduate',
+                        interests: [],
+                        role: response.role
+                    }
+
+                    set({
+                        user,
+                        token: response.token,
+                        isAuthenticated: true,
+                        isLoading: false
+                    })
+                } catch (error) {
+                    set({ isLoading: false })
+                    throw error
+                }
             },
 
             logout: () => {
-                set({ user: null, isAuthenticated: false })
+                set({ user: null, token: null, isAuthenticated: false })
             },
 
             setUser: (user) => {

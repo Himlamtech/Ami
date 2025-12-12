@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '../api/adminApi'
 import {
     Search,
     Filter,
@@ -30,57 +32,6 @@ import {
 import { cn, formatDate } from '@/lib/utils'
 import type { AdminConversation } from '@/types/admin'
 
-// Mock data
-const mockConversations: AdminConversation[] = [
-    {
-        id: '1',
-        userId: 'u1',
-        userName: 'Nguyen Van A',
-        studentId: 'B21DCCN001',
-        title: 'Học phí kỳ 1',
-        preview: 'Học phí cho sinh viên CNTT là...',
-        messageCount: 5,
-        lastActive: new Date().toISOString(),
-        status: 'active',
-        hasNegativeFeedback: false,
-    },
-    {
-        id: '2',
-        userId: 'u2',
-        userName: 'Tran Thi B',
-        studentId: 'B21DCCN045',
-        title: 'Đăng ký môn học',
-        preview: 'Cách đăng ký môn học online...',
-        messageCount: 8,
-        lastActive: new Date(Date.now() - 3600000).toISOString(),
-        status: 'active',
-        hasNegativeFeedback: false,
-    },
-    {
-        id: '3',
-        userId: 'u3',
-        userName: 'Le Van C',
-        studentId: 'B20DCCN102',
-        title: 'Mẫu đơn xin nghỉ',
-        preview: 'Cho tôi mẫu đơn xin nghỉ...',
-        messageCount: 3,
-        lastActive: new Date(Date.now() - 7200000).toISOString(),
-        status: 'issues',
-        hasNegativeFeedback: true,
-    },
-    {
-        id: '4',
-        userId: 'u4',
-        userName: 'Pham D',
-        studentId: 'B21DCCN078',
-        title: 'Học bổng KKHT',
-        preview: 'Điều kiện để được học bổng...',
-        messageCount: 12,
-        lastActive: new Date(Date.now() - 86400000).toISOString(),
-        status: 'multiple_issues',
-        hasNegativeFeedback: true,
-    },
-]
 
 export default function ConversationsPage() {
     const [searchQuery, setSearchQuery] = useState('')
@@ -89,15 +40,15 @@ export default function ConversationsPage() {
         hasNegativeFeedback: false,
     })
 
-    const filteredConversations = mockConversations.filter((conv) => {
-        if (searchQuery && !conv.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-            return false
-        }
-        if (filters.hasNegativeFeedback && !conv.hasNegativeFeedback) {
-            return false
-        }
-        return true
+    const { data, isLoading, refetch } = useQuery({
+        queryKey: ['admin', 'conversations', searchQuery, filters],
+        queryFn: () => adminApi.getConversations({
+            search: searchQuery,
+            hasNegativeFeedback: filters.hasNegativeFeedback
+        }),
     })
+
+    const filteredConversations = data?.data || []
 
     const getStatusBadge = (status: AdminConversation['status']) => {
         const styles = {
@@ -123,14 +74,17 @@ export default function ConversationsPage() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-900">Conversations</h2>
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">Conversations</h2>
+                    <p className="text-sm text-[var(--muted)] mt-1">Browse and manage chat sessions.</p>
+                </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm">
                         <Download className="w-4 h-4 mr-2" />
                         Export
                     </Button>
-                    <Button variant="outline" size="sm">
-                        <RefreshCw className="w-4 h-4 mr-2" />
+                    <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+                        <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
                         Refresh
                     </Button>
                 </div>
@@ -139,25 +93,25 @@ export default function ConversationsPage() {
             {/* Filters */}
             <Card>
                 <CardContent className="p-4">
-                    <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="relative flex-1 min-w-[200px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                             <Input
                                 placeholder="Search conversations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
+                                className="pl-9 h-9 bg-[var(--surface2)]"
                             />
                         </div>
-                        <Button variant="outline" size="sm">
+                        <Button variant="ghost" size="sm" className="h-9 rounded-full bg-[var(--surface2)] shadow-sm">
                             <Filter className="w-4 h-4 mr-2" />
                             User
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="ghost" size="sm" className="h-9 rounded-full bg-[var(--surface2)] shadow-sm">
                             <Filter className="w-4 h-4 mr-2" />
                             Status
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="ghost" size="sm" className="h-9 rounded-full bg-[var(--surface2)] shadow-sm">
                             📅 Date Range
                         </Button>
                     </div>
@@ -169,7 +123,7 @@ export default function ConversationsPage() {
                                 onChange={(e) =>
                                     setFilters({ ...filters, hasNegativeFeedback: e.target.checked })
                                 }
-                                className="rounded border-neutral-300"
+                                className="h-4 w-4 rounded border-[color:var(--border)] text-primary focus:ring-2 focus:ring-[var(--ring)]"
                             />
                             Has negative feedback
                         </label>
@@ -193,40 +147,40 @@ export default function ConversationsPage() {
             {/* Table */}
             <Card>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b bg-neutral-50">
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
-                                        <input type="checkbox" className="rounded border-neutral-300" />
+                    <div className="overflow-x-auto rounded-[var(--radius)] bg-[var(--surface)] shadow-sm">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+                                <tr>
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)] w-10">
+                                        <input type="checkbox" className="h-4 w-4 rounded border-[color:var(--border)]" />
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                                         User
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                                         Title
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                                         Msgs
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                                         Last Active
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500">
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)]">
                                         Status
                                     </th>
-                                    <th className="text-left py-3 px-4 text-sm font-medium text-neutral-500"></th>
+                                    <th className="text-left py-3 px-4 font-medium text-[var(--muted)] w-14"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredConversations.map((conv) => (
                                     <tr
                                         key={conv.id}
-                                        className="border-b last:border-0 hover:bg-neutral-50 cursor-pointer"
+                                        className="border-b border-[color:var(--border)] last:border-0 hover:bg-[var(--surface2)] cursor-pointer transition-colors"
                                         onClick={() => setSelectedConversation(conv)}
                                     >
                                         <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" className="rounded border-neutral-300" />
+                                            <input type="checkbox" className="h-4 w-4 rounded border-[color:var(--border)]" />
                                         </td>
                                         <td className="py-3 px-4">
                                             <div>
@@ -277,16 +231,16 @@ export default function ConversationsPage() {
                     </div>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between p-4 border-t">
-                        <p className="text-sm text-neutral-500">
-                            Showing 1-{filteredConversations.length} of 1,234 conversations
+                    <div className="flex items-center justify-between p-4">
+                        <p className="text-sm text-[var(--muted)]">
+                            Showing 1-{filteredConversations.length} of {data?.total || 0} conversations
                         </p>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" disabled>
                                 <ChevronLeft className="w-4 h-4" />
                                 Prev
                             </Button>
-                            <Button variant="outline" size="sm" className="bg-primary text-white">
+                            <Button variant="outline" size="sm" className="bg-primary text-white border-transparent">
                                 1
                             </Button>
                             <Button variant="outline" size="sm">
@@ -325,20 +279,20 @@ export default function ConversationsPage() {
                         <div className="grid grid-cols-3 gap-6">
                             {/* Messages */}
                             <div className="col-span-2 space-y-4">
-                                <div className="p-4 bg-neutral-50 rounded-lg">
+                                <div className="p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
                                     <p className="text-sm text-neutral-500 mb-2">Session: sess_abc123</p>
                                     <div className="space-y-4">
                                         <div className="flex justify-end">
-                                            <div className="bg-primary text-white rounded-2xl rounded-br-md px-4 py-2 max-w-[80%]">
+                                            <div className="bg-[var(--surface)] shadow-sm rounded-2xl rounded-br-md px-4 py-2 max-w-[80%]">
                                                 <p className="text-sm">Học phí kỳ này bao nhiêu?</p>
                                                 <p className="text-xs opacity-70 mt-1">10:30 AM</p>
                                             </div>
                                         </div>
                                         <div className="flex gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm">
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm">
                                                 🤖
                                             </div>
-                                            <div className="bg-white border rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%]">
+                                            <div className="bg-[var(--surface)] shadow-sm rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%]">
                                                 <p className="text-sm">Chào bạn! Học phí kỳ 1 năm 2024-2025...</p>
                                                 <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500">
                                                     <span>👍 Helpful ✓</span>
@@ -352,7 +306,7 @@ export default function ConversationsPage() {
 
                             {/* User Info */}
                             <div className="space-y-4">
-                                <div className="p-4 bg-neutral-50 rounded-lg">
+                                <div className="p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
                                     <h4 className="font-medium mb-3">👤 User Info</h4>
                                     <div className="space-y-2 text-sm">
                                         <p>
@@ -369,7 +323,7 @@ export default function ConversationsPage() {
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-neutral-50 rounded-lg">
+                                <div className="p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
                                     <h4 className="font-medium mb-3">📈 Stats</h4>
                                     <div className="space-y-2 text-sm">
                                         <p>Total sessions: 45</p>
@@ -389,7 +343,7 @@ export default function ConversationsPage() {
                             </div>
                         </div>
                     )}
-                    <div className="flex gap-2 mt-4 pt-4 border-t">
+                    <div className="flex gap-2 mt-4 pt-4">
                         <Button variant="outline" size="sm">
                             Archive
                         </Button>

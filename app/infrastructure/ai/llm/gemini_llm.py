@@ -1,13 +1,11 @@
 """
-Google Gemini LLM provider implementation.
-Uses Google's Generative AI SDK (google-genai) with error handling and retry logic.
-Supports 2 modes: QA (quick) and REASONING (deep thinking).
+Google Gemini LLM provider - Simple, config-driven implementation.
 Supports Vision (image QA) capabilities.
 """
 
 import base64
 import logging
-from typing import Optional, AsyncIterator, Dict, Union
+from typing import Optional, AsyncIterator, Union
 
 import google.genai as genai
 from google.genai import types
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiLLMService(ILLMService):
-    """Google Gemini LLM provider with mode-based model selection."""
+    """Google Gemini LLM provider - wraps Google Generative AI SDK."""
 
     def __init__(
         self,
@@ -35,7 +33,6 @@ class GeminiLLMService(ILLMService):
             default_mode: Default operation mode
         """
         self.config = config or gemini_config
-        # Initialize Gemini client with API key
         self._client = genai.Client(api_key=self.config.api_key)
         self._models = {
             LLMMode.QA: self.config.model_qa,
@@ -43,31 +40,8 @@ class GeminiLLMService(ILLMService):
         }
         self._current_mode = default_mode
         logger.info(
-            f"Initialized GeminiLLMService - QA: {self.config.model_qa}, Reasoning: {self.config.model_reasoning}, "
-            f"Default mode: {default_mode.value}"
+            f"Gemini initialized - QA: {self.config.model_qa}, Reasoning: {self.config.model_reasoning}"
         )
-
-    def get_model_for_mode(self, mode: LLMMode) -> str:
-        """Get the model name for a specific mode."""
-        return self._models.get(mode, self._models[LLMMode.QA])
-
-    def set_mode(self, mode: LLMMode) -> None:
-        """Set the current operation mode."""
-        self._current_mode = mode
-        logger.debug(f"Gemini mode set to: {mode.value}")
-
-    def get_current_mode(self) -> LLMMode:
-        """Get the current operation mode."""
-        return self._current_mode
-
-    def get_available_models(self) -> Dict[LLMMode, str]:
-        """Get all available models for this provider."""
-        return self._models.copy()
-
-    def _get_active_model_name(self, mode: Optional[LLMMode] = None) -> str:
-        """Get the model name to use for this request."""
-        target_mode = mode if mode is not None else self._current_mode
-        return self._models[target_mode]
 
     async def generate(
         self,
@@ -76,26 +50,24 @@ class GeminiLLMService(ILLMService):
         mode: Optional[LLMMode] = None,
         **kwargs,
     ) -> str:
-        """Generate completion with mode-based model selection."""
-        model_name = self._get_active_model_name(mode)
+        """
+        Generate completion.
+        
+        Note: Context formatting should be done in Application layer.
+        """
+        model = self._models[mode or self._current_mode]
 
         try:
-            # Build full prompt with context
-            full_prompt = prompt
-            if context:
-                full_prompt = f"Use the following context to answer:\n{context}\n\nQuestion: {prompt}"
+            # Simple prompt building - context is system message equivalent
+            full_prompt = f"{context}\n\n{prompt}" if context else prompt
 
-            # Extract supported parameters
             temperature = kwargs.pop("temperature", 0.7)
             max_tokens = kwargs.pop("max_tokens", 4096)
 
-            logger.debug(
-                f"Generating with model: {model_name}, mode: {mode or self._current_mode}"
-            )
+            logger.debug(f"Generating with {model}")
 
-            # Generate response using async method
             response = await self._client.aio.models.generate_content(
-                model=model_name,
+                model=model,
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=temperature,
@@ -103,15 +75,13 @@ class GeminiLLMService(ILLMService):
                 ),
             )
 
-            result = response.text if response.text else ""
-            logger.debug(
-                f"Generated response: {len(result)} chars, model: {model_name}"
-            )
+            result = response.text or ""
+            logger.debug(f"Generated {len(result)} chars")
             return result
 
         except Exception as e:
-            logger.error(f"Error in Gemini generate: {e}")
-            raise RuntimeError(f"Failed to generate: {str(e)}")
+            logger.error(f"Gemini error: {e}")
+            raise RuntimeError(f"Generation failed: {str(e)}")
 
     async def stream_generate(
         self,
@@ -120,32 +90,24 @@ class GeminiLLMService(ILLMService):
         mode: Optional[LLMMode] = None,
         **kwargs,
     ) -> AsyncIterator[str]:
-        """Stream completion with mode-based model selection."""
-        model_name = self._get_active_model_name(mode)
+        """Stream completion."""
+        model = self._models[mode or self._current_mode]
 
         try:
-            # Build full prompt with context
-            full_prompt = prompt
-            if context:
-                full_prompt = f"Use the following context to answer:\n{context}\n\nQuestion: {prompt}"
+            full_prompt = f"{context}\n\n{prompt}" if context else prompt
 
-            # Extract supported parameters
             temperature = kwargs.pop("temperature", 0.7)
             max_tokens = kwargs.pop("max_tokens", 4096)
 
-            logger.debug(
-                f"Streaming with model: {model_name}, mode: {mode or self._current_mode}"
-            )
+            logger.debug(f"Streaming with {model}")
 
-            # Generate streaming response
             response = await self._client.aio.models.generate_content(
-                model=model_name,
+                model=model,
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=temperature,
                     max_output_tokens=max_tokens,
                 ),
-                stream=True,
             )
 
             async for chunk in response:
@@ -153,7 +115,7 @@ class GeminiLLMService(ILLMService):
                     yield chunk.text
 
         except Exception as e:
-            logger.error(f"Error in Gemini stream: {e}")
+            logger.error(f"Gemini stream error: {e}")
             yield f"[ERROR: {str(e)}]"
 
     async def image_qa(
@@ -163,19 +125,7 @@ class GeminiLLMService(ILLMService):
         mode: Optional[LLMMode] = None,
         **kwargs,
     ) -> str:
-        """
-        Answer questions about an image using Gemini Vision.
-
-        Args:
-            prompt: Question about the image
-            image: Image as bytes, base64 string, or URL
-            mode: QA or REASONING (default: QA)
-            **kwargs: Additional generation parameters
-
-        Returns:
-            Answer about the image
-        """
-        model_name = self._get_active_model_name(mode)
+        """Answer questions about an image using Gemini Vision."""
 
         try:
             # Prepare image part
@@ -204,15 +154,14 @@ class GeminiLLMService(ILLMService):
             # Build contents with image and text
             contents = [image_part, prompt]
 
-            # Extract parameters
             temperature = kwargs.pop("temperature", 0.7)
             max_tokens = kwargs.pop("max_tokens", 4096)
+            model = self._models[mode or self._current_mode]
 
-            logger.debug(f"Image QA with model: {model_name}")
+            logger.debug(f"Image QA with {model}")
 
-            # Generate response
             response = await self._client.aio.models.generate_content(
-                model=model_name,
+                model=model,
                 contents=contents,
                 config=types.GenerateContentConfig(
                     temperature=temperature,
@@ -220,13 +169,13 @@ class GeminiLLMService(ILLMService):
                 ),
             )
 
-            result = response.text if response.text else ""
-            logger.debug(f"Image QA response: {len(result)} chars")
+            result = response.text or ""
+            logger.debug(f"Image QA: {len(result)} chars")
             return result
 
         except Exception as e:
-            logger.error(f"Error in Gemini image_qa: {e}")
-            raise RuntimeError(f"Failed to process image: {str(e)}")
+            logger.error(f"Gemini image_qa error: {e}")
+            raise RuntimeError(f"Image processing failed: {str(e)}")
 
 
 if __name__ == "__main__":
@@ -235,7 +184,7 @@ if __name__ == "__main__":
 
     async def test_gemini():
         service = GeminiLLMService()
-        prompt = "What is PTIT"
+        prompt = "PTIT là gì? có bao nhiêu ngành, điểm ngành IT là bao nhiêu?"
         response = await service.generate(prompt, mode=LLMMode.QA)
         print("Response:", response)
 

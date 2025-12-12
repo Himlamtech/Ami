@@ -237,3 +237,46 @@ class MinIOStorage(IStorageService):
         except Exception as e:
             logger.error(f"Generate presigned URL failed: {e}")
             raise RuntimeError(f"Generate presigned URL failed: {str(e)}")
+
+
+
+if __name__ == "__main__":
+    async def test():
+        storage = MinIOStorage()
+        file_content = b"Hello, MinIO!"
+        filename = "test.txt"
+        content_type = "text/plain"
+
+        # Upload
+        url = await storage.upload_file(
+            file_data=file_content,
+            filename=filename,
+            content_type=content_type,
+            path_prefix="tests",
+        )
+        print("Uploaded URL:", url)
+
+        # Download
+        object_name = url.split(f"/{storage.bucket}/")[-1]
+        downloaded_data = await storage.download(object_name)
+        print("Downloaded Data:", downloaded_data)
+
+        # Check existence
+        exists = await storage.file_exists(object_name)
+        print("File Exists:", exists)
+
+        # Get size
+        size = await storage.get_file_size(object_name)
+        print("File Size:", size)
+
+        # Generate presigned URL
+        presigned_url = await storage.get_presigned_url(object_name, expires_seconds=600)
+        print("Presigned URL:", presigned_url)
+
+        # Delete
+        deleted = await storage.delete_file(object_name)
+        print("File Deleted:", deleted)
+
+    import asyncio
+
+    asyncio.run(test())

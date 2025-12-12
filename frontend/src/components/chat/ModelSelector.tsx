@@ -1,4 +1,4 @@
-import { ChevronDown, Zap, Brain, Sparkles } from 'lucide-react'
+import { ChevronDown, Zap, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
@@ -7,8 +7,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-
-export type ThinkingMode = 'fast' | 'balance' | 'thinking'
+import type { ThinkingMode } from '@/types/chat'
 
 interface ModelOption {
     value: ThinkingMode
@@ -20,20 +19,14 @@ interface ModelOption {
 const models: ModelOption[] = [
     {
         value: 'fast',
-        label: 'Nhanh',
-        description: 'Phản hồi nhanh nhất',
+        label: 'Fast',
+        description: 'Phản hồi nhanh, câu trả lời ngắn gọn',
         icon: Zap,
     },
     {
-        value: 'balance',
-        label: 'Cân bằng',
-        description: 'Cân bằng tốc độ & chất lượng',
-        icon: Sparkles,
-    },
-    {
         value: 'thinking',
-        label: 'Suy luận',
-        description: 'Câu hỏi phức tạp, chính xác nhất',
+        label: 'Thinking',
+        description: 'Suy luận sâu, phân tích kỹ lưỡng',
         icon: Brain,
     },
 ]
@@ -45,7 +38,7 @@ interface ModelSelectorProps {
 }
 
 export default function ModelSelector({ value, onChange, className }: ModelSelectorProps) {
-    const selected = models.find((m) => m.value === value) || models[1]
+    const selected = models.find((m) => m.value === value) || models[0]
     const Icon = selected.icon
 
     return (
@@ -55,16 +48,16 @@ export default function ModelSelector({ value, onChange, className }: ModelSelec
                     variant="ghost"
                     size="sm"
                     className={cn(
-                        'gap-1.5 text-xs font-normal text-neutral-600 hover:text-neutral-900',
+                        'gap-1.5 h-9 px-2.5 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg',
                         className
                     )}
                 >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{selected.label}</span>
-                    <ChevronDown className="w-3 h-3 opacity-50" />
+                    <Icon className="w-4 h-4" />
+                    <span>{selected.label}</span>
+                    <ChevronDown className="w-3.5 h-3.5 opacity-50" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent align="start" className="w-64">
                 {models.map((model) => {
                     const ModelIcon = model.icon
                     return (

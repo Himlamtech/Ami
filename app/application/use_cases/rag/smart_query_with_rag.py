@@ -77,6 +77,7 @@ class SmartQueryInput:
     rag_config: Optional[RAGConfig] = None
     generation_config: Optional[GenerationConfig] = None
     system_prompt: Optional[str] = None
+    conversation_context: Optional[str] = None
 
 
 class SmartQueryWithRAGUseCase:
@@ -167,11 +168,13 @@ Quy tắc trả lời:
                 )
 
         # 4. Build prompt with artifact context
+        conversation_context = input_data.conversation_context or ""
         full_prompt = self._build_prompt(
             query=input_data.query,
             context=context,
             has_artifacts=len(artifacts) > 0,
             system_prompt=input_data.system_prompt or self.DEFAULT_SYSTEM_PROMPT,
+            conversation_context=conversation_context,
         )
 
         # 5. Generate answer
@@ -308,9 +311,15 @@ Quy tắc trả lời:
         context: str,
         has_artifacts: bool,
         system_prompt: str,
+        conversation_context: str = "",
     ) -> str:
         """Build full prompt for LLM."""
         parts = [f"System: {system_prompt}"]
+
+        if conversation_context:
+            parts.append(
+                "\nNgữ cảnh cuộc trò chuyện trước đó:\n" + conversation_context
+            )
 
         if context:
             parts.append(f"\nThông tin tham khảo:\n{context}")

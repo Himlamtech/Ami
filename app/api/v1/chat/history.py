@@ -19,7 +19,7 @@ from app.application.use_cases.chat import (
 )
 from app.domain.enums.chat_message_role import ChatMessageRole
 from app.domain.exceptions.chat_exceptions import ChatSessionNotFoundException
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -32,9 +32,7 @@ async def create_session(
 ):
     """Create new chat session."""
     from app.application.use_cases.chat import CreateSessionUseCase
-
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
     use_case = CreateSessionUseCase(chat_repo)
 
     result = await use_case.execute(
@@ -60,8 +58,7 @@ async def send_message(request: SendMessageRequest):
     from app.application.use_cases.chat import SendMessageUseCase
 
     try:
-        factory = get_factory()
-        chat_repo = factory.get_chat_repository()
+        chat_repo = ServiceRegistry.get_chat_repository()
         use_case = SendMessageUseCase(chat_repo)
 
         result = await use_case.execute(
@@ -69,6 +66,8 @@ async def send_message(request: SendMessageRequest):
                 session_id=request.session_id,
                 role=ChatMessageRole(request.role),
                 content=request.content,
+                attachments=request.attachments,
+                metadata=request.metadata,
             )
         )
 
@@ -78,6 +77,8 @@ async def send_message(request: SendMessageRequest):
             role=result.message.role.value,
             content=result.message.content,
             created_at=result.message.created_at,
+            attachments=result.message.attachments,
+            metadata=result.message.metadata,
         )
 
     except ChatSessionNotFoundException as e:
@@ -90,8 +91,7 @@ async def get_history(session_id: str, limit: int = 50, skip: int = 0):
     from app.application.use_cases.chat import GetHistoryUseCase
 
     try:
-        factory = get_factory()
-        chat_repo = factory.get_chat_repository()
+        chat_repo = ServiceRegistry.get_chat_repository()
         use_case = GetHistoryUseCase(chat_repo)
 
         result = await use_case.execute(
@@ -118,6 +118,8 @@ async def get_history(session_id: str, limit: int = 50, skip: int = 0):
                     role=msg.role.value,
                     content=msg.content,
                     created_at=msg.created_at,
+                    attachments=msg.attachments,
+                    metadata=msg.metadata,
                 )
                 for msg in result.messages
             ],
@@ -135,8 +137,7 @@ async def list_sessions(
     limit: int = 100,
 ):
     """List chat sessions for user."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     sessions = await chat_repo.list_sessions_by_user(
         user_id=user_id,
@@ -171,8 +172,7 @@ async def search_sessions(
     limit: int = Query(default=50, ge=1, le=100),
 ):
     """Search chat sessions by title."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     sessions = await chat_repo.list_sessions_by_user(
         user_id=user_id,
@@ -213,8 +213,7 @@ async def rename_session(
     user_id: str = Depends(get_user_id),
 ):
     """Rename a chat session."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -246,8 +245,7 @@ async def archive_session(
     user_id: str = Depends(get_user_id),
 ):
     """Archive a chat session."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -270,8 +268,7 @@ async def unarchive_session(
     user_id: str = Depends(get_user_id),
 ):
     """Restore an archived chat session."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -295,8 +292,7 @@ async def delete_session(
     permanent: bool = Query(default=False, description="Permanently delete"),
 ):
     """Delete a chat session."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -324,8 +320,7 @@ async def export_session(
     format: str = Query(default="json", description="Export format: json or markdown"),
 ):
     """Export a chat session."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -397,8 +392,7 @@ async def list_archived_sessions(
     limit: int = Query(default=50, ge=1, le=100),
 ):
     """List archived chat sessions."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     # Get all sessions including archived, then filter to only archived
     sessions = await chat_repo.list_sessions_by_user(

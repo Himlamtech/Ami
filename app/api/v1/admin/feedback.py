@@ -17,7 +17,7 @@ from app.api.schemas.admin_dto import (
     FeedbackIssue,
     TopIssuesResponse,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 from app.domain.entities.feedback import FeedbackType, FeedbackStatus
 
 
@@ -34,8 +34,7 @@ async def get_feedback_dashboard(
 
     Period options: 7d, 30d, 90d
     """
-    factory = get_factory()
-    feedback_repo = factory.get_feedback_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
 
     # Parse period
     days = {"7d": 7, "30d": 30, "90d": 90}[period]
@@ -116,8 +115,7 @@ async def list_feedback(
     - reviewed: True/False
     - is_negative: True/False (show only negative/positive feedback)
     """
-    factory = get_factory()
-    feedback_repo = factory.get_feedback_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
 
     skip = (page - 1) * limit
 
@@ -185,10 +183,9 @@ async def get_feedback_detail(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get detailed feedback with message context."""
-    factory = get_factory()
-    feedback_repo = factory.get_feedback_repository()
-    chat_repo = factory.get_chat_repository()
-    profile_repo = factory.get_student_profile_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
 
     feedback = await feedback_repo.get_by_id(feedback_id)
     if not feedback:
@@ -257,8 +254,7 @@ async def review_feedback(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Mark feedback as reviewed."""
-    factory = get_factory()
-    feedback_repo = factory.get_feedback_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
 
     feedback = await feedback_repo.get_by_id(feedback_id)
     if not feedback:
@@ -289,8 +285,7 @@ async def get_top_issues(
 
     Analyzes negative feedback to identify common problems.
     """
-    factory = get_factory()
-    feedback_repo = factory.get_feedback_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
 
     days = {"7d": 7, "30d": 30, "90d": 90}[period]
 

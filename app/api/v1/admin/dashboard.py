@@ -8,7 +8,7 @@ from app.api.schemas.document_dto import (
     DocumentResponse,
     DocumentListResponse,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -25,8 +25,7 @@ async def list_documents(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """List all documents (admin only)."""
-    factory = get_factory()
-    doc_repo = factory.get_document_repository()
+    doc_repo = ServiceRegistry.get_document_repository()
 
     documents = await doc_repo.list_documents(
         skip=skip,
@@ -61,8 +60,7 @@ async def delete_document(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Delete a document (admin only)."""
-    factory = get_factory()
-    doc_repo = factory.get_document_repository()
+    doc_repo = ServiceRegistry.get_document_repository()
 
     doc = await doc_repo.get_by_id(document_id)
     if not doc:
@@ -81,17 +79,20 @@ async def delete_document(
 @router.get("/stats")
 async def get_stats(is_admin: bool = Depends(verify_admin_api_key)):
     """Get system statistics (admin only)."""
-    factory = get_factory()
-
-    doc_repo = factory.get_document_repository()
-    chat_repo = factory.get_chat_repository()
+    doc_repo = ServiceRegistry.get_document_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     total_docs = await doc_repo.count()
     total_sessions = await chat_repo.count_all_sessions()
+    
+    # Calculate total chunks from all documents
+    documents = await doc_repo.list_documents(skip=0, limit=1000)
+    total_chunks = sum(doc.chunk_count for doc in documents)
 
     return {
         "total_documents": total_docs,
         "total_chat_sessions": total_sessions,
+        "total_chunks": total_chunks,
         "version": "2.0.0-refactored",
         "architecture": "Clean Architecture",
     }

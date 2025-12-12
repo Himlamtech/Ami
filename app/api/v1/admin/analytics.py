@@ -16,7 +16,7 @@ from app.api.schemas.admin_dto import (
     PerformanceAnalyticsResponse,
     BudgetAlertRequest,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/analytics", tags=["Admin - Analytics"])
@@ -50,8 +50,7 @@ async def get_analytics_overview(
 
     Period options: today, week, month
     """
-    factory = get_factory()
-    usage_repo = factory.get_usage_metric_repository()
+    usage_repo = ServiceRegistry.get_usage_metric_repository()
 
     date_from, date_to = _parse_period(period)
 
@@ -81,9 +80,8 @@ async def get_usage_analytics(
     - Requests by endpoint
     - Peak hours heatmap
     """
-    factory = get_factory()
-    usage_repo = factory.get_usage_metric_repository()
-    daily_repo = factory.get_daily_stats_repository()
+    usage_repo = ServiceRegistry.get_usage_metric_repository()
+    daily_repo = ServiceRegistry.get_daily_stats_repository()
 
     date_from, date_to = _parse_period(period)
 
@@ -127,8 +125,7 @@ async def get_cost_analytics(
 
     Breakdown options: provider, model, use_case
     """
-    factory = get_factory()
-    llm_repo = factory.get_llm_usage_repository()
+    llm_repo = ServiceRegistry.get_llm_usage_repository()
 
     date_from, date_to = _parse_period(period)
 
@@ -193,8 +190,7 @@ async def get_performance_analytics(
     - Error breakdown by type
     - Slow queries list
     """
-    factory = get_factory()
-    usage_repo = factory.get_usage_metric_repository()
+    usage_repo = ServiceRegistry.get_usage_metric_repository()
 
     date_from, date_to = _parse_period(period)
 
@@ -288,11 +284,10 @@ async def export_analytics(
     Types: usage, costs, performance
     Formats: json, csv
     """
-    factory = get_factory()
     date_from, date_to = _parse_period(period)
 
     if type == "usage":
-        usage_repo = factory.get_usage_metric_repository()
+        usage_repo = ServiceRegistry.get_usage_metric_repository()
         stats = await usage_repo.get_overview_stats(
             date_from=date_from, date_to=date_to
         )
@@ -310,7 +305,7 @@ async def export_analytics(
         }
 
     elif type == "costs":
-        llm_repo = factory.get_llm_usage_repository()
+        llm_repo = ServiceRegistry.get_llm_usage_repository()
         summary = await llm_repo.get_cost_summary(date_from=date_from, date_to=date_to)
         by_provider = await llm_repo.get_cost_by_provider(
             date_from=date_from, date_to=date_to
@@ -326,7 +321,7 @@ async def export_analytics(
         }
 
     else:  # performance
-        usage_repo = factory.get_usage_metric_repository()
+        usage_repo = ServiceRegistry.get_usage_metric_repository()
         percentiles = await usage_repo.get_latency_percentiles(
             date_from=date_from, date_to=date_to
         )

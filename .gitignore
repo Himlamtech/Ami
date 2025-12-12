@@ -112,3 +112,4 @@ qdrant_storage/
 
 # Postman
 postman/
+!frontend/src/lib/

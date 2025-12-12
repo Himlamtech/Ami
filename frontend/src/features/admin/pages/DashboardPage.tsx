@@ -1,26 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Users, Zap, AlertCircle, RefreshCw, FileText, MessageSquare, Database } from 'lucide-react'
+import { BarChart3, Users, Zap, AlertCircle, RefreshCw, FileText, MessageSquare, Database, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import adminApi from '@/services/adminApi'
+import { adminApi } from '../api/adminApi'
+import { Link } from 'react-router-dom'
 
 export default function DashboardPage() {
-    const { data: overview, isLoading, refetch } = useQuery({
-        queryKey: ['admin', 'overview'],
-        queryFn: () => adminApi.getAnalyticsOverview('today'),
-    })
-
-    const { data: stats } = useQuery({
-        queryKey: ['admin', 'stats'],
-        queryFn: () => adminApi.getStats(),
+    const { data: stats, isLoading, refetch } = useQuery({
+        queryKey: ['admin', 'dashboard'],
+        queryFn: adminApi.getDashboardStats,
     })
 
     return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Dashboard</h1>
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+                    <p className="text-sm text-[var(--muted)] mt-1">Overview of AMI usage and system health.</p>
+                </div>
                 <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
                     <RefreshCw className={cn('w-4 h-4 mr-2', isLoading && 'animate-spin')} />
                     Refresh
@@ -31,29 +29,42 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                     title="Requests"
-                    value={overview?.requests ?? '-'}
+                    value={stats?.totalRequests ?? '-'}
                     icon={BarChart3}
                     loading={isLoading}
                 />
                 <StatCard
                     title="Active Users"
-                    value={overview?.active_users ?? '-'}
+                    value={stats?.activeUsers ?? '-'}
                     icon={Users}
                     loading={isLoading}
                 />
                 <StatCard
                     title="Avg Latency"
-                    value={overview ? `${overview.avg_latency_ms.toFixed(0)}ms` : '-'}
+                    value={stats ? `${Math.round(stats.avgLatency)}ms` : '0ms'}
                     icon={Zap}
                     loading={isLoading}
                 />
                 <StatCard
                     title="Error Rate"
-                    value={overview ? `${(overview.error_rate * 100).toFixed(1)}%` : '-'}
+                    value={stats ? `${(stats.errorRate * 100).toFixed(1)}%` : '-'}
                     icon={AlertCircle}
                     loading={isLoading}
                 />
             </div>
+
+            {/* Quick actions */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Quick actions</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <QuickLink title="Conversations" description="Review sessions & issues" to="/admin/conversations" />
+                    <QuickLink title="Knowledge gaps" description="Fix low-confidence queries" to="/admin/knowledge" />
+                    <QuickLink title="Datasources" description="Manage crawlers & feeds" to="/admin/datasources" />
+                    <QuickLink title="Vector store" description="Monitor embeddings health" to="/admin/vector-store" />
+                </CardContent>
+            </Card>
 
             {/* System Stats */}
             <Card>
@@ -62,25 +73,25 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <FileText className="w-6 h-6 mx-auto mb-2 text-blue-600" />
-                            <p className="text-2xl font-bold">{stats?.documents_count ?? '-'}</p>
-                            <p className="text-sm text-neutral-500">Documents</p>
+                        <div className="text-center p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
+                            <FileText className="w-6 h-6 mx-auto mb-2 text-neutral-500" />
+                            <p className="text-2xl font-semibold">{stats?.totalDocuments ?? '-'}*</p>
+                            <p className="text-sm text-[var(--muted)]">Documents</p>
                         </div>
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <Database className="w-6 h-6 mx-auto mb-2 text-green-600" />
-                            <p className="text-2xl font-bold">{stats?.chunks_count ?? '-'}</p>
-                            <p className="text-sm text-neutral-500">Chunks</p>
+                        <div className="text-center p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
+                            <Database className="w-6 h-6 mx-auto mb-2 text-neutral-500" />
+                            <p className="text-2xl font-semibold">{stats?.totalChunks ?? '-'}</p>
+                            <p className="text-sm text-[var(--muted)]">Chunks</p>
                         </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                            <MessageSquare className="w-6 h-6 mx-auto mb-2 text-purple-600" />
-                            <p className="text-2xl font-bold">{stats?.sessions_count ?? '-'}</p>
-                            <p className="text-sm text-neutral-500">Sessions</p>
+                        <div className="text-center p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
+                            <MessageSquare className="w-6 h-6 mx-auto mb-2 text-neutral-500" />
+                            <p className="text-2xl font-semibold">{stats?.totalSessions ?? '-'}</p>
+                            <p className="text-sm text-[var(--muted)]">Sessions</p>
                         </div>
-                        <div className="text-center p-4 bg-orange-50 rounded-lg">
-                            <Users className="w-6 h-6 mx-auto mb-2 text-orange-600" />
-                            <p className="text-2xl font-bold">{stats?.users_count ?? '-'}</p>
-                            <p className="text-sm text-neutral-500">Users</p>
+                        <div className="text-center p-4 bg-[var(--surface2)] rounded-[var(--radius)]">
+                            <Users className="w-6 h-6 mx-auto mb-2 text-neutral-500" />
+                            <p className="text-2xl font-semibold">{stats?.activeUsers ?? '-'}</p>
+                            <p className="text-sm text-[var(--muted)]">Users</p>
                         </div>
                     </div>
                 </CardContent>
@@ -109,5 +120,31 @@ function StatCard({ title, value, icon: Icon, loading }: {
                 )}
             </CardContent>
         </Card>
+    )
+}
+
+function QuickLink({
+    title,
+    description,
+    to,
+}: {
+    title: string
+    description: string
+    to: string
+}) {
+    return (
+        <Button
+            asChild
+            variant="ghost"
+            className="h-auto p-4 rounded-[var(--radius)] bg-[var(--surface2)] hover:bg-[var(--surface)] hover:shadow-sm transition-all justify-between"
+        >
+            <Link to={to}>
+                <div className="text-left">
+                    <div className="font-medium">{title}</div>
+                    <div className="text-xs text-[var(--muted)] mt-1">{description}</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-neutral-400" />
+            </Link>
+        </Button>
     )
 }

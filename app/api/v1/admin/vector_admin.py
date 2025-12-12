@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
 from app.api.dependencies.auth import verify_admin_api_key
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 # Use cases imports
 from app.application.use_cases.vector_store import (
@@ -72,8 +72,7 @@ class HealthResponse(BaseModel):
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Check vector store health."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         return HealthResponse(healthy=False, message="Vector store not configured")
@@ -92,8 +91,7 @@ async def list_collections(
     _: bool = Depends(verify_admin_api_key),
 ):
     """List all collections (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -113,8 +111,7 @@ async def create_collection(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Create a new collection (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -141,8 +138,7 @@ async def delete_collection(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Delete a collection (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -167,8 +163,7 @@ async def get_collection_info(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Get collection information (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -202,8 +197,7 @@ async def scroll_documents(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Scroll through documents in a collection (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -234,8 +228,7 @@ async def get_document(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Get a specific document by ID (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -265,8 +258,7 @@ async def update_document_metadata(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Update document metadata (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(
@@ -307,8 +299,7 @@ async def delete_documents_by_filter(
     _: bool = Depends(verify_admin_api_key),
 ):
     """Delete documents matching filter (admin only)."""
-    factory = get_factory()
-    vector_store = factory.get_vector_store()
+    vector_store = ServiceRegistry.get_vector_store()
 
     if vector_store is None:
         raise HTTPException(

@@ -13,7 +13,7 @@ from app.api.schemas.admin_dto import (
     ExportRequest,
     ExportResponse,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/conversations", tags=["Admin - Conversations"])
@@ -39,8 +39,7 @@ async def list_conversations(
     - status: active, archived, or deleted
     - has_feedback: Has any feedback (positive or negative)
     """
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     skip = (page - 1) * limit
 
@@ -108,9 +107,8 @@ async def get_conversation_detail(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get detailed conversation view including messages and user profile."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
-    profile_repo = factory.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
 
     # Get session
     session = await chat_repo.get_session_by_id(session_id)
@@ -190,8 +188,7 @@ async def get_conversation_messages(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get paginated messages for a conversation."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     skip = (page - 1) * limit
 
@@ -228,8 +225,7 @@ async def archive_conversation(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Archive a conversation."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -250,8 +246,7 @@ async def restore_conversation(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Restore an archived conversation."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     session = await chat_repo.get_session_by_id(session_id)
     if not session:
@@ -272,8 +267,7 @@ async def delete_conversation(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Delete a conversation (soft delete)."""
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     success = await chat_repo.delete_session(session_id)
     if not success:
@@ -298,9 +292,7 @@ async def export_conversations(
     """
     import uuid
     from app.application.services.chat_history_service import ChatHistoryService
-
-    factory = get_factory()
-    chat_repo = factory.get_chat_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     export_id = str(uuid.uuid4())
 

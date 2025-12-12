@@ -387,3 +387,27 @@ class FireCrawlCrawler(IWebCrawler):
             cleaned = cleaned.replace("\n\n\n", "\n\n")
 
         return cleaned.strip()
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_crawler():
+        crawler = FireCrawlCrawler()
+        url = "https://www.ptit.edu.vn/"
+        result = await crawler.scrape_url(url)
+        if result["success"]:
+            print(f"Scraped {url}: {len(result['markdown'])} chars")
+        else:
+            print(f"Failed to scrape {url}: {result['error']}")
+
+        crawl_results = await crawler.crawl_website(url, max_depth=1, limit=5)
+        print(f"Crawled {len(crawl_results)} pages from {url}")
+        print("First page content length:", len(crawl_results[0]["content"]) if crawl_results else 0)
+        print(crawl_results[0]["content"][:500] if crawl_results else "")
+        search_result = await crawler.search_web("PTIT", max_results=3)
+        if search_result["success"]:
+            print(f"Search found {search_result['total_results']} results")
+        else:
+            print(f"Search failed: {search_result['error']}")
+
+    asyncio.run(test_crawler())

@@ -12,7 +12,7 @@ from app.api.schemas.admin_dto import (
     CoverageAnalysisResponse,
 )
 from app.domain.entities.search_log import GapStatus
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/knowledge", tags=["Admin - Knowledge Quality"])
@@ -30,9 +30,8 @@ async def get_knowledge_health(
     - Average confidence scores
     - Recent query success rate
     """
-    factory = get_factory()
-    search_log_repo = factory.get_search_log_repository()
-    gap_repo = factory.get_knowledge_gap_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
 
     # Get stats from recent searches
     now = datetime.now()
@@ -83,8 +82,7 @@ async def get_knowledge_gaps(
 
     Knowledge gaps are queries that consistently return low-confidence results.
     """
-    factory = get_factory()
-    gap_repo = factory.get_knowledge_gap_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
 
     skip = (page - 1) * limit
 
@@ -131,9 +129,8 @@ async def get_gap_detail(
     """
     Get detailed information about a specific knowledge gap.
     """
-    factory = get_factory()
-    gap_repo = factory.get_knowledge_gap_repository()
-    search_log_repo = factory.get_search_log_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
 
     gap = await gap_repo.find_by_id(gap_id)
     if not gap:
@@ -197,8 +194,7 @@ async def update_gap_status(
 
     Status flow: detected → todo → in_progress → resolved/dismissed
     """
-    factory = get_factory()
-    gap_repo = factory.get_knowledge_gap_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
 
     gap = await gap_repo.find_by_id(gap_id)
     if not gap:
@@ -237,8 +233,7 @@ async def get_low_confidence_queries(
 
     These queries may indicate gaps in the knowledge base.
     """
-    factory = get_factory()
-    search_log_repo = factory.get_search_log_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
 
     # Calculate date range
     now = datetime.now()
@@ -276,9 +271,8 @@ async def get_coverage_analysis(
 
     Analyzes which topics are well-covered vs under-represented.
     """
-    factory = get_factory()
-    search_log_repo = factory.get_search_log_repository()
-    gap_repo = factory.get_knowledge_gap_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
 
     now = datetime.now()
     date_from = now - timedelta(days=30)
@@ -325,9 +319,8 @@ async def trigger_gap_detection(
 
     Analyzes recent queries to identify new knowledge gaps.
     """
-    factory = get_factory()
-    search_log_repo = factory.get_search_log_repository()
-    gap_repo = factory.get_knowledge_gap_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
+    gap_repo = ServiceRegistry.get_knowledge_gap_repository()
 
     now = datetime.now()
     date_from = now - timedelta(days=days)

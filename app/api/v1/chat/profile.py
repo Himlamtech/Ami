@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 from app.application.services.personalization_service import PersonalizationService
 from app.domain.entities.student_profile import StudentLevel
 from app.api.schemas.profile_dto import (
@@ -17,8 +17,7 @@ router = APIRouter(prefix="/profile", tags=["Profile"])
 
 
 def _get_service() -> PersonalizationService:
-    factory = get_factory()
-    repo = factory.get_student_profile_repository()
+    repo = ServiceRegistry.get_student_profile_repository()
     return PersonalizationService(repo)
 
 

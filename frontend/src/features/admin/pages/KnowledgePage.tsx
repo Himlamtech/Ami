@@ -5,83 +5,52 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import type { KnowledgeGap } from '@/types/admin'
 
-// Mock data
-const mockGaps: KnowledgeGap[] = [
-    {
-        id: '1',
-        topic: 'Học bổng khuyến khích học tập 2024',
-        queryCount: 45,
-        avgScore: 0.32,
-        feedbackRate: 40,
-        sampleQueries: [
-            'Điều kiện học bổng KKHT năm nay',
-            'Mức học bổng khuyến khích 2024',
-            'Khi nào nộp hồ sơ xét học bổng',
-        ],
-        bestMatch: { title: 'Quy định học bổng 2023', score: 0.45, outdated: true },
-        suggestedAction: 'Add updated document for 2024',
-        status: 'todo',
-        priority: 'high',
-    },
-    {
-        id: '2',
-        topic: 'Đăng ký môn học online',
-        queryCount: 38,
-        avgScore: 0.48,
-        feedbackRate: 55,
-        sampleQueries: [
-            'Cách đăng ký môn học trên portal',
-            'Lịch đăng ký môn học kỳ 2',
-            'Hủy môn học đã đăng ký',
-        ],
-        bestMatch: { title: 'Hướng dẫn đăng ký môn học', score: 0.52 },
-        suggestedAction: 'Update with new portal interface',
-        status: 'in_progress',
-        priority: 'medium',
-    },
-    {
-        id: '3',
-        topic: 'Thủ tục xin nghỉ học tạm thời',
-        queryCount: 25,
-        avgScore: 0.55,
-        feedbackRate: 65,
-        sampleQueries: [
-            'Mẫu đơn xin nghỉ học',
-            'Quy trình bảo lưu kết quả',
-        ],
-        bestMatch: { title: 'Quy định nghỉ học', score: 0.58 },
-        suggestedAction: 'Add more detailed process steps',
-        status: 'todo',
-        priority: 'low',
-    },
-]
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '../api/adminApi'
 
 export default function KnowledgePage() {
     const [activeTab, setActiveTab] = useState('gaps')
 
+    const { data: gaps = [], isLoading: gapsLoading } = useQuery({
+        queryKey: ['admin', 'knowledge-gaps'],
+        queryFn: adminApi.getKnowledgeGaps,
+    })
+
     const gapsByPriority = {
-        high: mockGaps.filter((g) => g.priority === 'high'),
-        medium: mockGaps.filter((g) => g.priority === 'medium'),
-        low: mockGaps.filter((g) => g.priority === 'low'),
+        high: gaps.filter((g: KnowledgeGap) => g.priority === 'high'),
+        medium: gaps.filter((g: KnowledgeGap) => g.priority === 'medium'),
+        low: gaps.filter((g: KnowledgeGap) => g.priority === 'low'),
     }
 
     const stats = {
-        todo: mockGaps.filter((g) => g.status === 'todo').length,
-        inProgress: mockGaps.filter((g) => g.status === 'in_progress').length,
-        resolved: 12,
-        ignored: 2,
+        todo: gaps.filter((g: KnowledgeGap) => g.status === 'todo').length,
+        inProgress: gaps.filter((g: KnowledgeGap) => g.status === 'in_progress').length,
+        resolved: gaps.filter((g: KnowledgeGap) => g.status === 'resolved').length,
+        ignored: gaps.filter((g: KnowledgeGap) => g.status === 'ignored').length,
     }
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-neutral-900">Knowledge Base Quality</h2>
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">Knowledge Base Quality</h2>
+                    <p className="text-sm text-[var(--muted)] mt-1">Identify gaps and improve answer coverage.</p>
+                </div>
             </div>
+
+            {gapsLoading && (
+                <Card>
+                    <CardContent className="p-4 text-sm text-neutral-500">
+                        Loading knowledge gaps...
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -203,12 +172,6 @@ function GapSection({
     color: 'error' | 'warning' | 'success'
     gaps: KnowledgeGap[]
 }) {
-    const colorStyles = {
-        error: 'bg-error/10 text-error border-error/20',
-        warning: 'bg-warning/10 text-warning border-warning/20',
-        success: 'bg-success/10 text-success border-success/20',
-    }
-
     const dotColors = {
         error: 'bg-error',
         warning: 'bg-warning',
@@ -217,13 +180,16 @@ function GapSection({
 
     return (
         <Card>
-            <CardHeader className={cn('border-b', colorStyles[color])}>
+            <CardHeader className="flex flex-row items-center justify-between p-4 bg-[var(--surface2)]">
                 <div className="flex items-center gap-2">
-                    <span className={cn('w-3 h-3 rounded-full', dotColors[color])} />
-                    <CardTitle className="text-sm">
-                        {title} ({count} queries)
+                    <span className={cn('w-2.5 h-2.5 rounded-full', dotColors[color])} />
+                    <CardTitle className="text-sm font-semibold tracking-wide">
+                        {title}
                     </CardTitle>
                 </div>
+                <Badge variant={color === 'error' ? 'softError' : color === 'warning' ? 'softWarning' : 'softSuccess'}>
+                    {count} queries
+                </Badge>
             </CardHeader>
             <CardContent className="p-0">
                 {gaps.map((gap) => (
@@ -238,7 +204,7 @@ function GapItem({ gap }: { gap: KnowledgeGap }) {
     const [expanded, setExpanded] = useState(true)
 
     return (
-        <div className="p-4 border-b last:border-0">
+        <div className="p-4 border-b border-[color:var(--border)] last:border-0">
             <div className="flex items-start justify-between mb-3">
                 <h4 className="font-medium">"{gap.topic}"</h4>
                 <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)}>
@@ -293,7 +259,7 @@ function GapItem({ gap }: { gap: KnowledgeGap }) {
                         <span className="text-sm">Status:</span>
                         <select
                             defaultValue={gap.status}
-                            className="text-sm border rounded-md px-2 py-1"
+                            className="text-sm bg-[var(--surface2)] border border-[color:var(--border)] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                         >
                             <option value="todo">To Do</option>
                             <option value="in_progress">In Progress</option>

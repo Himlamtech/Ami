@@ -6,7 +6,7 @@ from app.api.schemas.document_dto import QueryRequest, QueryResponse
 from app.application.use_cases.rag import QueryWithRAGUseCase, QueryWithRAGInput
 from app.domain.value_objects.rag_config import RAGConfig
 from app.domain.value_objects.generation_config import GenerationConfig
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/generate", tags=["generation"])
@@ -16,10 +16,9 @@ router = APIRouter(prefix="/generate", tags=["generation"])
 async def query_with_rag(request: QueryRequest):
     """Query with RAG (non-streaming)."""
     try:
-        factory = get_factory()
-        embedding_service = factory.get_embedding_service()
-        vector_store = factory.get_vector_store()
-        llm_service = factory.get_llm_service()
+        embedding_service = ServiceRegistry.get_embedding()
+        vector_store = ServiceRegistry.get_vector_store()
+        llm_service = ServiceRegistry.get_llm()
 
         if not all([embedding_service, vector_store, llm_service]):
             raise HTTPException(

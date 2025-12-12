@@ -134,10 +134,10 @@ class ImageQueryUseCase:
 Nếu đây là tài liệu học viện, đơn từ, hoặc biểu mẫu, hãy trích xuất thông tin chi tiết."""
 
         # Check if LLM supports vision
-        if hasattr(self.llm_service, "generate_with_image"):
-            response = await self.llm_service.generate_with_image(
+        if hasattr(self.llm_service, "image_qa"):
+            response = await self.llm_service.image_qa(
                 prompt=prompt,
-                image_data=image_b64,
+                image=image_b64,
                 mime_type=mime_type,
             )
         else:

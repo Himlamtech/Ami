@@ -6,5 +6,4 @@ Structure:
 - external/     : Third-party integrations (Firecrawl)
 - processing/   : Data transformation utilities
 - scheduling/   : Background job scheduling
-- factory/      : Dependency injection container
 """

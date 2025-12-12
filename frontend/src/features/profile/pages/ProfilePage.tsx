@@ -5,22 +5,50 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { useAuthStore } from '@/stores/authStore'
+import { Link } from 'react-router-dom'
 
-interface UserProfile {
+import { profileApi } from '../api/profileApi'
+
+interface UserProfileState {
     name: string
     studentId: string
     major: string
     year: string
     email: string
+    class_name?: string
 }
 
 export default function ProfilePage() {
-    const [profile, setProfile] = useState<UserProfile>({
-        name: 'Nguyen Van A',
-        studentId: 'B21DCCN001',
-        major: 'Công nghệ thông tin',
-        year: 'K66',
-        email: 'nguyenvana.b21cn001@stu.ptit.edu.vn',
+    const { user } = useAuthStore()
+
+    const [profile, setProfile] = useState<UserProfileState>({
+        name: user?.displayName || '',
+        studentId: '',
+        major: 'Công nghệ thông tin', // Default
+        year: 'K6x',
+        email: user?.email || '',
+        class_name: ''
+    })
+
+    // Load profile
+    useState(() => {
+        if (user?.id) {
+            profileApi.get(user.id).then(data => {
+                setProfile({
+                    name: data.name,
+                    studentId: data.student_id || '',
+                    major: data.major || '',
+                    year: data.level || '', // Mapping level to year for display if needed, or leave blank
+                    email: data.email,
+                    class_name: data.class_name
+                })
+                setPreferences(prev => ({
+                    ...prev,
+                    detailLevel: data.preferred_detail_level || 'detailed'
+                }))
+            })
+        }
     })
 
     const [preferences, setPreferences] = useState({
@@ -31,9 +59,19 @@ export default function ProfilePage() {
 
     const [isEditing, setIsEditing] = useState(false)
 
-    const handleSave = () => {
-        // TODO: Save to API
-        setIsEditing(false)
+    const handleSave = async () => {
+        if (!user?.id) return
+        try {
+            await profileApi.update(user.id, {
+                name: profile.name,
+                student_id: profile.studentId,
+                major: profile.major,
+                class_name: profile.class_name
+            })
+            setIsEditing(false)
+        } catch (e) {
+            console.error(e)
+        }
     }
 
     return (
@@ -139,6 +177,17 @@ export default function ProfilePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {user?.email?.toLowerCase().includes('admin') && (
+                            <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+                                <div>
+                                    <p className="font-medium text-primary">Admin Console</p>
+                                    <p className="text-sm text-neutral-500">Truy cập trang quản trị hệ thống</p>
+                                </div>
+                                <Button asChild variant="default" size="sm">
+                                    <Link to="/admin">Đi tới Admin</Link>
+                                </Button>
+                            </div>
+                        )}
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium">Mức độ chi tiết câu trả lời</p>

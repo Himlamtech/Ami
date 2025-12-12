@@ -15,7 +15,7 @@ from app.application.use_cases.documents import (
 )
 from app.domain.value_objects.chunk_config import ChunkConfig
 from app.domain.exceptions.document_exceptions import DocumentNotFoundException
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(
@@ -35,12 +35,10 @@ async def upload_document(
     from app.application.use_cases.documents import UploadDocumentUseCase
 
     try:
-        factory = get_factory()
-
         # Get services
-        doc_repo = factory.get_document_repository()
-        embedding_service = factory.get_embedding_service()
-        vector_store = factory.get_vector_store()
+        doc_repo = ServiceRegistry.get_document_repository()
+        embedding_service = ServiceRegistry.get_embedding()
+        vector_store = ServiceRegistry.get_vector_store()
 
         # Simple text chunker (can be improved)
         from app.application.interfaces.processors.text_chunker import ITextChunker
@@ -107,9 +105,7 @@ async def list_documents(
 ):
     """List documents (admin-only view)."""
     from app.application.use_cases.documents import ListDocumentsUseCase
-
-    factory = get_factory()
-    doc_repo = factory.get_document_repository()
+    doc_repo = ServiceRegistry.get_document_repository()
     use_case = ListDocumentsUseCase(doc_repo)
 
     result = await use_case.execute(
@@ -147,9 +143,8 @@ async def delete_document(
     from app.application.use_cases.documents import DeleteDocumentUseCase
 
     try:
-        factory = get_factory()
-        doc_repo = factory.get_document_repository()
-        vector_store = factory.get_vector_store()
+        doc_repo = ServiceRegistry.get_document_repository()
+        vector_store = ServiceRegistry.get_vector_store()
 
         use_case = DeleteDocumentUseCase(
             document_repository=doc_repo,

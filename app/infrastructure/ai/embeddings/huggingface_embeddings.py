@@ -141,16 +141,35 @@ class HuggingFaceEmbeddings(IEmbeddingService):
             logger.error(f"HuggingFace batch embedding error: {e}")
             raise RuntimeError(f"Batch embedding failed: {str(e)}")
 
+    def get_embedding_dimension(self) -> int:
+        """
+        Get the dimension of the embedding vectors.
+
+        Returns:
+            Dimension as integer
+        """
+        return self.dimension
+
     def __del__(self):
         """Cleanup thread pool on deletion."""
         if hasattr(self, "_executor"):
             self._executor.shutdown(wait=False)
 
-    def get_embedding_dimension(self) -> int:
-        """
-        Get the dimension of embeddings produced by this model.
 
-        Returns:
-            Embedding dimension (e.g., 768)
-        """
-        return self.dimension
+if __name__ == "__main__":
+    # Simple test
+    async def test():
+        embedder = HuggingFaceEmbeddings()
+        print(f"Embedding Model: {embedder.model_name}")
+        print(f"Embedding Device: {embedder.model.device}")
+        texts = [
+            "Hello, world!",
+            "This is a test sentence.",
+            "",
+            "Another text to embed.",
+        ]
+        embeddings = await embedder.embed_batch(texts)
+        for i, emb in enumerate(embeddings):
+            print(f"Text {i}: {texts[i]} -> Embedding length: {len(emb)}")
+
+    asyncio.run(test())

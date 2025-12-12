@@ -1,50 +1,21 @@
-import { useState } from 'react'
-import { Search, Bookmark, Trash2, ExternalLink, Clock, Tag } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, Bookmark as BookmarkIcon, Trash2, ExternalLink, Clock, Tag } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
 
-interface BookmarkedItem {
-    id: string
-    question: string
-    answer: string
-    tags: string[]
-    savedAt: string
-    sessionId: string
-}
 
-// Mock data
-const mockBookmarks: BookmarkedItem[] = [
-    {
-        id: '1',
-        question: 'Học phí kỳ 1 năm 2024 là bao nhiêu?',
-        answer: 'Học phí kỳ 1 năm học 2024-2025 cho sinh viên ngành CNTT là 15,500,000 VNĐ (hệ đại trà) và 25,000,000 VNĐ (hệ chất lượng cao).',
-        tags: ['học phí', 'tài chính'],
-        savedAt: new Date(Date.now() - 86400000).toISOString(),
-        sessionId: 'sess_1',
-    },
-    {
-        id: '2',
-        question: 'Cách đăng ký môn học online?',
-        answer: 'Để đăng ký môn học online, bạn truy cập portal.ptit.edu.vn, đăng nhập bằng tài khoản sinh viên, chọn "Đăng ký học" và làm theo hướng dẫn.',
-        tags: ['đăng ký môn', 'portal'],
-        savedAt: new Date(Date.now() - 172800000).toISOString(),
-        sessionId: 'sess_2',
-    },
-    {
-        id: '3',
-        question: 'Điều kiện được học bổng KKHT?',
-        answer: 'Học bổng khuyến khích học tập dành cho sinh viên có điểm trung bình tích lũy từ 3.2 trở lên và không có môn dưới 5.0.',
-        tags: ['học bổng', 'tài chính'],
-        savedAt: new Date(Date.now() - 604800000).toISOString(),
-        sessionId: 'sess_3',
-    },
-]
+import { bookmarksApi, Bookmark } from '../api/bookmarksApi'
 
 export default function SavedPage() {
-    const [bookmarks, setBookmarks] = useState(mockBookmarks)
+    const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+
+    // Fetch bookmarks on mount
+    useEffect(() => {
+        bookmarksApi.getAll().then(res => setBookmarks(res.bookmarks || []))
+    }, [])
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedTag, setSelectedTag] = useState<string | null>(null)
 
@@ -54,14 +25,15 @@ export default function SavedPage() {
     // Filter bookmarks
     const filteredBookmarks = bookmarks.filter((bookmark) => {
         const matchesSearch = searchQuery
-            ? bookmark.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            bookmark.answer.toLowerCase().includes(searchQuery.toLowerCase())
+            ? bookmark.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            bookmark.response.toLowerCase().includes(searchQuery.toLowerCase())
             : true
         const matchesTag = selectedTag ? bookmark.tags.includes(selectedTag) : true
         return matchesSearch && matchesTag
     })
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
+        await bookmarksApi.delete(id)
         setBookmarks(bookmarks.filter((b) => b.id !== id))
     }
 
@@ -114,7 +86,7 @@ export default function SavedPage() {
                     {filteredBookmarks.length === 0 ? (
                         <Card>
                             <CardContent className="p-12 text-center">
-                                <Bookmark className="w-12 h-12 mx-auto text-neutral-300 mb-4" />
+                                <BookmarkIcon className="w-12 h-12 mx-auto text-neutral-300 mb-4" />
                                 <p className="text-neutral-500">
                                     {searchQuery || selectedTag
                                         ? 'Không tìm thấy kết quả'
@@ -129,10 +101,10 @@ export default function SavedPage() {
                                     <div className="flex items-start gap-4">
                                         <div className="flex-1 space-y-2">
                                             <h3 className="font-medium text-neutral-900">
-                                                {bookmark.question}
+                                                {bookmark.query}
                                             </h3>
                                             <p className="text-sm text-neutral-600 line-clamp-2">
-                                                {bookmark.answer}
+                                                {bookmark.response}
                                             </p>
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 {bookmark.tags.map((tag) => (
@@ -142,13 +114,13 @@ export default function SavedPage() {
                                                 ))}
                                                 <span className="text-xs text-neutral-400 flex items-center gap-1">
                                                     <Clock className="w-3 h-3" />
-                                                    {formatDate(bookmark.savedAt)}
+                                                    {formatDate(bookmark.created_at)}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Button variant="ghost" size="sm" asChild>
-                                                <a href={`/chat/${bookmark.sessionId}`}>
+                                                <a href={`/chat/${bookmark.session_id}`}>
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
                                             </Button>

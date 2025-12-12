@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class AnthropicLLMService(ILLMService):
-    """Anthropic Claude LLM provider."""
+    """Anthropic Claude LLM provider - wraps Anthropic API."""
 
     def __init__(
         self, config: AnthropicConfig = None, default_mode: LLMMode = LLMMode.QA
@@ -48,30 +48,13 @@ class AnthropicLLMService(ILLMService):
         }
         self._current_mode = default_mode
         logger.info(
-            f"Initialized AnthropicLLMService - QA: {self.config.model_qa}, "
+            f"Anthropic initialized - QA: {self.config.model_qa}, "
             f"Reasoning: {self.config.model_reasoning}"
         )
 
-    def get_model_for_mode(self, mode: LLMMode) -> str:
-        """Get the model name for a specific mode."""
-        return self._models.get(mode, self._models[LLMMode.QA])
 
-    def set_mode(self, mode: LLMMode) -> None:
-        """Set the current operation mode."""
-        self._current_mode = mode
-        logger.debug(f"Anthropic mode set to: {mode.value}")
 
-    def get_current_mode(self) -> LLMMode:
-        """Get the current operation mode."""
-        return self._current_mode
 
-    def get_available_models(self) -> dict:
-        """Get all available models for this provider."""
-        return self._models.copy()
-
-    def _get_model(self, mode: Optional[LLMMode] = None) -> str:
-        """Get model name for the mode."""
-        return self._models[mode or self._current_mode]
 
     async def generate(
         self,
@@ -81,19 +64,19 @@ class AnthropicLLMService(ILLMService):
         **kwargs,
     ) -> str:
         """Generate completion."""
-        model = self._get_model(mode)
+        model = self._models[mode or self._current_mode]
 
         try:
             messages = [{"role": "user", "content": prompt}]
 
             system = None
             if context:
-                system = f"Use the following context to answer:\n{context}"
+                system = fcontext
 
             max_tokens = kwargs.pop("max_tokens", 4096)
             temperature = kwargs.pop("temperature", 0.7)
 
-            logger.debug(f"Generating with model: {model}")
+            logger.debug(f"Generating with {model}")
 
             response = await self.client.messages.create(
                 model=model,
@@ -128,19 +111,19 @@ class AnthropicLLMService(ILLMService):
         **kwargs,
     ) -> AsyncIterator[str]:
         """Stream completion."""
-        model = self._get_model(mode)
+        model = self._models[mode or self._current_mode]
 
         try:
             messages = [{"role": "user", "content": prompt}]
 
             system = None
             if context:
-                system = f"Use the following context to answer:\n{context}"
+                system = fcontext
 
             max_tokens = kwargs.pop("max_tokens", 4096)
             temperature = kwargs.pop("temperature", 0.7)
 
-            logger.debug(f"Streaming with model: {model}")
+            logger.debug(f"Streaming with {model}")
 
             async with self.client.messages.stream(
                 model=model,
@@ -175,7 +158,7 @@ class AnthropicLLMService(ILLMService):
         Returns:
             Answer about the image
         """
-        model = self._get_model(mode)
+        model = self._models[mode or self._current_mode]
 
         try:
             # Prepare image for Anthropic format
@@ -218,7 +201,7 @@ class AnthropicLLMService(ILLMService):
             max_tokens = kwargs.pop("max_tokens", 4096)
             temperature = kwargs.pop("temperature", 0.7)
 
-            logger.debug(f"Image QA with model: {model}")
+            logger.debug(f"Image QA with {model}")
 
             response = await self.client.messages.create(
                 model=model,

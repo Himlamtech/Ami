@@ -29,7 +29,7 @@ from app.application.use_cases.approval import (
 from app.application.use_cases.approval.list_pending import ListPendingUpdatesInput
 from app.application.use_cases.approval.approve_update import ApproveUpdateInput
 from app.application.use_cases.approval.reject_update import RejectUpdateInput
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/approvals", tags=["admin-approvals"])
@@ -138,8 +138,7 @@ async def list_pending_updates(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """List pending updates in the approval queue."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     use_case = ListPendingUpdatesUseCase(repo)
 
@@ -173,8 +172,7 @@ async def get_approval_stats(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get statistics about the approval queue."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     use_case = GetApprovalStatsUseCase(repo)
     stats = await use_case.execute()
@@ -195,8 +193,7 @@ async def get_pending_update(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Get a single pending update by ID with full content."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     pending = await repo.get_by_id(pending_id)
     if not pending:
@@ -215,9 +212,8 @@ async def approve_update(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Approve a pending update."""
-    factory = get_factory()
-    pending_repo = factory.get_pending_update_repository()
-    doc_repo = factory.get_document_repository()
+    pending_repo = ServiceRegistry.get_pending_update_repository()
+    doc_repo = ServiceRegistry.get_document_repository()
 
     use_case = ApproveUpdateUseCase(pending_repo, doc_repo)
 
@@ -249,8 +245,7 @@ async def reject_update(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Reject a pending update."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     use_case = RejectUpdateUseCase(repo)
 
@@ -279,8 +274,7 @@ async def bulk_approve(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Bulk approve multiple pending updates."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     count = await repo.bulk_approve(
         pending_ids=request.pending_ids,
@@ -300,8 +294,7 @@ async def bulk_reject(
     is_admin: bool = Depends(verify_admin_api_key),
 ):
     """Bulk reject multiple pending updates."""
-    factory = get_factory()
-    repo = factory.get_pending_update_repository()
+    repo = ServiceRegistry.get_pending_update_repository()
 
     count = await repo.bulk_reject(
         pending_ids=request.pending_ids,

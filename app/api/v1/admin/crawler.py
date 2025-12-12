@@ -11,7 +11,7 @@ from app.api.dependencies.auth import verify_admin_api_key
 from app.domain.enums.crawl_status import CrawlJobType
 from app.domain.entities.crawl_job import CrawlJob
 from datetime import datetime
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(
@@ -26,8 +26,7 @@ async def create_crawl_job(
     request: CreateCrawlJobRequest,
 ):
     """Create new crawl job (admin only)."""
-    factory = get_factory()
-    crawler_repo = factory.get_crawler_repository()
+    crawler_repo = ServiceRegistry.get_crawler_repository()
 
     # Create job entity
     job = CrawlJob(
@@ -59,8 +58,7 @@ async def create_crawl_job(
 @router.get("/jobs", response_model=List[CrawlJobResponse])
 async def list_crawl_jobs(skip: int = 0, limit: int = 100):
     """List crawl jobs."""
-    factory = get_factory()
-    crawler_repo = factory.get_crawler_repository()
+    crawler_repo = ServiceRegistry.get_crawler_repository()
 
     jobs = await crawler_repo.list_jobs(skip=skip, limit=limit)
 
@@ -81,8 +79,7 @@ async def list_crawl_jobs(skip: int = 0, limit: int = 100):
 @router.get("/jobs/{job_id}", response_model=CrawlJobResponse)
 async def get_crawl_job(job_id: str):
     """Get crawl job details."""
-    factory = get_factory()
-    crawler_repo = factory.get_crawler_repository()
+    crawler_repo = ServiceRegistry.get_crawler_repository()
 
     job = await crawler_repo.get_job_by_id(job_id)
 

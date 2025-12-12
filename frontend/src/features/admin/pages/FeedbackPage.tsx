@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { adminApi } from '../api/adminApi'
 import {
     ThumbsUp,
     ThumbsDown,
@@ -14,40 +16,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import type { FeedbackItem } from '@/types/admin'
 
-// Mock data
-const mockFeedback: FeedbackItem[] = [
-    {
-        id: '1',
-        type: 'not_helpful',
-        userId: 'u1',
-        userName: 'Nguyen Van A',
-        studentId: 'B21DCCN001',
-        question: 'Điều kiện để được học bổng khuyến khích học tập là gì?',
-        response: 'Học bổng KKHT dành cho sinh viên có điểm trung bình từ 3.2 trở lên...',
-        comment: 'Thông tin này cũ rồi, năm nay đổi điều kiện mới',
-        categories: ['Incorrect', 'Outdated'],
-        sources: [{ title: 'Quy định học bổng 2023', score: 0.78, outdated: true }],
-        createdAt: new Date(Date.now() - 7200000).toISOString(),
-        reviewed: false,
-    },
-    {
-        id: '2',
-        type: 'incomplete',
-        userId: 'u2',
-        userName: 'Tran Thi B',
-        studentId: 'B21DCCN045',
-        question: 'Làm sao để đăng ký thực tập?',
-        response: 'Bạn cần liên hệ với khoa để được hướng dẫn...',
-        comment: 'Thiếu thông tin về thời gian và quy trình cụ thể',
-        categories: ['Incomplete'],
-        sources: [{ title: 'Hướng dẫn thực tập', score: 0.65 }],
-        createdAt: new Date(Date.now() - 18000000).toISOString(),
-        reviewed: false,
-    },
-]
+interface FeedbackDashboardMetrics {
+    total_feedback?: number
+    helpful_rate?: number
+    negative_count?: number
+}
+
 
 export default function FeedbackPage() {
     const [activeTab, setActiveTab] = useState('negative')
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['admin', 'feedback', activeTab],
+        queryFn: () => adminApi.getFeedbackList({
+            limit: 20
+        }),
+    })
+
+    const { data: dashboard } = useQuery<FeedbackDashboardMetrics>({
+        queryKey: ['admin', 'feedback-dashboard'],
+        queryFn: async () => {
+            const response = await adminApi.getFeedbackDashboard()
+            return response as FeedbackDashboardMetrics
+        },
+    })
+
+    const feedbackList = data?.data || []
 
     return (
         <div className="space-y-6">
@@ -71,13 +65,12 @@ export default function FeedbackPage() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-lg bg-secondary/10">
-                                <BarChart className="w-6 h-6 text-secondary" />
+                            <div className="p-3 rounded-lg bg-primary/10">
+                                <ThumbsDown className="w-6 h-6 text-primary" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">1,234</p>
+                                <p className="text-2xl font-bold">{dashboard?.total_feedback || 0}</p>
                                 <p className="text-sm text-neutral-500">Total Feedback</p>
-                                <p className="text-xs text-success">↑ 15%</p>
                             </div>
                         </div>
                     </CardContent>
@@ -89,9 +82,8 @@ export default function FeedbackPage() {
                                 <ThumbsUp className="w-6 h-6 text-success" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">72%</p>
+                                <p className="text-2xl font-bold">{dashboard?.helpful_rate ? `${(dashboard.helpful_rate * 100).toFixed(0)}%` : '0%'}</p>
                                 <p className="text-sm text-neutral-500">Helpful Rate</p>
-                                <p className="text-xs text-success">↑ 5%</p>
                             </div>
                         </div>
                     </CardContent>
@@ -99,13 +91,12 @@ export default function FeedbackPage() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 rounded-lg bg-warning/10">
-                                <Star className="w-6 h-6 text-warning" />
+                            <div className="p-3 rounded-lg bg-neutral-100">
+                                <AlertTriangle className="w-6 h-6 text-neutral-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">4.2/5</p>
-                                <p className="text-sm text-neutral-500">Avg Rating</p>
-                                <p className="text-xs text-success">↑ 0.3</p>
+                                <p className="text-2xl font-bold">{dashboard?.negative_count || 0}</p>
+                                <p className="text-sm text-neutral-500">Negative</p>
                             </div>
                         </div>
                     </CardContent>
@@ -137,16 +128,23 @@ export default function FeedbackPage() {
                                 <Button variant="outline" size="sm">
                                     📅 Date
                                 </Button>
-                                <span className="text-sm text-neutral-500">Showing 342 items</span>
+                                <span className="text-sm text-neutral-500">Showing {feedbackList.length} items</span>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Feedback List */}
                     <div className="space-y-4">
-                        {mockFeedback.map((feedback) => (
-                            <FeedbackCard key={feedback.id} feedback={feedback} />
-                        ))}
+                        {isLoading ? (
+                            <div className="text-center py-8 text-neutral-500">Loading...</div>
+                        ) : (
+                            feedbackList.map((feedback) => (
+                                <FeedbackCard key={feedback.id} feedback={feedback} />
+                            ))
+                        )}
+                        {!isLoading && feedbackList.length === 0 && (
+                            <div className="text-center py-8 text-neutral-500">No feedback found</div>
+                        )}
                     </div>
                 </TabsContent>
 
@@ -286,6 +284,3 @@ function FeedbackCard({ feedback }: { feedback: FeedbackItem }) {
         </Card>
     )
 }
-
-// Missing imports
-import { BarChart2 as BarChart, Star } from 'lucide-react'

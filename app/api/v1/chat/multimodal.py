@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 from app.api.schemas.multimodal_dto import (
     VoiceQueryResponse,
     ImageQueryResponse,
@@ -22,18 +22,15 @@ def _get_stt_service():
 
 
 def _get_embedding_service():
-    factory = get_factory()
-    return factory.get_embedding_service()
+    return ServiceRegistry.get_embedding()
 
 
 def _get_vector_store():
-    factory = get_factory()
-    return factory.get_vector_store()
+    return ServiceRegistry.get_vector_store()
 
 
 def _get_llm_service():
-    factory = get_factory()
-    return factory.get_llm_service()
+    return ServiceRegistry.get_llm()
 
 
 @router.post("/voice-query", response_model=VoiceQueryResponse)

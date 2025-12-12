@@ -12,7 +12,7 @@ from app.api.schemas.admin_dto import (
     UserAnalysisResponse,
     UserInsightsResponse,
 )
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/users", tags=["Admin - User Management"])
@@ -34,9 +34,8 @@ async def list_users(
     """
     List all users with filtering and sorting.
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
-    chat_repo = factory.get_chat_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     skip = (page - 1) * limit
 
@@ -99,10 +98,9 @@ async def get_user_detail(
     """
     Get detailed information about a specific user.
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
-    chat_repo = factory.get_chat_repository()
-    feedback_repo = factory.get_feedback_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
+    feedback_repo = ServiceRegistry.get_feedback_repository()
 
     profile = await profile_repo.find_by_user_id(user_id)
     if not profile:
@@ -151,9 +149,8 @@ async def get_user_sessions(
     """
     Get all sessions for a specific user.
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
-    chat_repo = factory.get_chat_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     # Verify user exists
     profile = await profile_repo.find_by_user_id(user_id)
@@ -191,10 +188,9 @@ async def analyze_user(
     - Topic interests
     - Engagement metrics
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
-    chat_repo = factory.get_chat_repository()
-    search_log_repo = factory.get_search_log_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
+    search_log_repo = ServiceRegistry.get_search_log_repository()
 
     profile = await profile_repo.find_by_user_id(user_id)
     if not profile:
@@ -260,8 +256,7 @@ async def get_user_preferences(
     """
     Get user's preferences and settings.
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
 
     profile = await profile_repo.find_by_user_id(user_id)
     if not profile:
@@ -291,8 +286,7 @@ async def update_user_preferences(
     """
     Update user preferences (admin override).
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
 
     profile = await profile_repo.find_by_user_id(user_id)
     if not profile:
@@ -332,9 +326,8 @@ async def get_active_users_insights(
     - New vs returning users
     - User growth trends
     """
-    factory = get_factory()
-    profile_repo = factory.get_student_profile_repository()
-    chat_repo = factory.get_chat_repository()
+    profile_repo = ServiceRegistry.get_student_profile_repository()
+    chat_repo = ServiceRegistry.get_chat_repository()
 
     now = datetime.now()
     days = {"day": 1, "week": 7, "month": 30}[period]

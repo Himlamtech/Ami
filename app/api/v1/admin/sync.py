@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from app.infrastructure.factory import get_factory
+from app.config.services import ServiceRegistry
 
 router = APIRouter(prefix="/admin/sync", tags=["admin-sync"])
 
@@ -84,10 +84,8 @@ async def schedule_sync(request: ScheduleSyncRequest):
     Sync will run automatically based on schedule.
     """
     try:
-        factory = get_factory()
-
         # Get scheduler service
-        scheduler = factory.get_scheduler_service()
+        scheduler = ServiceRegistry.get_scheduler()
         if not scheduler:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -95,7 +93,7 @@ async def schedule_sync(request: ScheduleSyncRequest):
             )
 
         # Get data source repo
-        data_source_repo = factory.data_source_repository
+        data_source_repo = ServiceRegistry.get_data_source_repository()
 
         # Validate data source exists
         data_source = await data_source_repo.get_by_id(request.data_source_id)
@@ -165,8 +163,7 @@ async def schedule_sync(request: ScheduleSyncRequest):
 async def cancel_sync(data_source_id: str):
     """Cancel scheduled sync for a data source."""
     try:
-        factory = get_factory()
-        scheduler = factory.get_scheduler_service()
+        scheduler = ServiceRegistry.get_scheduler()
 
         if not scheduler:
             raise HTTPException(
@@ -194,8 +191,7 @@ async def cancel_sync(data_source_id: str):
 async def pause_sync(data_source_id: str):
     """Pause scheduled sync."""
     try:
-        factory = get_factory()
-        scheduler = factory.get_scheduler_service()
+        scheduler = ServiceRegistry.get_scheduler()
 
         if not scheduler:
             raise HTTPException(
@@ -227,8 +223,7 @@ async def pause_sync(data_source_id: str):
 async def resume_sync(data_source_id: str):
     """Resume paused sync."""
     try:
-        factory = get_factory()
-        scheduler = factory.get_scheduler_service()
+        scheduler = ServiceRegistry.get_scheduler()
 
         if not scheduler:
             raise HTTPException(
@@ -260,8 +255,7 @@ async def resume_sync(data_source_id: str):
 async def list_sync_jobs():
     """List all scheduled sync jobs."""
     try:
-        factory = get_factory()
-        scheduler = factory.get_scheduler_service()
+        scheduler = ServiceRegistry.get_scheduler()
 
         if not scheduler:
             raise HTTPException(
@@ -310,8 +304,7 @@ async def trigger_immediate_sync(
     Sync runs in background, returns immediately.
     """
     try:
-        factory = get_factory()
-        data_source_repo = factory.data_source_repository
+        data_source_repo = ServiceRegistry.get_data_source_repository()
 
         # Validate data source exists
         data_source = await data_source_repo.get_by_id(data_source_id)

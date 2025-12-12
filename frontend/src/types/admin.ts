@@ -7,6 +7,9 @@ export interface DashboardStats {
     latencyChange: number
     errorRate: number
     errorRateChange: number
+    totalDocuments?: number
+    totalSessions?: number
+    totalChunks?: number
 }
 
 export interface CostBreakdown {
@@ -127,4 +130,48 @@ export interface ModelConfig {
     model: string
     temperature: number
     maxTokens: number
+}
+
+export interface DataSource {
+    id: string
+    name: string
+    description?: string
+    base_url: string
+    source_type: 'web_crawler' | 'api' | 'file_upload' | 'database'
+    category: 'academic' | 'administrative' | 'general'
+    data_type: 'html' | 'pdf' | 'json' | 'markdown'
+    schedule_cron?: string
+    status: 'active' | 'inactive' | 'error' | 'pending'
+    last_crawl_at?: string
+    next_crawl_at?: string
+    crawl_count: number
+    success_count: number
+    error_count: number
+    last_error?: string
+    created_at: string
+    updated_at: string
+    crawl_config?: {
+        selectors?: string[]
+        exclude_selectors?: string[]
+        max_depth?: number
+        max_pages?: number
+        follow_links?: boolean
+        allowed_domains?: string[]
+        rate_limit_delay?: number
+        timeout?: number
+        user_agent?: string
+    }
+    auth_config?: {
+        auth_type: 'none' | 'basic' | 'bearer' | 'api_key' | 'cookie'
+        has_credentials: boolean
+    }
+}
+
+export interface DataSourceStats {
+    total: number
+    active: number
+    inactive: number
+    error: number
+    by_type: { type: string; count: number }[]
+    by_category: { category: string; count: number }[]
 }
