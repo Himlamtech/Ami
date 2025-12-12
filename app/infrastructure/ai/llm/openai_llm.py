@@ -1,10 +1,12 @@
 """
 OpenAI LLM provider - Simple implementation.
 Config from centralized config module.
+Supports Vision (GPT-4 Vision) for image QA.
 """
 
+import base64
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 
@@ -19,23 +21,19 @@ logger = logging.getLogger(__name__)
 class OpenAILLMService(ILLMService):
     """OpenAI LLM provider."""
 
-    def __init__(
-        self, 
-        config: OpenAIConfig = None, 
-        default_mode: LLMMode = LLMMode.QA
-    ):
+    def __init__(self, config: OpenAIConfig = None, default_mode: LLMMode = LLMMode.QA):
         """
         Initialize OpenAI LLM service.
-        
+
         Args:
             config: OpenAI configuration. If None, uses global openai_config.
             default_mode: Default LLM mode (QA or REASONING).
         """
         self.config = config or openai_config
         self.client = AsyncOpenAI(
-            api_key=self.config.api_key, 
-            max_retries=self.config.max_retries, 
-            timeout=self.config.timeout
+            api_key=self.config.api_key,
+            max_retries=self.config.max_retries,
+            timeout=self.config.timeout,
         )
         self._models = {
             LLMMode.QA: self.config.model_qa,
@@ -50,62 +48,62 @@ class OpenAILLMService(ILLMService):
     def get_model_for_mode(self, mode: LLMMode) -> str:
         """Get the model name for a specific mode."""
         return self._models.get(mode, self._models[LLMMode.QA])
-    
+
     def set_mode(self, mode: LLMMode) -> None:
         """Set the current operation mode."""
         self._current_mode = mode
         logger.debug(f"OpenAI mode set to: {mode.value}")
-    
+
     def get_current_mode(self) -> LLMMode:
         """Get the current operation mode."""
         return self._current_mode
-    
+
     def get_available_models(self) -> dict:
         """Get all available models for this provider."""
         return self._models.copy()
-    
+
     def _get_model(self, mode: Optional[LLMMode] = None) -> str:
         """Get model name for the mode."""
         return self._models[mode or self._current_mode]
-    
+
     def _is_reasoning_model(self, model: str) -> bool:
         """Check if model is reasoning type (o1, o3, o4 series)."""
         return model.startswith(("o1", "o3", "o4"))
 
     async def generate(
-        self, 
-        prompt: str, 
-        context: Optional[str] = None, 
+        self,
+        prompt: str,
+        context: Optional[str] = None,
         mode: Optional[LLMMode] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate completion."""
         model = self._get_model(mode)
-        
+
         try:
             messages = []
             if context:
-                messages.append({
-                    "role": "system",
-                    "content": f"Use the following context to answer:\n{context}",
-                })
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": f"Use the following context to answer:\n{context}",
+                    }
+                )
             messages.append({"role": "user", "content": prompt})
 
             # Reasoning models không hỗ trợ temperature
             if self._is_reasoning_model(model):
                 kwargs.pop("temperature", None)
                 kwargs.pop("top_p", None)
-            
+
             # Set default max_tokens if not provided
             if "max_tokens" not in kwargs:
                 kwargs["max_tokens"] = 4096
-            
+
             logger.debug(f"Generating with model: {model}")
 
             response = await self.client.chat.completions.create(
-                model=model, 
-                messages=messages, 
-                **kwargs
+                model=model, messages=messages, **kwargs
             )
 
             result = response.choices[0].message.content
@@ -126,39 +124,38 @@ class OpenAILLMService(ILLMService):
             raise RuntimeError(f"Failed: {str(e)}")
 
     async def stream_generate(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         context: Optional[str] = None,
-        mode: Optional[LLMMode] = None, 
-        **kwargs
+        mode: Optional[LLMMode] = None,
+        **kwargs,
     ):
         """Stream completion."""
         model = self._get_model(mode)
-        
+
         try:
             messages = []
             if context:
-                messages.append({
-                    "role": "system",
-                    "content": f"Use the following context to answer:\n{context}",
-                })
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": f"Use the following context to answer:\n{context}",
+                    }
+                )
             messages.append({"role": "user", "content": prompt})
 
             if self._is_reasoning_model(model):
                 kwargs.pop("temperature", None)
                 kwargs.pop("top_p", None)
-            
+
             # Set default max_tokens if not provided
             if "max_tokens" not in kwargs:
                 kwargs["max_tokens"] = 4096
-            
+
             logger.debug(f"Streaming with model: {model}")
 
             stream = await self.client.chat.completions.create(
-                model=model, 
-                messages=messages, 
-                stream=True, 
-                **kwargs
+                model=model, messages=messages, stream=True, **kwargs
             )
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -168,13 +165,95 @@ class OpenAILLMService(ILLMService):
             logger.error(f"Stream error: {e}")
             yield f"[ERROR: {str(e)}]"
 
+    async def image_qa(
+        self,
+        prompt: str,
+        image: Union[bytes, str],
+        mode: Optional[LLMMode] = None,
+        **kwargs,
+    ) -> str:
+        """
+        Answer questions about an image using GPT-4 Vision.
+
+        Args:
+            prompt: Question about the image
+            image: Image as bytes, base64 string, or URL
+            mode: QA or REASONING (default: QA)
+            **kwargs: Additional generation parameters
+
+        Returns:
+            Answer about the image
+        """
+        model = self._get_model(mode)
+
+        try:
+            # Prepare image URL for OpenAI format
+            if isinstance(image, bytes):
+                # Raw bytes - encode to base64
+                image_b64 = base64.b64encode(image).decode("utf-8")
+                mime_type = kwargs.pop("mime_type", "image/jpeg")
+                image_url = f"data:{mime_type};base64,{image_b64}"
+            elif isinstance(image, str):
+                if image.startswith(("http://", "https://")):
+                    # Already a URL
+                    image_url = image
+                else:
+                    # Assume base64 string
+                    mime_type = kwargs.pop("mime_type", "image/jpeg")
+                    image_url = f"data:{mime_type};base64,{image}"
+            else:
+                raise ValueError(f"Unsupported image type: {type(image)}")
+
+            # Build message with image
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
+
+            # Set default max_tokens
+            if "max_tokens" not in kwargs:
+                kwargs["max_tokens"] = 4096
+
+            # Reasoning models don't support vision well, use QA model
+            if self._is_reasoning_model(model):
+                model = self._models[LLMMode.QA]
+                logger.debug(f"Switched to {model} for vision task")
+
+            logger.debug(f"Image QA with model: {model}")
+
+            response = await self.client.chat.completions.create(
+                model=model, messages=messages, **kwargs
+            )
+
+            result = response.choices[0].message.content
+            logger.debug(f"Image QA response: {len(result)} chars")
+            return result
+
+        except RateLimitError as e:
+            logger.error(f"Rate limit in image_qa: {e}")
+            raise RuntimeError("Rate limit exceeded.")
+        except APITimeoutError as e:
+            logger.error(f"Timeout in image_qa: {e}")
+            raise RuntimeError("Request timeout.")
+        except APIError as e:
+            logger.error(f"API error in image_qa: {e}")
+            raise RuntimeError(f"API error: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error in image_qa: {e}")
+            raise RuntimeError(f"Failed to process image: {str(e)}")
+
 
 if __name__ == "__main__":
     import asyncio
-    
+
     async def main():
         llm = OpenAILLMService()
         response = await llm.generate("What is PTIT")
         print("Response:", response)
-    
+
     asyncio.run(main())

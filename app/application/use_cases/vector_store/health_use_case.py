@@ -12,13 +12,12 @@ class HealthCheckOutput:
 
 class HealthCheckUseCase:
     """Check vector store health."""
-    
+
     def __init__(self, vector_store: IVectorStoreService):
         self.vector_store = vector_store
-    
+
     def execute(self) -> HealthCheckOutput:
         healthy = self.vector_store.is_healthy()
         return HealthCheckOutput(
-            healthy=healthy,
-            message="OK" if healthy else "Connection failed"
+            healthy=healthy, message="OK" if healthy else "Connection failed"
         )

@@ -1,25 +1,47 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path'
+import { fileURLToPath, URL } from 'node:url'
 
-// https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
-    base: '/',  // Changed from '/v2/' - standalone service
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, './src'),
-            '@styles': path.resolve(__dirname, './src/styles'),
-            '@components': path.resolve(__dirname, './src/components'),
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
         },
     },
     server: {
         port: 11120,
-        host: '127.0.0.1'
+        proxy: {
+            '/api': {
+                target: 'http://localhost:11121',
+                changeOrigin: true,
+            },
+        },
     },
     build: {
-        outDir: 'dist',
-        sourcemap: false
-    }
+        chunkSizeWarningLimit: 600,
+        rollupOptions: {
+            output: {
+                manualChunks: (id) => {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('react-markdown') || id.includes('react-syntax-highlighter') || id.includes('refractor') || id.includes('prismjs')) {
+                            return 'markdown'
+                        }
+                        if (id.includes('recharts') || id.includes('d3')) {
+                            return 'charts'
+                        }
+                        if (id.includes('@radix-ui')) {
+                            return 'radix'
+                        }
+                        if (id.includes('react-router')) {
+                            return 'router'
+                        }
+                        if (id.includes('@tanstack') || id.includes('zustand')) {
+                            return 'state'
+                        }
+                    }
+                },
+            },
+        },
+    },
 })
-

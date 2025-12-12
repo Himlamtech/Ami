@@ -6,14 +6,14 @@ from enum import Enum
 class LLMMode(str, Enum):
     """
     LLM operation modes.
-    
+
     - QA: Quick Question-Answering mode (fast, lightweight models)
     - REASONING: Deep reasoning mode (powerful, thinking models)
     """
-    
+
     QA = "qa"  # Hỏi Đáp - Quick responses
     REASONING = "reasoning"  # Suy Luận - Deep thinking
-    
+
     @classmethod
     def from_string(cls, value: str) -> "LLMMode":
         """Convert string to LLMMode."""
@@ -31,11 +31,11 @@ class LLMProvider(str, Enum):
     """
     Supported LLM providers.
     """
-    
+
     OPENAI = "openai"
     GEMINI = "gemini"
     ANTHROPIC = "anthropic"
-    
+
     @classmethod
     def from_string(cls, value: str) -> "LLMProvider":
         """Convert string to LLMProvider."""

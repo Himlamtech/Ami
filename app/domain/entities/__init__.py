@@ -14,22 +14,67 @@ from .student_profile import (
     InteractionHistory,
     TopicInterest,
 )
+from .feedback import (
+    Feedback,
+    FeedbackType,
+    FeedbackCategory,
+    FeedbackStatus,
+)
+from .usage_metric import (
+    UsageMetric,
+    LLMUsage,
+    DailyUsageStats,
+    RequestStatus,
+    LLMProvider,
+)
+from .search_log import (
+    SearchLog,
+    SearchResult,
+    KnowledgeGap,
+    SearchResultQuality,
+    GapStatus,
+)
+from .bookmark import Bookmark
 
 __all__ = [
+    # Documents
     "Document",
     "Artifact",
     "ArtifactType",
+    # Chat
     "ChatSession",
     "ChatMessage",
+    # Files
     "FileMetadata",
+    # Crawling
     "CrawlJob",
     "DataSource",
     "SourceAuth",
     "CrawlConfig",
     "PendingUpdate",
+    # Profile
     "StudentProfile",
     "StudentLevel",
     "InteractionType",
     "InteractionHistory",
     "TopicInterest",
+    # Feedback
+    "Feedback",
+    "FeedbackType",
+    "FeedbackCategory",
+    "FeedbackStatus",
+    # Analytics
+    "UsageMetric",
+    "LLMUsage",
+    "DailyUsageStats",
+    "RequestStatus",
+    "LLMProvider",
+    # Search/Knowledge
+    "SearchLog",
+    "SearchResult",
+    "KnowledgeGap",
+    "SearchResultQuality",
+    "GapStatus",
+    # Bookmarks
+    "Bookmark",
 ]

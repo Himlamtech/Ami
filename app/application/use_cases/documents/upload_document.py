@@ -5,7 +5,9 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 from app.domain.entities.document import Document
 from app.domain.value_objects.chunk_config import ChunkConfig
-from app.application.interfaces.repositories.document_repository import IDocumentRepository
+from app.application.interfaces.repositories.document_repository import (
+    IDocumentRepository,
+)
 from app.application.interfaces.services.embedding_service import IEmbeddingService
 from app.application.interfaces.services.vector_store_service import IVectorStoreService
 
@@ -13,6 +15,7 @@ from app.application.interfaces.services.vector_store_service import IVectorStor
 @dataclass
 class UploadDocumentInput:
     """Input for upload document use case."""
+
     title: str
     file_name: str
     content: str
@@ -26,6 +29,7 @@ class UploadDocumentInput:
 @dataclass
 class UploadDocumentOutput:
     """Output from upload document use case."""
+
     document: Document
     chunk_count: int
     vector_ids: List[str]
@@ -34,17 +38,17 @@ class UploadDocumentOutput:
 class UploadDocumentUseCase:
     """
     Use Case: Upload and index document.
-    
+
     Business Rules:
     1. Chunk document content
     2. Generate embeddings for chunks
     3. Store vectors in vector database
     4. Store document metadata in database
     5. Link vectors to document
-    
+
     Single Responsibility: Document upload and indexing workflow
     """
-    
+
     def __init__(
         self,
         document_repository: IDocumentRepository,
@@ -56,20 +60,20 @@ class UploadDocumentUseCase:
         self.embedding_service = embedding_service
         self.vector_store = vector_store_service
         self.chunker = document_chunker
-    
+
     async def execute(self, input_data: UploadDocumentInput) -> UploadDocumentOutput:
         """
         Upload and index document.
-        
+
         Args:
             input_data: Document data
-            
+
         Returns:
             UploadDocumentOutput with document and indexing results
         """
         # 1. Use chunk config or default
         chunk_config = input_data.chunk_config or ChunkConfig.default()
-        
+
         # 2. Chunk document content
         chunks = self.chunker.chunk_text(
             text=input_data.content,
@@ -77,7 +81,7 @@ class UploadDocumentUseCase:
             chunk_overlap=chunk_config.chunk_overlap,
             strategy=chunk_config.strategy,
         )
-        
+
         # 3. Create document objects for chunks
         chunk_docs = [
             {
@@ -87,22 +91,21 @@ class UploadDocumentUseCase:
                     "chunk_index": i,
                     "title": input_data.title,
                     "file_name": input_data.file_name,
-                }
+                },
             }
             for i, chunk in enumerate(chunks)
         ]
-        
+
         # 4. Generate embeddings
         embeddings = await self.embedding_service.embed_batch(chunks)
-        
+
         # 5. Store in vector database
         vector_ids = await self.vector_store.add_documents(
             documents=chunk_docs,
             embeddings=embeddings,
             collection=input_data.collection,
-            doc_metadata=input_data.metadata,
         )
-        
+
         # 6. Create document entity
         document = Document(
             id="",  # Will be generated
@@ -118,10 +121,10 @@ class UploadDocumentUseCase:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        
+
         # 7. Persist document
         created_doc = await self.doc_repo.create(document)
-        
+
         return UploadDocumentOutput(
             document=created_doc,
             chunk_count=len(chunks),

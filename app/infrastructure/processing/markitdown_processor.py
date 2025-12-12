@@ -18,23 +18,25 @@ class MarkItDownProcessor(IDocumentProcessor):
         """Process file and extract text."""
         result = self.converter.convert(file_path)
         return result.text_content
-    
+
     async def process_bytes(self, file_bytes: bytes, mime_type: str) -> str:
         """Process file bytes and extract text."""
         # MarkItDown doesn't support bytes directly, need to save to temp file
         import tempfile
         from pathlib import Path
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=self._get_extension(mime_type)) as tmp:
+
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=self._get_extension(mime_type)
+        ) as tmp:
             tmp.write(file_bytes)
             tmp_path = tmp.name
-        
+
         try:
             result = self.converter.convert(tmp_path)
             return result.text_content
         finally:
             Path(tmp_path).unlink(missing_ok=True)
-    
+
     def get_supported_formats(self) -> list:
         """Get list of supported file formats."""
         return [
@@ -47,7 +49,7 @@ class MarkItDownProcessor(IDocumentProcessor):
             "image/jpeg",
             "image/png",
         ]
-    
+
     def _get_extension(self, mime_type: str) -> str:
         """Get file extension from MIME type."""
         mime_map = {

@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class BaseConfig(BaseSettings):
     """Base configuration shared across all config modules."""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -24,7 +24,7 @@ class BaseConfig(BaseSettings):
 
 class AppConfig(BaseConfig):
     """Core application configuration."""
-    
+
     # Application
     app_name: str = Field(default="AMI RAG System")
     app_port: int = Field(default=11121, ge=1, le=65535)
@@ -32,15 +32,16 @@ class AppConfig(BaseConfig):
     environment: Literal["development", "staging", "production"] = Field(
         default="development"
     )
-    
+
     # Admin API Key (for protected admin routes)
     admin_api_key: str = Field(default="")
     
+    # AI Services API Keys
+    gemini_api_key: str = Field(default="")
+
     # CORS Configuration
-    cors_origins: str = Field(
-        default="http://localhost:11120,http://localhost:11121"
-    )
-    
+    cors_origins: str = Field(default="http://localhost:11120,http://localhost:11121")
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""

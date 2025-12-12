@@ -8,6 +8,7 @@ from enum import Enum
 
 class ResponseIntentDTO(str, Enum):
     """Intent classification for response."""
+
     GENERAL_ANSWER = "general_answer"
     FILE_REQUEST = "file_request"
     FORM_REQUEST = "form_request"
@@ -18,6 +19,7 @@ class ResponseIntentDTO(str, Enum):
 
 class SourceTypeDTO(str, Enum):
     """Type of knowledge source."""
+
     DOCUMENT = "document"
     WEB_SEARCH = "web_search"
     DIRECT_KNOWLEDGE = "direct_knowledge"
@@ -25,6 +27,7 @@ class SourceTypeDTO(str, Enum):
 
 class SourceReferenceDTO(BaseModel):
     """Reference to a knowledge source."""
+
     source_type: SourceTypeDTO
     document_id: Optional[str] = None
     title: Optional[str] = None
@@ -35,6 +38,7 @@ class SourceReferenceDTO(BaseModel):
 
 class ArtifactDTO(BaseModel):
     """Artifact/file reference in response."""
+
     artifact_id: str
     document_id: str
     file_name: str
@@ -49,18 +53,21 @@ class ArtifactDTO(BaseModel):
 
 class SmartQueryRequest(BaseModel):
     """Request for smart query with artifact support."""
+
     query: str = Field(..., min_length=1, max_length=2000, description="User query")
     session_id: Optional[str] = Field(None, description="Chat session ID")
-    collection: Optional[str] = Field("default", description="Document collection")
-    
+    collection: Optional[str] = Field("ami", description="Document collection")
+
     # Optional user info for form auto-fill
-    user_info: Optional[Dict[str, Any]] = Field(None, description="User info for form fill")
-    
+    user_info: Optional[Dict[str, Any]] = Field(
+        None, description="User info for form fill"
+    )
+
     # RAG configuration
     enable_rag: bool = Field(True, description="Enable RAG retrieval")
     top_k: int = Field(5, ge=1, le=20, description="Number of sources to retrieve")
     similarity_threshold: float = Field(0.5, ge=0.0, le=1.0)
-    
+
     # Generation configuration
     temperature: float = Field(0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(1024, ge=100, le=4096)
@@ -72,13 +79,14 @@ class SmartQueryRequest(BaseModel):
                 "session_id": "session_123",
                 "collection": "default",
                 "enable_rag": True,
-                "top_k": 5
+                "top_k": 5,
             }
         }
 
 
 class SmartQueryMetadata(BaseModel):
     """Metadata about the query response."""
+
     model_used: str = ""
     processing_time_ms: float = 0.0
     tokens_used: int = 0
@@ -89,27 +97,25 @@ class SmartQueryMetadata(BaseModel):
 
 class SmartQueryResponse(BaseModel):
     """Rich response with content, artifacts, and sources."""
+
     content: str = Field(..., description="Main text response")
     intent: ResponseIntentDTO = Field(
-        ResponseIntentDTO.GENERAL_ANSWER, 
-        description="Detected intent"
+        ResponseIntentDTO.GENERAL_ANSWER, description="Detected intent"
     )
-    
+
     # Artifacts (downloadable files)
     artifacts: List[ArtifactDTO] = Field(
-        default_factory=list,
-        description="Downloadable files/forms"
+        default_factory=list, description="Downloadable files/forms"
     )
-    
+
     # Source references
     sources: List[SourceReferenceDTO] = Field(
-        default_factory=list,
-        description="Knowledge sources used"
+        default_factory=list, description="Knowledge sources used"
     )
-    
+
     # Metadata
     metadata: SmartQueryMetadata = Field(default_factory=SmartQueryMetadata)
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
 
@@ -128,7 +134,7 @@ class SmartQueryResponse(BaseModel):
                         "size_bytes": 25600,
                         "size_display": "25.0 KB",
                         "is_fillable": True,
-                        "fill_fields": ["ho_ten", "msv", "lop", "ly_do"]
+                        "fill_fields": ["ho_ten", "msv", "lop", "ly_do"],
                     }
                 ],
                 "sources": [
@@ -136,7 +142,7 @@ class SmartQueryResponse(BaseModel):
                         "source_type": "document",
                         "document_id": "doc123",
                         "title": "Mẫu đơn nghỉ học",
-                        "relevance_score": 0.92
+                        "relevance_score": 0.92,
                     }
                 ],
                 "metadata": {
@@ -144,14 +150,15 @@ class SmartQueryResponse(BaseModel):
                     "processing_time_ms": 1250.5,
                     "sources_count": 1,
                     "artifacts_count": 1,
-                    "has_fillable_form": True
-                }
+                    "has_fillable_form": True,
+                },
             }
         }
 
 
 class ArtifactDownloadResponse(BaseModel):
     """Response for artifact download request."""
+
     download_url: str
     file_name: str
     mime_type: str

@@ -1,12 +1,12 @@
 """Crawler DTOs."""
 
 from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
 
 
 class CreateCrawlJobRequest(BaseModel):
     """Create crawl job request."""
+
     url: str
     collection: str = "web_content"
     max_depth: int = 2
@@ -16,6 +16,7 @@ class CreateCrawlJobRequest(BaseModel):
 
 class CrawlJobResponse(BaseModel):
     """Crawl job response."""
+
     id: str
     url: str
     status: str
@@ -23,6 +24,6 @@ class CrawlJobResponse(BaseModel):
     successful_pages: int
     failed_pages: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True

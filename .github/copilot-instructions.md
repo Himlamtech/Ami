@@ -11,7 +11,8 @@
 - **No over-engineering**: Không tạo abstraction khi chưa cần
 - **Pragmatic**: Code hoạt động > Code "đẹp" nhưng phức tạp
 - **Readable**: Code phải dễ đọc, dễ hiểu sau 6 tháng
-
+- **Configurable**: Mọi thứ trong code có thể thay đổi đều phải qua config/env, ví dụ như model, endpoints, timeouts, thresholds đều phải set thông qua config mà không được hardcode
+- **Environment**: Chạy venv trước khi run/test/codegen để active dependencies đúng đã cài đặt
 ### Code Style
 ```python
 # ✅ Good - Ngắn gọn, rõ ràng
@@ -100,24 +101,35 @@ class MyService:
 
 ## 3. Use Cases
 
-### Chat & Q&A
-- Text chat với RAG (retrieve from knowledge base)
-- Multi-turn conversation với context awareness
-- Voice input (Speech-to-Text với Wav2Vec2)
-- File upload (PDF, DOCX, TXT, MD, CSV)
-- Streaming responses
+### USER Features (Student-facing)
+| ID | Feature | Description | Status |
+|----|---------|-------------|--------|
+| UC-U-001 | Smart Q&A | RAG với personalization theo profile | ✅ Done |
+| UC-U-002 | Voice Query | STT (Wav2Vec2/Gemini) → RAG → Response | ✅ Done |
+| UC-U-003 | Image Query | Vision AI → RAG → Response | ✅ Done |
+| UC-U-004 | Bookmark Q&A | Lưu Q&A quan trọng với tags, notes | 🔄 Planned |
+| UC-U-005 | Session Management | CRUD conversations, search, export | ✅ Done |
+| UC-U-006 | Feedback | 👍👎, rating 1-5, categories | ✅ Done |
+| UC-U-007 | Suggestions | Related questions, popular topics | 🔄 Planned |
+| UC-U-008 | Profile Settings | Major, level, preferences | ✅ Done |
 
-### Data Management
+### ADMIN Features
+| ID | Feature | Description | Status |
+|----|---------|-------------|--------|
+| UC-A-001 | Conversation History | View/filter/export all sessions | 🔄 Planned |
+| UC-A-002 | Feedback Dashboard | Analytics, trends, negative feedback | 🔄 Planned |
+| UC-A-003 | Usage Analytics | Requests, DAU/MAU, latency, errors | 🔄 Planned |
+| UC-A-004 | Cost Tracking | LLM token usage, cost by provider/model | 🔄 Planned |
+| UC-A-005 | Knowledge Quality | Coverage, gaps, low-confidence queries | 🔄 Planned |
+| UC-A-006 | User Profiles | View profiles, interests, engagement | 🔄 Planned |
+| UC-A-007 | Document Management | Upload, version, approve, delete | ✅ Done |
+| UC-A-008 | Data Sources | Crawl config, schedule, sync | ✅ Done |
+
+### Data Pipeline (Existing)
 - **Ingest**: Upload files, web scraping, web crawling
-- **View**: Statistics, collections, document metadata
-- **Delete**: Soft delete với restore capability
-- **Re-index**: Update vector embeddings
-
-### Admin Operations
-- User management (CRUD)
-- Data source approval workflow
-- Sync data between sources
-- System configuration
+- **Approval**: Pending updates workflow với diff viewer
+- **Sync**: Scheduled crawling, change detection
+- **Vector**: Auto-chunking, embedding, indexing
 
 ---
 
@@ -230,4 +242,50 @@ make up              # Start Docker services
 make dev             # Run backend
 make frontend        # Run frontend
 make migrate         # Import documents
+```
+
+---
+
+## 5. New Entities (Planned)
+
+### Analytics & Tracking
+```python
+UsageMetric      # Request/latency/error tracking
+LLMUsage         # Token usage, cost per provider/model
+SearchLog        # Query logs for gap detection
+```
+
+### User Experience
+```python
+Bookmark         # Saved Q&A pairs with tags
+Suggestion       # Proactive recommendations
+PromptTemplate   # Dynamic system prompts
+```
+
+### Configuration
+```python
+ModelConfig      # LLM model settings per use case
+DocumentVersion  # Document versioning
+```
+
+---
+
+## 6. API Endpoints (Planned)
+
+### Admin Analytics
+```
+GET  /api/v1/admin/analytics/overview
+GET  /api/v1/admin/analytics/costs
+GET  /api/v1/admin/analytics/usage
+GET  /api/v1/admin/feedback/dashboard
+GET  /api/v1/admin/knowledge/gaps
+GET  /api/v1/admin/conversations
+```
+
+### User Features
+```
+POST /api/v1/bookmarks
+GET  /api/v1/bookmarks
+GET  /api/v1/suggestions
+POST /api/v1/chat/sessions/{id}/export
 ```

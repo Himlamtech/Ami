@@ -1,10 +1,12 @@
 """
 Anthropic Claude LLM provider - Simple implementation.
 Config from centralized config module.
+Supports Vision (Claude 3) for image QA.
 """
 
+import base64
 import logging
-from typing import Optional, AsyncIterator
+from typing import Optional, AsyncIterator, Union
 
 from anthropic import (
     AsyncAnthropic,
@@ -24,10 +26,12 @@ logger = logging.getLogger(__name__)
 class AnthropicLLMService(ILLMService):
     """Anthropic Claude LLM provider."""
 
-    def __init__(self, config: AnthropicConfig = None, default_mode: LLMMode = LLMMode.QA):
+    def __init__(
+        self, config: AnthropicConfig = None, default_mode: LLMMode = LLMMode.QA
+    ):
         """
         Initialize Anthropic LLM service.
-        
+
         Args:
             config: Anthropic configuration. If None, uses global anthropic_config.
             default_mode: Default LLM mode (QA or REASONING).
@@ -51,20 +55,20 @@ class AnthropicLLMService(ILLMService):
     def get_model_for_mode(self, mode: LLMMode) -> str:
         """Get the model name for a specific mode."""
         return self._models.get(mode, self._models[LLMMode.QA])
-    
+
     def set_mode(self, mode: LLMMode) -> None:
         """Set the current operation mode."""
         self._current_mode = mode
         logger.debug(f"Anthropic mode set to: {mode.value}")
-    
+
     def get_current_mode(self) -> LLMMode:
         """Get the current operation mode."""
         return self._current_mode
-    
+
     def get_available_models(self) -> dict:
         """Get all available models for this provider."""
         return self._models.copy()
-    
+
     def _get_model(self, mode: Optional[LLMMode] = None) -> str:
         """Get model name for the mode."""
         return self._models[mode or self._current_mode]
@@ -74,23 +78,23 @@ class AnthropicLLMService(ILLMService):
         prompt: str,
         context: Optional[str] = None,
         mode: Optional[LLMMode] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate completion."""
         model = self._get_model(mode)
-        
+
         try:
             messages = [{"role": "user", "content": prompt}]
-            
+
             system = None
             if context:
                 system = f"Use the following context to answer:\n{context}"
-            
+
             max_tokens = kwargs.pop("max_tokens", 4096)
             temperature = kwargs.pop("temperature", 0.7)
-            
+
             logger.debug(f"Generating with model: {model}")
-            
+
             response = await self.client.messages.create(
                 model=model,
                 messages=messages,
@@ -121,23 +125,23 @@ class AnthropicLLMService(ILLMService):
         prompt: str,
         context: Optional[str] = None,
         mode: Optional[LLMMode] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncIterator[str]:
         """Stream completion."""
         model = self._get_model(mode)
-        
+
         try:
             messages = [{"role": "user", "content": prompt}]
-            
+
             system = None
             if context:
                 system = f"Use the following context to answer:\n{context}"
-            
+
             max_tokens = kwargs.pop("max_tokens", 4096)
             temperature = kwargs.pop("temperature", 0.7)
-            
+
             logger.debug(f"Streaming with model: {model}")
-            
+
             async with self.client.messages.stream(
                 model=model,
                 messages=messages,
@@ -151,3 +155,91 @@ class AnthropicLLMService(ILLMService):
         except Exception as e:
             logger.error(f"Stream error: {e}")
             yield f"[ERROR: {str(e)}]"
+
+    async def image_qa(
+        self,
+        prompt: str,
+        image: Union[bytes, str],
+        mode: Optional[LLMMode] = None,
+        **kwargs,
+    ) -> str:
+        """
+        Answer questions about an image using Claude Vision.
+
+        Args:
+            prompt: Question about the image
+            image: Image as bytes, base64 string, or URL
+            mode: QA or REASONING (default: QA)
+            **kwargs: Additional generation parameters
+
+        Returns:
+            Answer about the image
+        """
+        model = self._get_model(mode)
+
+        try:
+            # Prepare image for Anthropic format
+            mime_type = kwargs.pop("mime_type", "image/jpeg")
+
+            if isinstance(image, bytes):
+                # Raw bytes - encode to base64
+                image_b64 = base64.b64encode(image).decode("utf-8")
+            elif isinstance(image, str):
+                if image.startswith(("http://", "https://")):
+                    # URL - Claude doesn't support URL directly, need to fetch
+                    # For now, raise error - should be handled at higher level
+                    raise ValueError(
+                        "Anthropic doesn't support image URLs directly. Please provide bytes or base64."
+                    )
+                else:
+                    # Assume base64 string
+                    image_b64 = image
+            else:
+                raise ValueError(f"Unsupported image type: {type(image)}")
+
+            # Build message with image (Claude format)
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime_type,
+                                "data": image_b64,
+                            },
+                        },
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
+
+            max_tokens = kwargs.pop("max_tokens", 4096)
+            temperature = kwargs.pop("temperature", 0.7)
+
+            logger.debug(f"Image QA with model: {model}")
+
+            response = await self.client.messages.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+            result = response.content[0].text
+            logger.debug(f"Image QA response: {len(result)} chars")
+            return result
+
+        except RateLimitError as e:
+            logger.error(f"Rate limit in image_qa: {e}")
+            raise RuntimeError("Rate limit exceeded.")
+        except APITimeoutError as e:
+            logger.error(f"Timeout in image_qa: {e}")
+            raise RuntimeError("Request timeout.")
+        except APIError as e:
+            logger.error(f"API error in image_qa: {e}")
+            raise RuntimeError(f"API error: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error in image_qa: {e}")
+            raise RuntimeError(f"Failed to process image: {str(e)}")

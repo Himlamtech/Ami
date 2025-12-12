@@ -12,14 +12,14 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserRole(str, Enum):
     """User roles for access control."""
-    
+
     ADMIN = "admin"
     USER = "user"
 
 
 class UserBase(BaseModel):
     """Base user model."""
-    
+
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     full_name: Optional[str] = None
@@ -29,13 +29,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Model for creating a new user."""
-    
+
     password: str = Field(..., min_length=8)
 
 
 class UserUpdate(BaseModel):
     """Model for updating user information."""
-    
+
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     role: Optional[UserRole] = None
@@ -54,30 +54,36 @@ class UserInDB(BaseModel):
     hashed_password: str
     is_active: bool = True
     is_admin: bool = False  # Deprecated: use role_ids instead
-    
+
     # RBAC fields
-    role_ids: List[str] = Field(default_factory=list, description="List of assigned role IDs")
-    
+    role_ids: List[str] = Field(
+        default_factory=list, description="List of assigned role IDs"
+    )
+
     # Profile enhancement
     department: Optional[str] = Field(None, description="User's department")
     organization: Optional[str] = Field(None, description="User's organization")
     avatar_url: Optional[str] = Field(None, description="URL to user's avatar image")
-    
+
     # Localization
     timezone: str = Field(default="UTC", description="User's timezone")
     language: str = Field(default="vi", description="Preferred language (vi, en)")
-    
+
     # Preferences
-    preferences: Dict[str, Any] = Field(default_factory=dict, description="UI/UX preferences")
-    
+    preferences: Dict[str, Any] = Field(
+        default_factory=dict, description="UI/UX preferences"
+    )
+
     # Usage tracking
-    usage_quota: Optional[Dict[str, Any]] = Field(None, description="Usage quotas and limits")
+    usage_quota: Optional[Dict[str, Any]] = Field(
+        None, description="Usage quotas and limits"
+    )
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
     login_count: int = Field(default=0, description="Total login count")
-    
+
     # Security
     two_factor_enabled: bool = Field(default=False, description="2FA enabled status")
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -88,7 +94,7 @@ class UserInDB(BaseModel):
 
 class UserResponse(UserBase):
     """User model for API responses (without sensitive data)."""
-    
+
     id: str
     created_at: datetime
     last_login: Optional[datetime] = None
@@ -96,7 +102,7 @@ class UserResponse(UserBase):
 
 class DocumentBase(BaseModel):
     """Base document model."""
-    
+
     title: str = Field(..., min_length=1, max_length=500)
     file_name: str = Field(..., min_length=1, max_length=255)
     content: Optional[str] = None
@@ -107,13 +113,13 @@ class DocumentBase(BaseModel):
 
 class DocumentCreate(DocumentBase):
     """Model for creating a new document."""
-    
+
     collection: str = "default"
 
 
 class DocumentUpdate(BaseModel):
     """Model for updating document metadata."""
-    
+
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     file_name: Optional[str] = Field(None, min_length=1, max_length=255)
     content: Optional[str] = None
@@ -124,21 +130,21 @@ class DocumentUpdate(BaseModel):
 
 class DocumentInDB(DocumentBase):
     """Document model as stored in database."""
-    
+
     id: str = Field(alias="_id")
     collection: str = "default"
     chunk_count: int = 0
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     created_by: Optional[str] = None  # User ID
-    
+
     class Config:
         populate_by_name = True
 
 
 class DocumentResponse(BaseModel):
     """Document model for API responses."""
-    
+
     id: str
     filename: str
     collection: str
@@ -156,7 +162,7 @@ class DocumentResponse(BaseModel):
 
 class VectorMapping(BaseModel):
     """Mapping between MongoDB document and Qdrant vector point."""
-    
+
     document_id: str
     qdrant_point_id: str
     chunk_index: int
@@ -165,14 +171,14 @@ class VectorMapping(BaseModel):
 
 class LoginRequest(BaseModel):
     """Login request model."""
-    
+
     username: str
     password: str
 
 
 class LoginResponse(BaseModel):
     """Login response model."""
-    
+
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
@@ -180,21 +186,21 @@ class LoginResponse(BaseModel):
 
 class Token(BaseModel):
     """JWT token model."""
-    
+
     access_token: str
     token_type: str = "bearer"
 
 
 class TokenData(BaseModel):
     """Token payload data."""
-    
+
     username: Optional[str] = None
     role: Optional[str] = None
 
 
 class DocumentListResponse(BaseModel):
     """Paginated document list response."""
-    
+
     documents: List[DocumentResponse]
     total: int
     skip: int
@@ -203,7 +209,7 @@ class DocumentListResponse(BaseModel):
 
 class UserListResponse(BaseModel):
     """Paginated user list response."""
-    
+
     users: List[UserResponse]
     total: int
     skip: int
@@ -217,7 +223,7 @@ class UserListResponse(BaseModel):
 
 class ChatMessageRole(str, Enum):
     """Message role in conversation."""
-    
+
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
@@ -225,7 +231,7 @@ class ChatMessageRole(str, Enum):
 
 class ChatMessageBase(BaseModel):
     """Base chat message model."""
-    
+
     role: ChatMessageRole
     content: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -233,34 +239,34 @@ class ChatMessageBase(BaseModel):
 
 class ChatMessageCreate(ChatMessageBase):
     """Model for creating a new message."""
-    
+
     session_id: str
     attachments: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class ChatMessageInDB(ChatMessageBase):
     """Chat message as stored in database."""
-    
+
     id: str = Field(alias="_id")
     session_id: str
     attachments: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
     edited_at: Optional[datetime] = None
     is_deleted: bool = False
-    
+
     class Config:
         populate_by_name = True
 
 
 class ChatMessageUpdate(BaseModel):
     """Model for updating a message."""
-    
+
     content: str
 
 
 class ChatMessageResponse(BaseModel):
     """Chat message for API responses."""
-    
+
     id: str
     session_id: str
     role: ChatMessageRole
@@ -273,7 +279,7 @@ class ChatMessageResponse(BaseModel):
 
 class ChatSessionBase(BaseModel):
     """Base chat session model."""
-    
+
     title: str = Field(default="New Conversation", max_length=500)
     summary: Optional[str] = Field(default=None, max_length=2000)
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -283,7 +289,7 @@ class ChatSessionBase(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     """Model for creating a new chat session."""
-    
+
     title: Optional[str] = Field(default="New Conversation", max_length=500)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     tags: List[str] = Field(default_factory=list)
@@ -291,7 +297,7 @@ class ChatSessionCreate(BaseModel):
 
 class ChatSessionUpdate(BaseModel):
     """Model for updating chat session."""
-    
+
     title: Optional[str] = Field(None, max_length=500)
     summary: Optional[str] = Field(None, max_length=2000)
     metadata: Optional[Dict[str, Any]] = None
@@ -301,7 +307,7 @@ class ChatSessionUpdate(BaseModel):
 
 class ChatSessionInDB(ChatSessionBase):
     """Chat session as stored in database."""
-    
+
     id: str = Field(alias="_id")
     user_id: str
     message_count: int = 0
@@ -309,14 +315,14 @@ class ChatSessionInDB(ChatSessionBase):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     is_deleted: bool = False
-    
+
     class Config:
         populate_by_name = True
 
 
 class ChatSessionResponse(BaseModel):
     """Chat session for API responses."""
-    
+
     id: str
     title: str
     summary: Optional[str] = None
@@ -331,13 +337,13 @@ class ChatSessionResponse(BaseModel):
 
 class ChatSessionWithMessages(ChatSessionResponse):
     """Chat session with messages included."""
-    
+
     messages: List[ChatMessageResponse] = Field(default_factory=list)
 
 
 class ChatSessionListResponse(BaseModel):
     """Paginated chat session list response."""
-    
+
     sessions: List[ChatSessionResponse]
     total: int
     skip: int
@@ -346,14 +352,14 @@ class ChatSessionListResponse(BaseModel):
 
 class SummarizeRequest(BaseModel):
     """Request to summarize a chat session."""
-    
+
     session_id: str
     max_length: int = Field(default=200, ge=50, le=1000)
 
 
 class SummarizeResponse(BaseModel):
     """Response from summarization."""
-    
+
     session_id: str
     title: str
     summary: str
@@ -367,7 +373,7 @@ class SummarizeResponse(BaseModel):
 
 class FileType(str, Enum):
     """Type of file."""
-    
+
     UPLOADED = "uploaded"
     GENERATED = "generated"
     AVATAR = "avatar"
@@ -376,53 +382,53 @@ class FileType(str, Enum):
 
 class FileMetadata(BaseModel):
     """File metadata stored in MongoDB."""
-    
+
     id: str = Field(alias="_id")
     filename: str
     original_name: Optional[str] = None
     user_id: str
-    
+
     # Storage info
     url: str
     thumbnail_url: Optional[str] = None
     storage_provider: str = "minio"
     bucket: str
     path: str
-    
+
     # File info
     mime_type: str
     size: int
     width: Optional[int] = None
     height: Optional[int] = None
-    
+
     # Context
     session_id: Optional[str] = None
     message_id: Optional[str] = None
-    
+
     # Type
     file_type: FileType = FileType.UPLOADED
-    
+
     # Generation info (if generated image)
     generation_prompt: Optional[str] = None
     model_used: Optional[str] = None
-    
+
     # Vision analysis (if analyzed)
     vision_analysis: Optional[Dict[str, Any]] = None
-    
+
     # Status
     status: str = "processed"  # pending, processing, processed, failed
     is_deleted: bool = False
-    
+
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         populate_by_name = True
 
 
 class FileAttachmentDB(BaseModel):
     """File attachment in chat message (embedded in message)."""
-    
+
     file_id: str
     type: str  # image, document, audio, video
     url: str
@@ -430,21 +436,23 @@ class FileAttachmentDB(BaseModel):
     filename: str
     size: int
     mime_type: str
-    
+
     # Image-specific
     width: Optional[int] = None
     height: Optional[int] = None
-    
+
     # Generated image
     generated: bool = False
     generation_prompt: Optional[str] = None
-    
+
     # Vision analysis
     vision_analysis: Optional[Dict[str, Any]] = None
+
 
 # ============================================
 # Log Management Models (NEW)
 # ============================================
+
 
 class LogLevel(str, Enum):
     """Log severity levels."""
@@ -559,8 +567,8 @@ class CrawlJobType(str, Enum):
     """Type of crawl job."""
 
     SCRAPE = "scrape"  # Single page scrape
-    CRAWL = "crawl"    # Multi-page crawl
-    BATCH = "batch"    # Batch crawl from CSV
+    CRAWL = "crawl"  # Multi-page crawl
+    BATCH = "batch"  # Batch crawl from CSV
 
 
 class CrawlJobBase(BaseModel):
@@ -579,6 +587,7 @@ class CrawlJobBase(BaseModel):
 
 class CrawlJobCreate(CrawlJobBase):
     """Model for creating a new crawl job."""
+
     pass
 
 

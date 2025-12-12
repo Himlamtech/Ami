@@ -6,53 +6,57 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
 from app.domain.entities.data_source import DataSource, SourceAuth, CrawlConfig
-from app.domain.enums.data_source import SourceStatus, DataCategory, DataType, SourceType
-from app.application.interfaces.repositories.data_source_repository import IDataSourceRepository
+from app.domain.enums.data_source import (
+    SourceStatus,
+    DataCategory,
+    DataType,
+    SourceType,
+)
+from app.application.interfaces.repositories.data_source_repository import (
+    IDataSourceRepository,
+)
 
 
 class MongoDBDataSourceRepository(IDataSourceRepository):
     """MongoDB implementation of DataSource Repository."""
-    
+
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.collection = db["data_sources"]
-    
+
     async def create(self, source: DataSource) -> DataSource:
         """Create new data source."""
         doc = self._entity_to_doc(source)
         result = await self.collection.insert_one(doc)
         source.id = str(result.inserted_id)
         return source
-    
+
     async def get_by_id(self, source_id: str) -> Optional[DataSource]:
         """Get data source by ID."""
         try:
             doc = await self.collection.find_one({"_id": ObjectId(source_id)})
         except Exception:
             return None
-        
+
         if not doc:
             return None
-        
+
         return self._doc_to_entity(doc)
-    
+
     async def update(self, source: DataSource) -> DataSource:
         """Update data source."""
         doc = self._entity_to_doc(source)
         doc.pop("_id", None)  # Remove _id from update
-        
-        await self.collection.update_one(
-            {"_id": ObjectId(source.id)},
-            {"$set": doc}
-        )
-        
+
+        await self.collection.update_one({"_id": ObjectId(source.id)}, {"$set": doc})
+
         return source
-    
+
     async def delete(self, source_id: str) -> bool:
         """Delete data source."""
         result = await self.collection.delete_one({"_id": ObjectId(source_id)})
         return result.deleted_count > 0
-    
+
     async def list(
         self,
         skip: int = 0,
@@ -63,15 +67,15 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
     ) -> List[DataSource]:
         """List data sources with filters."""
         query = self._build_query(status, category, is_active)
-        
+
         cursor = self.collection.find(query).sort("priority", 1).skip(skip).limit(limit)
         sources = []
-        
+
         async for doc in cursor:
             sources.append(self._doc_to_entity(doc))
-        
+
         return sources
-    
+
     async def count(
         self,
         status: Optional[SourceStatus] = None,
@@ -81,28 +85,28 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
         """Count data sources with filters."""
         query = self._build_query(status, category, is_active)
         return await self.collection.count_documents(query)
-    
+
     async def get_active_sources(self) -> List[DataSource]:
         """Get all active data sources for scheduling."""
         query = {"is_active": True, "status": {"$ne": SourceStatus.DISABLED.value}}
-        
+
         cursor = self.collection.find(query).sort("priority", 1)
         sources = []
-        
+
         async for doc in cursor:
             sources.append(self._doc_to_entity(doc))
-        
+
         return sources
-    
+
     async def get_by_url(self, base_url: str) -> Optional[DataSource]:
         """Get data source by base URL."""
         doc = await self.collection.find_one({"base_url": base_url})
-        
+
         if not doc:
             return None
-        
+
         return self._doc_to_entity(doc)
-    
+
     async def update_crawl_stats(
         self,
         source_id: str,
@@ -112,7 +116,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
     ) -> bool:
         """Update crawl statistics after job completion."""
         now = datetime.now()
-        
+
         if success:
             update = {
                 "$set": {
@@ -126,7 +130,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
                 "$inc": {
                     "total_crawls": 1,
                     "total_documents": docs_count,
-                }
+                },
             }
         else:
             update = {
@@ -138,25 +142,22 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
                 "$inc": {
                     "total_crawls": 1,
                     "error_count": 1,
-                }
+                },
             }
-        
-        result = await self.collection.update_one(
-            {"_id": ObjectId(source_id)},
-            update
-        )
-        
+
+        result = await self.collection.update_one({"_id": ObjectId(source_id)}, update)
+
         # Check if need to pause due to errors
         if not success:
             source = await self.get_by_id(source_id)
             if source and source.error_count >= source.max_errors:
                 await self.collection.update_one(
                     {"_id": ObjectId(source_id)},
-                    {"$set": {"status": SourceStatus.ERROR.value, "is_active": False}}
+                    {"$set": {"status": SourceStatus.ERROR.value, "is_active": False}},
                 )
-        
+
         return result.modified_count > 0
-    
+
     def _build_query(
         self,
         status: Optional[SourceStatus] = None,
@@ -172,7 +173,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
         if is_active is not None:
             query["is_active"] = is_active
         return query
-    
+
     def _entity_to_doc(self, source: DataSource) -> dict:
         """Convert entity to MongoDB document."""
         doc = {
@@ -200,7 +201,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
             "created_at": source.created_at,
             "updated_at": source.updated_at,
         }
-        
+
         # Auth config
         if source.auth:
             doc["auth"] = {
@@ -213,7 +214,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
             }
         else:
             doc["auth"] = None
-        
+
         # Crawl config
         if source.crawl_config:
             doc["crawl_config"] = {
@@ -230,12 +231,12 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
             }
         else:
             doc["crawl_config"] = None
-        
+
         if source.id:
             doc["_id"] = ObjectId(source.id)
-        
+
         return doc
-    
+
     def _doc_to_entity(self, doc: dict) -> DataSource:
         """Convert MongoDB document to entity."""
         # Parse auth
@@ -250,7 +251,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
                 cookies=auth_doc.get("cookies"),
                 headers=auth_doc.get("headers"),
             )
-        
+
         # Parse crawl config
         crawl_config = CrawlConfig()
         if doc.get("crawl_config"):
@@ -267,7 +268,7 @@ class MongoDBDataSourceRepository(IDataSourceRepository):
                 min_content_length=cc.get("min_content_length", 100),
                 exclude_patterns=cc.get("exclude_patterns", []),
             )
-        
+
         return DataSource(
             id=str(doc["_id"]),
             name=doc["name"],

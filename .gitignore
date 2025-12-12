@@ -109,3 +109,6 @@ dump.rdb
 
 # Qdrant
 qdrant_storage/
+
+# Postman
+postman/

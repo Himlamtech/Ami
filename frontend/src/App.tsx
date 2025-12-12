@@ -1,102 +1,82 @@
-import { useEffect, useState } from 'react'
-import { MessageSquare, BarChart3, Users, FileText, LogOut } from 'lucide-react'
-import { useAuthStore } from './store/authStore'
-import Login from './pages/Login'
-import Chat from './pages/Chat'
-import DataManagement from './pages/DataManagement'
-import UserManagement from './pages/UserManagement'
-import LogManagement from './pages/LogManagement'
-import './App.css'
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from '@/components/ui/toaster'
+import LoadingSpinner from '@/components/shared/LoadingSpinner'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
-type AppView = 'chat' | 'data' | 'users' | 'logs'
+// Layouts
+import ChatLayout from '@/layouts/ChatLayout'
+import AdminLayout from '@/layouts/AdminLayout'
 
-function App() {
-    const { token, user, logout, initialize } = useAuthStore()
-    const [isInitialized, setIsInitialized] = useState(false)
-    const [currentView, setCurrentView] = useState<AppView>('chat')
+// Lazy load pages - Auth
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 
-    useEffect(() => {
-        const init = async () => {
-            await initialize()
-            setIsInitialized(true)
-        }
-        init()
-    }, [])
+// Lazy load pages - Chat/User
+const ChatPage = lazy(() => import('@/features/chat/pages/ChatPage'))
+const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage'))
+const SavedPage = lazy(() => import('@/features/bookmarks/pages/SavedPage'))
+const DocsPage = lazy(() => import('@/features/docs/pages/DocsPage'))
 
-    if (!isInitialized) {
-        return (
-            <div className="app-loading">
-                <div className="loader"></div>
-            </div>
-        )
-    }
+// Lazy load pages - Admin
+const DashboardPage = lazy(() => import('@/features/admin/pages/DashboardPage'))
+const ConversationsPage = lazy(() => import('@/features/admin/pages/ConversationsPage'))
+const FeedbackPage = lazy(() => import('@/features/admin/pages/FeedbackPage'))
+const AnalyticsPage = lazy(() => import('@/features/admin/pages/AnalyticsPage'))
+const KnowledgePage = lazy(() => import('@/features/admin/pages/KnowledgePage'))
+const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage'))
+const SettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
 
-    if (!token) {
-        return <Login />
-    }
-
+function PageLoader() {
     return (
-        <div className="app-container">
-            <nav className="app-nav">
-                <div className="nav-brand">
-                    <img src="/assets/logo_ptit.png" alt="PTIT Logo" className="nav-logo" />
-                    <span className="nav-title">Ami System</span>
-                </div>
-
-                <div className="nav-menu">
-                    <button
-                        className={`nav-item ${currentView === 'chat' ? 'active' : ''}`}
-                        onClick={() => setCurrentView('chat')}
-                    >
-                        <MessageSquare size={18} />
-                        <span>Chat</span>
-                    </button>
-                    <button
-                        className={`nav-item ${currentView === 'data' ? 'active' : ''}`}
-                        onClick={() => setCurrentView('data')}
-                    >
-                        <BarChart3 size={18} />
-                        <span>Data Management</span>
-                    </button>
-
-                    {user?.role === 'admin' && (
-                        <>
-                            <button
-                                className={`nav-item ${currentView === 'users' ? 'active' : ''}`}
-                                onClick={() => setCurrentView('users')}
-                            >
-                                <Users size={18} />
-                                <span>User Management</span>
-                            </button>
-                            <button
-                                className={`nav-item ${currentView === 'logs' ? 'active' : ''}`}
-                                onClick={() => setCurrentView('logs')}
-                            >
-                                <FileText size={18} />
-                                <span>Log Management</span>
-                            </button>
-                        </>
-                    )}
-                </div>
-
-                <div className="nav-user">
-                    <span className="user-name">{user?.username || 'User'}</span>
-                    <button className="btn-logout" onClick={logout}>
-                        <LogOut size={16} />
-                        <span>Logout</span>
-                    </button>
-                </div>
-            </nav>
-
-            <div className="app-content">
-                {currentView === 'chat' && <Chat />}
-                {currentView === 'data' && <DataManagement />}
-                {currentView === 'users' && user?.role === 'admin' && <UserManagement />}
-                {currentView === 'logs' && user?.role === 'admin' && <LogManagement />}
-            </div>
+        <div className="flex items-center justify-center h-full min-h-[400px]">
+            <LoadingSpinner size="lg" />
         </div>
     )
 }
 
-export default App
+function App() {
+    return (
+        <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+                <Routes>
+                    {/* Auth Routes */}
+                    <Route path="/login" element={<LoginPage />} />
 
+                    {/* Chat Routes - Protected */}
+                    <Route path="/" element={
+                        <ProtectedRoute>
+                            <ChatLayout />
+                        </ProtectedRoute>
+                    }>
+                        <Route index element={<ChatPage />} />
+                        <Route path="chat/:sessionId" element={<ChatPage />} />
+                        <Route path="saved" element={<SavedPage />} />
+                        <Route path="docs" element={<DocsPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
+                    </Route>
+
+                    {/* Admin Routes - Protected & Admin Only */}
+                    <Route path="/admin" element={
+                        <ProtectedRoute requireAdmin>
+                            <AdminLayout />
+                        </ProtectedRoute>
+                    }>
+                        <Route index element={<DashboardPage />} />
+                        <Route path="conversations" element={<ConversationsPage />} />
+                        <Route path="feedback" element={<FeedbackPage />} />
+                        <Route path="analytics" element={<AnalyticsPage />} />
+                        <Route path="knowledge" element={<KnowledgePage />} />
+                        <Route path="users" element={<UsersPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                    </Route>
+
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </Suspense>
+            <Toaster />
+        </BrowserRouter>
+    )
+}
+
+export default App

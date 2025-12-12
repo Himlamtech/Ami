@@ -1,14 +1,17 @@
 """Get approval stats use case."""
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict
 
-from app.application.interfaces.repositories.pending_update_repository import IPendingUpdateRepository
+from app.application.interfaces.repositories.pending_update_repository import (
+    IPendingUpdateRepository,
+)
 
 
 @dataclass
 class GetApprovalStatsOutput:
     """Output from getting approval stats."""
+
     total_pending: int
     total_approved: int
     total_rejected: int
@@ -19,14 +22,14 @@ class GetApprovalStatsOutput:
 
 class GetApprovalStatsUseCase:
     """Use case for getting approval queue statistics."""
-    
+
     def __init__(self, repository: IPendingUpdateRepository):
         self.repository = repository
-    
+
     async def execute(self) -> GetApprovalStatsOutput:
         """Get approval queue statistics."""
         stats = await self.repository.get_stats()
-        
+
         return GetApprovalStatsOutput(
             total_pending=stats.get("total_pending", 0),
             total_approved=stats.get("total_approved", 0),

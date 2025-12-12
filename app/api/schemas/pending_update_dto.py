@@ -7,25 +7,31 @@ from pydantic import BaseModel, Field
 
 # ===== Request DTOs =====
 
+
 class ApproveUpdateRequest(BaseModel):
     """Request to approve a pending update."""
+
     note: Optional[str] = None
 
 
 class RejectUpdateRequest(BaseModel):
     """Request to reject a pending update."""
+
     note: Optional[str] = None
 
 
 class BulkActionRequest(BaseModel):
     """Request for bulk approve/reject."""
+
     pending_ids: List[str] = Field(..., min_length=1)
 
 
 # ===== Response DTOs =====
 
+
 class PendingUpdateResponse(BaseModel):
     """Pending update response."""
+
     id: str
     source_id: str
     title: str
@@ -51,6 +57,7 @@ class PendingUpdateResponse(BaseModel):
 
 class PendingUpdateDetailResponse(PendingUpdateResponse):
     """Detailed pending update response with full content."""
+
     content: str  # Full content
     matched_doc_ids: List[str] = []
     metadata: Dict[str, Any] = {}
@@ -59,6 +66,7 @@ class PendingUpdateDetailResponse(PendingUpdateResponse):
 
 class PendingUpdateListResponse(BaseModel):
     """List pending updates response."""
+
     items: List[PendingUpdateResponse]
     total: int
     skip: int
@@ -67,6 +75,7 @@ class PendingUpdateListResponse(BaseModel):
 
 class ApprovalActionResponse(BaseModel):
     """Response for approve/reject action."""
+
     success: bool
     message: str
     document_id: Optional[str] = None
@@ -75,6 +84,7 @@ class ApprovalActionResponse(BaseModel):
 
 class BulkActionResponse(BaseModel):
     """Response for bulk actions."""
+
     success: bool
     processed_count: int
     message: str
@@ -82,6 +92,7 @@ class BulkActionResponse(BaseModel):
 
 class ApprovalStatsResponse(BaseModel):
     """Approval queue statistics response."""
+
     total_pending: int
     total_approved: int
     total_rejected: int

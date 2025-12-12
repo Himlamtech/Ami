@@ -6,11 +6,11 @@ Secrets (.env) -> Config modules -> Infrastructure services
 
 Usage:
     from app.config import app_config, mongodb_config, openai_config
-    
+
     # Access settings directly
     port = app_config.app_port
     mongo_url = mongodb_config.get_connection_url()
-    
+
 Structure:
     - base.py: Core app settings (port, debug, CORS)
     - persistence.py: MongoDB, Qdrant, MinIO
@@ -56,7 +56,7 @@ __all__ = [
     "AppConfig",
     # Persistence
     "mongodb_config",
-    "qdrant_config", 
+    "qdrant_config",
     "minio_config",
     "MongoDBConfig",
     "QdrantConfig",

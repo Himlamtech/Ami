@@ -4,13 +4,20 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from app.domain.entities.pending_update import PendingUpdate
-from app.domain.enums.data_source import PendingStatus, DataCategory, UpdateDetectionType
-from app.application.interfaces.repositories.pending_update_repository import IPendingUpdateRepository
+from app.domain.enums.data_source import (
+    PendingStatus,
+    DataCategory,
+    UpdateDetectionType,
+)
+from app.application.interfaces.repositories.pending_update_repository import (
+    IPendingUpdateRepository,
+)
 
 
 @dataclass
 class ListPendingUpdatesInput:
     """Input for listing pending updates."""
+
     skip: int = 0
     limit: int = 50
     status: Optional[PendingStatus] = None
@@ -22,6 +29,7 @@ class ListPendingUpdatesInput:
 @dataclass
 class ListPendingUpdatesOutput:
     """Output from listing pending updates."""
+
     items: List[PendingUpdate]
     total: int
     skip: int
@@ -30,11 +38,13 @@ class ListPendingUpdatesOutput:
 
 class ListPendingUpdatesUseCase:
     """Use case for listing pending updates."""
-    
+
     def __init__(self, repository: IPendingUpdateRepository):
         self.repository = repository
-    
-    async def execute(self, input_data: ListPendingUpdatesInput) -> ListPendingUpdatesOutput:
+
+    async def execute(
+        self, input_data: ListPendingUpdatesInput
+    ) -> ListPendingUpdatesOutput:
         """List pending updates with pagination and filters."""
         items = await self.repository.list(
             skip=input_data.skip,
@@ -44,13 +54,13 @@ class ListPendingUpdatesUseCase:
             category=input_data.category,
             detection_type=input_data.detection_type,
         )
-        
+
         total = await self.repository.count(
             status=input_data.status,
             source_id=input_data.source_id,
             category=input_data.category,
         )
-        
+
         return ListPendingUpdatesOutput(
             items=items,
             total=total,

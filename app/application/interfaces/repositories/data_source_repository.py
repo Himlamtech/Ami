@@ -9,27 +9,27 @@ from app.domain.enums.data_source import SourceStatus, DataCategory
 
 class IDataSourceRepository(ABC):
     """Repository interface for DataSource entity."""
-    
+
     @abstractmethod
     async def create(self, source: DataSource) -> DataSource:
         """Create new data source."""
         pass
-    
+
     @abstractmethod
     async def get_by_id(self, source_id: str) -> Optional[DataSource]:
         """Get data source by ID."""
         pass
-    
+
     @abstractmethod
     async def update(self, source: DataSource) -> DataSource:
         """Update data source."""
         pass
-    
+
     @abstractmethod
     async def delete(self, source_id: str) -> bool:
         """Delete data source."""
         pass
-    
+
     @abstractmethod
     async def list(
         self,
@@ -41,7 +41,7 @@ class IDataSourceRepository(ABC):
     ) -> List[DataSource]:
         """List data sources with filters."""
         pass
-    
+
     @abstractmethod
     async def count(
         self,
@@ -51,17 +51,17 @@ class IDataSourceRepository(ABC):
     ) -> int:
         """Count data sources with filters."""
         pass
-    
+
     @abstractmethod
     async def get_active_sources(self) -> List[DataSource]:
         """Get all active data sources for scheduling."""
         pass
-    
+
     @abstractmethod
     async def get_by_url(self, base_url: str) -> Optional[DataSource]:
         """Get data source by base URL (for duplicate check)."""
         pass
-    
+
     @abstractmethod
     async def update_crawl_stats(
         self,

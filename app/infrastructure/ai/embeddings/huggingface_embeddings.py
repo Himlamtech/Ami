@@ -37,13 +37,15 @@ class HuggingFaceEmbeddings(IEmbeddingService):
         """
         self.config = config or embedding_config
         model_name = self.config.model
-        
+
         if device is None:
             device = torch.device(self.config.device)
-        
+
         logger.info(f"Loading HuggingFace model: {model_name}")
         # Load model with trust_remote_code for custom models
-        self.model = SentenceTransformer(model_name, device=device.type, trust_remote_code=True)
+        self.model = SentenceTransformer(
+            model_name, device=device.type, trust_remote_code=True
+        )
         self.model_name = model_name
         self.batch_size = batch_size
         self.dimension = self.model.get_sentence_embedding_dimension()
@@ -147,7 +149,7 @@ class HuggingFaceEmbeddings(IEmbeddingService):
     def get_embedding_dimension(self) -> int:
         """
         Get the dimension of embeddings produced by this model.
-        
+
         Returns:
             Embedding dimension (e.g., 768)
         """

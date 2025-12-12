@@ -10,6 +10,7 @@ from app.application.interfaces.repositories.chat_repository import IChatReposit
 @dataclass
 class CreateSessionInput:
     """Input for create session use case."""
+
     user_id: str
     title: Optional[str] = "New Conversation"
     metadata: Optional[Dict[str, Any]] = None
@@ -19,31 +20,32 @@ class CreateSessionInput:
 @dataclass
 class CreateSessionOutput:
     """Output from create session use case."""
+
     session: ChatSession
 
 
 class CreateSessionUseCase:
     """
     Use Case: Create new chat session.
-    
+
     Business Rules:
     1. Session must belong to a user
     2. Auto-generate title if not provided
     3. Initialize with empty message count
-    
+
     Single Responsibility: Create chat session
     """
-    
+
     def __init__(self, chat_repository: IChatRepository):
         self.chat_repo = chat_repository
-    
+
     async def execute(self, input_data: CreateSessionInput) -> CreateSessionOutput:
         """
         Create new chat session.
-        
+
         Args:
             input_data: Session creation data
-            
+
         Returns:
             CreateSessionOutput with created session
         """
@@ -58,8 +60,8 @@ class CreateSessionUseCase:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        
+
         # Persist session
         created_session = await self.chat_repo.create_session(session)
-        
+
         return CreateSessionOutput(session=created_session)

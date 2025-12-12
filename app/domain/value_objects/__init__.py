@@ -14,6 +14,16 @@ from .chat_response import (
     ArtifactReference,
     RichChatResponse,
 )
+from .rag_models import (
+    TextChunk,
+    ChunkMetadata,
+    SearchResult,
+    RAGContext,
+    RAGSearchConfig,
+    ChunkingConfig,
+    ChunkingStrategy,
+    SearchType,
+)
 
 __all__ = [
     "ThinkingMode",
@@ -28,4 +38,13 @@ __all__ = [
     "SourceReference",
     "ArtifactReference",
     "RichChatResponse",
+    # RAG models
+    "TextChunk",
+    "ChunkMetadata",
+    "SearchResult",
+    "RAGContext",
+    "RAGSearchConfig",
+    "ChunkingConfig",
+    "ChunkingStrategy",
+    "SearchType",
 ]

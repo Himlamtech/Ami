@@ -1,11 +1,15 @@
 """Sync use cases package."""
 
-from .scheduled_sync import ScheduledSyncUseCase, ScheduledSyncInput, ScheduledSyncOutput
+from .scheduled_sync import (
+    ScheduledSyncUseCase,
+    ScheduledSyncInput,
+    ScheduledSyncOutput,
+)
 from .change_detector import ChangeDetectorUseCase, ChangeDetectionResult
 
 __all__ = [
     "ScheduledSyncUseCase",
-    "ScheduledSyncInput", 
+    "ScheduledSyncInput",
     "ScheduledSyncOutput",
     "ChangeDetectorUseCase",
     "ChangeDetectionResult",

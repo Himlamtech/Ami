@@ -4,7 +4,40 @@
 
 ---
 
+## 🎯 Vision
+
+AMI là chatbot AI thông minh dành cho sinh viên PTIT, tích hợp vào tài khoản cá nhân để cung cấp hỗ trợ được cá nhân hóa. Mục tiêu:
+- **Expose API** để tích hợp vào các hệ thống khác
+- **Multi-modal**: Text, Voice, Image input
+- **Personalized**: Adapt theo profile và behavior của user
+- **Observable**: Full analytics và monitoring cho admin
+
+---
+
 ## 📋 Use Cases
+
+### 👤 USER Features
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Smart Q&A** | RAG với personalization theo profile | ✅ |
+| **Voice Query** | STT → RAG → TTS (optional) | ✅ |
+| **Image Query** | Vision AI phân tích → RAG | ✅ |
+| **Bookmark** | Lưu Q&A quan trọng | 🔄 |
+| **Sessions** | CRUD conversations, search, export | ✅ |
+| **Feedback** | 👍👎, rating, categories | ✅ |
+| **Suggestions** | Related questions, popular topics | 🔄 |
+| **Profile** | Major, level, preferences | ✅ |
+
+### 🔧 ADMIN Features  
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **History** | View/filter/export conversations | 🔄 |
+| **Feedback Dashboard** | Analytics, trends, issues | 🔄 |
+| **Usage Analytics** | Requests, users, latency | 🔄 |
+| **Cost Tracking** | LLM tokens, cost breakdown | 🔄 |
+| **Knowledge Quality** | Gaps, coverage, confidence | 🔄 |
+| **Documents** | Upload, version, approve | ✅ |
+| **Data Sources** | Crawl, schedule, sync | ✅ |
 
 ### 1. **Chat (Question Answering)**
 - **Input Types:**
@@ -291,3 +324,4 @@ See [STT_SETUP_GUIDE.md](./STT_SETUP_GUIDE.md) for:
 - Production checklist
 
 ---
+

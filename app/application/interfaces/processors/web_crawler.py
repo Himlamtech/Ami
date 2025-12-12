@@ -7,10 +7,10 @@ from typing import Dict, Any, List
 class IWebCrawler(ABC):
     """
     Interface for web crawling.
-    
+
     Crawls websites and extracts content.
     """
-    
+
     @abstractmethod
     async def scrape_url(
         self,
@@ -20,12 +20,12 @@ class IWebCrawler(ABC):
     ) -> Dict[str, Any]:
         """
         Scrape single URL.
-        
+
         Args:
             url: URL to scrape
             formats: Desired output formats (e.g., ["markdown", "html"])
             timeout: Timeout in milliseconds
-            
+
         Returns:
             Dict with:
                 - content: Extracted content
@@ -33,7 +33,7 @@ class IWebCrawler(ABC):
                 - success: Whether scrape succeeded
         """
         pass
-    
+
     @abstractmethod
     async def crawl_website(
         self,
@@ -43,12 +43,12 @@ class IWebCrawler(ABC):
     ) -> List[Dict[str, Any]]:
         """
         Crawl website (multiple pages).
-        
+
         Args:
             url: Starting URL
             max_depth: Maximum crawl depth
             limit: Maximum number of pages
-            
+
         Returns:
             List of scraped pages
         """

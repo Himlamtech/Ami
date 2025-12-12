@@ -4,8 +4,6 @@ These mappers handle conversion between domain entities (pure Python)
 and MongoDB models (Pydantic with database-specific fields).
 """
 
-from typing import Optional
-from datetime import datetime
 from app.domain.entities.document import Document
 from app.domain.entities.chat_session import ChatSession
 from app.domain.entities.chat_message import ChatMessage
@@ -18,46 +16,56 @@ from app.infrastructure.persistence.mongodb.models import (
 
 class DocumentMapper:
     """Mapper for Document entity ↔ MongoDB model."""
-    
+
     @staticmethod
     def to_entity(model: DocumentInDB) -> Document:
         """Convert MongoDB model to domain entity."""
         return Document(
             id=model.id,
-            title=model.title if hasattr(model, 'title') else model.filename,
-            file_name=model.filename,
-            content=model.content if hasattr(model, 'content') else None,
+            title=model.title,
+            file_name=model.file_name,
+            source=model.metadata.get("source"),
+            content=model.content,
             collection=model.collection,
             metadata=model.metadata,
-            tags=model.tags if hasattr(model, 'tags') else [],
+            tags=model.tags,
             chunk_count=model.chunk_count,
             vector_ids=[],  # Not stored in MongoDB, managed separately
-            file_path=model.file_path if hasattr(model, 'file_path') else None,
-            file_size=model.file_size if hasattr(model, 'file_size') else None,
-            mime_type=model.mime_type if hasattr(model, 'mime_type') else None,
+            file_path=None,
+            file_size=None,
+            mime_type=None,
             is_active=model.is_active,
-            created_by=model.created_by if hasattr(model, 'created_by') else None,
+            created_by=model.created_by,
             created_at=model.created_at,
-            updated_at=model.updated_at if hasattr(model, 'updated_at') else model.created_at,
+            updated_at=model.updated_at,
         )
-    
+
     @staticmethod
     def to_model(entity: Document) -> DocumentInDB:
         """Convert domain entity to MongoDB model."""
+        metadata = dict(entity.metadata or {})
+        if entity.source:
+            metadata.setdefault("source", entity.source)
+
         return DocumentInDB(
             id=entity.id or "",
-            filename=entity.file_name,
+            title=entity.title,
+            file_name=entity.file_name or entity.title,
+            content=entity.content,
             collection=entity.collection,
-            metadata=entity.metadata,
+            metadata=metadata,
+            tags=entity.tags,
             chunk_count=entity.chunk_count,
             is_active=entity.is_active,
             created_at=entity.created_at,
+            updated_at=entity.updated_at,
+            created_by=entity.created_by,
         )
 
 
 class ChatSessionMapper:
     """Mapper for ChatSession entity ↔ MongoDB model."""
-    
+
     @staticmethod
     def to_entity(model: ChatSessionInDB) -> ChatSession:
         """Convert MongoDB model to domain entity."""
@@ -75,7 +83,7 @@ class ChatSessionMapper:
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
-    
+
     @staticmethod
     def to_model(entity: ChatSession) -> ChatSessionInDB:
         """Convert domain entity to MongoDB model."""
@@ -97,12 +105,12 @@ class ChatSessionMapper:
 
 class ChatMessageMapper:
     """Mapper for ChatMessage entity ↔ MongoDB model."""
-    
+
     @staticmethod
     def to_entity(model: ChatMessageInDB) -> ChatMessage:
         """Convert MongoDB model to domain entity."""
         from app.domain.enums.chat_message_role import ChatMessageRole
-        
+
         return ChatMessage(
             id=model.id,
             session_id=model.session_id,
@@ -114,12 +122,14 @@ class ChatMessageMapper:
             created_at=model.created_at,
             edited_at=model.edited_at,
         )
-    
+
     @staticmethod
     def to_model(entity: ChatMessage) -> ChatMessageInDB:
         """Convert domain entity to MongoDB model."""
-        from app.infrastructure.persistence.mongodb.models import ChatMessageRole as DBRole
-        
+        from app.infrastructure.persistence.mongodb.models import (
+            ChatMessageRole as DBRole,
+        )
+
         return ChatMessageInDB(
             id=entity.id or "",
             session_id=entity.session_id,

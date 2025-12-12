@@ -1,14 +1,16 @@
 """Data source DTOs for API layer."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 
 # ===== Request DTOs =====
 
+
 class CreateDataSourceRequest(BaseModel):
     """Request to create a new data source."""
+
     name: str = Field(..., min_length=1, max_length=200)
     base_url: str = Field(..., min_length=1)
     source_type: str = Field(default="web_crawl")
@@ -19,14 +21,14 @@ class CreateDataSourceRequest(BaseModel):
     priority: int = Field(default=5, ge=1, le=10)
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    
+
     # Auth
     auth_type: str = Field(default="none")
     auth_username: Optional[str] = None
     auth_password: Optional[str] = None
     auth_token: Optional[str] = None
     auth_headers: Optional[Dict[str, str]] = None
-    
+
     # Crawl config
     list_selector: Optional[str] = None
     detail_selector: Optional[str] = None
@@ -39,6 +41,7 @@ class CreateDataSourceRequest(BaseModel):
 
 class UpdateDataSourceRequest(BaseModel):
     """Request to update a data source."""
+
     name: Optional[str] = None
     base_url: Optional[str] = None
     source_type: Optional[str] = None
@@ -50,14 +53,14 @@ class UpdateDataSourceRequest(BaseModel):
     priority: Optional[int] = Field(default=None, ge=1, le=10)
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    
+
     # Auth
     auth_type: Optional[str] = None
     auth_username: Optional[str] = None
     auth_password: Optional[str] = None
     auth_token: Optional[str] = None
     auth_headers: Optional[Dict[str, str]] = None
-    
+
     # Crawl config
     list_selector: Optional[str] = None
     detail_selector: Optional[str] = None
@@ -70,6 +73,7 @@ class UpdateDataSourceRequest(BaseModel):
 
 class TestDataSourceRequest(BaseModel):
     """Request to test a data source."""
+
     url: str
     source_type: str = Field(default="web_crawl")
     detail_selector: Optional[str] = None
@@ -80,8 +84,10 @@ class TestDataSourceRequest(BaseModel):
 
 # ===== Response DTOs =====
 
+
 class CrawlConfigResponse(BaseModel):
     """Crawl config response."""
+
     list_selector: Optional[str] = None
     detail_selector: Optional[str] = None
     title_selector: Optional[str] = None
@@ -93,12 +99,14 @@ class CrawlConfigResponse(BaseModel):
 
 class AuthConfigResponse(BaseModel):
     """Auth config response (no sensitive data)."""
+
     auth_type: str = "none"
     has_credentials: bool = False
 
 
 class DataSourceResponse(BaseModel):
     """Data source response."""
+
     id: str
     name: str
     base_url: str
@@ -126,6 +134,7 @@ class DataSourceResponse(BaseModel):
 
 class DataSourceListResponse(BaseModel):
     """List data sources response."""
+
     sources: List[DataSourceResponse]
     total: int
     skip: int
@@ -134,6 +143,7 @@ class DataSourceListResponse(BaseModel):
 
 class TestDataSourceResponse(BaseModel):
     """Test data source response."""
+
     success: bool
     content_preview: Optional[str] = None
     content_length: int = 0

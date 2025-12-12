@@ -1,5 +1,5 @@
 """Firecrawl web crawler integration."""
 
-from .firecrawl_crawler import FirecrawlCrawler
+from .firecrawl_crawler import FireCrawlCrawler
 
-__all__ = ["FirecrawlCrawler"]
+__all__ = ["FireCrawlCrawler"]
