@@ -65,7 +65,7 @@ export default function ChatPage() {
     }, [messages])
 
     const handleSend = async (content: string, attachments?: Attachment[], sendMode?: ThinkingMode) => {
-        await sendMessage(content, attachments, sendMode ?? mode)
+        return sendMessage(content, attachments, sendMode ?? mode)
     }
 
     const handleStop = () => {

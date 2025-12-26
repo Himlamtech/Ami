@@ -20,7 +20,8 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn, formatTime } from '@/lib/utils'
-import type { Message, Source } from '@/types/chat'
+import type { Attachment, Message, Source } from '@/types/chat'
+import { FileText } from 'lucide-react'
 
 interface MessageBubbleProps {
     message: Message
@@ -36,6 +37,62 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
+
+    const markdownContent = (
+        <div className="text-[15px] leading-7 text-neutral-900 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_a]:text-primary hover:[&_a]:underline [&_a]:underline-offset-2">
+            <ReactMarkdown
+                components={{
+                    code({ className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        const isInline = !match
+                        return isInline ? (
+                            <code
+                                className={cn(
+                                    'px-1.5 py-0.5 rounded text-sm font-mono',
+                                    'bg-[var(--surface)]'
+                                )}
+                                {...props}
+                            >
+                                {children}
+                            </code>
+                        ) : (
+                            <SyntaxHighlighter
+                                style={oneDark}
+                                language={match[1]}
+                                PreTag="div"
+                                className="rounded-lg !mt-2 !mb-2"
+                            >
+                                {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                        )
+                    },
+                    table({ children }) {
+                        return (
+                            <div className="overflow-x-auto my-2">
+                                <table className="min-w-full border-collapse border border-[color:var(--border)]">
+                                    {children}
+                                </table>
+                            </div>
+                        )
+                    },
+                    th({ children }) {
+                        return (
+                            <th className="border border-[color:var(--border)] px-3 py-2 bg-[var(--surface2)] text-left font-medium">
+                                {children}
+                            </th>
+                        )
+                    },
+                    td({ children }) {
+                        return (
+                            <td className="border border-[color:var(--border)] px-3 py-2">{children}</td>
+                        )
+                    },
+                }}
+            >
+                {message.content || ''}
+            </ReactMarkdown>
+        </div>
+    )
 
     return (
         <div className={cn('flex gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
@@ -58,69 +115,23 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                             : 'bg-[var(--surface2)] text-neutral-900 rounded-bl-md shadow-sm'
                     )}
                 >
+                    {message.attachments && message.attachments.length > 0 && (
+                        <AttachmentGallery attachments={message.attachments} />
+                    )}
                     {message.isStreaming ? (
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm">AMI đang suy nghĩ</span>
-                            <div className="flex gap-1">
-                                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
-                                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
-                                <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
+                        <div className="space-y-3">
+                            {markdownContent}
+                            <div className="flex items-center gap-2 text-neutral-500">
+                                <span className="text-sm">AMI đang suy nghĩ</span>
+                                <div className="flex gap-1">
+                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
+                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
+                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
+                                </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="text-[15px] leading-7 text-neutral-900 space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_a]:text-primary hover:[&_a]:underline [&_a]:underline-offset-2">
-                            <ReactMarkdown
-                                components={{
-                                    code({ className, children, ...props }) {
-                                        const match = /language-(\w+)/.exec(className || '')
-                                        const isInline = !match
-                                        return isInline ? (
-                                            <code
-                                                className={cn(
-                                                    'px-1.5 py-0.5 rounded text-sm font-mono',
-                                                    'bg-[var(--surface)]'
-                                                )}
-                                                {...props}
-                                            >
-                                                {children}
-                                            </code>
-                                        ) : (
-                                            <SyntaxHighlighter
-                                                style={oneDark}
-                                                language={match[1]}
-                                                PreTag="div"
-                                                className="rounded-lg !mt-2 !mb-2"
-                                            >
-                                                {String(children).replace(/\n$/, '')}
-                                            </SyntaxHighlighter>
-                                        )
-                                    },
-                                    table({ children }) {
-                                        return (
-                                            <div className="overflow-x-auto my-2">
-                                                <table className="min-w-full border-collapse border border-[color:var(--border)]">
-                                                    {children}
-                                                </table>
-                                            </div>
-                                        )
-                                    },
-                                    th({ children }) {
-                                        return (
-                                            <th className="border border-[color:var(--border)] px-3 py-2 bg-[var(--surface2)] text-left font-medium">
-                                                {children}
-                                            </th>
-                                        )
-                                    },
-                                    td({ children }) {
-                                        return (
-                                            <td className="border border-[color:var(--border)] px-3 py-2">{children}</td>
-                                        )
-                                    },
-                                }}
-                            >
-                                {message.content}
-                            </ReactMarkdown>
-                        </div>
+                        markdownContent
                     )}
                 </div>
 
@@ -226,5 +237,54 @@ function SourceItem({ source, index }: { source: Source; index: number }) {
             )}
             <ExternalLink className="w-3 h-3" />
         </a>
+    )
+}
+
+function AttachmentGallery({ attachments }: { attachments: Attachment[] }) {
+    return (
+        <div className="mb-3 flex flex-wrap gap-3">
+            {attachments.map((attachment, idx) => {
+                const isImage = attachment.type === 'image'
+                if (isImage) {
+                    return (
+                        <a
+                            key={idx}
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative block w-32 h-32 overflow-hidden rounded-xl border border-[color:var(--border)] bg-white shadow-sm"
+                        >
+                            <img
+                                src={attachment.url}
+                                alt={attachment.name}
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                                <p className="text-[11px] text-white truncate" title={attachment.name}>
+                                    {attachment.name}
+                                </p>
+                            </div>
+                        </a>
+                    )
+                }
+
+                return (
+                    <div
+                        key={idx}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[color:var(--border)] bg-white shadow-sm min-w-[200px]"
+                    >
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                            <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm text-neutral-800 truncate" title={attachment.name}>
+                                {attachment.name}
+                            </p>
+                            <p className="text-[11px] text-neutral-500">Tài liệu đính kèm</p>
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
     )
 }

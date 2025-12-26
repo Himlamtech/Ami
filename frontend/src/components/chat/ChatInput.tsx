@@ -3,7 +3,6 @@ import {
     Send,
     Paperclip,
     Mic,
-    Image,
     FileText,
     X,
     Square,

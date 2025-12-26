@@ -17,6 +17,8 @@ import {
     Layers,
     Search,
     ArrowLeft,
+    AlarmClock,
+    ClipboardCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -47,6 +49,8 @@ const navGroups = [
             { icon: BookOpen, label: 'Knowledge', path: '/admin/knowledge' },
             { icon: Database, label: 'Datasources', path: '/admin/datasources' },
             { icon: Layers, label: 'Vector Store', path: '/admin/vector-store' },
+            { icon: AlarmClock, label: 'Monitor Targets', path: '/admin/monitor-targets' },
+            { icon: ClipboardCheck, label: 'Approvals', path: '/admin/approvals' },
             { icon: Users, label: 'Users', path: '/admin/users' },
         ],
     },

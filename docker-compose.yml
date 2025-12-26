@@ -1,43 +1,4 @@
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: amiver2-backend
-    env_file:
-      - .env
-    environment:
-      APP_PORT: ${APP_PORT:-11121}
-      MONGODB_HOST: mongodb
-      MINIO_ENDPOINT: ami_minio:9000
-      QDRANT_HOST: qdrant
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      qdrant:
-        condition: service_started
-      minio:
-        condition: service_healthy
-    ports:
-      - "${APP_PORT:-11121}:11121"
-    networks:
-      - ami_network
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: amiver2-frontend
-    depends_on:
-      backend:
-        condition: service_started
-    ports:
-      - "${FRONTEND_PORT:-11120}:80"
-    networks:
-      - ami_network
-    restart: unless-stopped
-
   mongodb:
     image: mongo:7
     container_name: ami_mongodb
@@ -50,13 +11,12 @@ services:
     volumes:
       - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - ami_network
-    restart: unless-stopped
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -86,10 +46,56 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - ami_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ami_backend
+    env_file:
+      - .env
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      MINIO_ENDPOINT: ami_minio:9000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-11121}:11121"
+    volumes:
+      - ./backend/app:/app
+      - ./data:/data
+    networks:
+      - ami_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ami_frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://backend:11121
+    ports:
+      - "${FRONTEND_PORT:-11120}:80"
+    volumes:
+      - ./frontend/src:/app/src
     networks:
       - ami_network
     restart: unless-stopped
@@ -98,6 +104,7 @@ volumes:
   mongodb_data:
   qdrant_data:
   minio_data:
+
 
 networks:
   ami_network:

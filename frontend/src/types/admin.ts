@@ -175,3 +175,52 @@ export interface DataSourceStats {
     by_type: { type: string; count: number }[]
     by_category: { category: string; count: number }[]
 }
+
+export interface MonitorTarget {
+    id: string
+    name: string
+    url: string
+    collection: string
+    category: string
+    interval_hours: number
+    selector?: string | null
+    is_active: boolean
+    last_checked_at?: string | null
+    last_success_at?: string | null
+    last_error?: string | null
+    consecutive_failures: number
+    metadata: Record<string, string>
+    created_at: string
+    updated_at: string
+}
+
+export interface PendingUpdate {
+    id: string
+    source_id: string
+    title: string
+    content_preview: string
+    content_hash: string
+    source_url: string
+    category: string
+    detection_type: 'new' | 'update' | 'duplicate' | 'conflict' | 'unrelated'
+    similarity_score: number
+    matched_doc_id?: string | null
+    llm_analysis?: string | null
+    llm_summary?: string | null
+    diff_summary?: string | null
+    status: 'pending' | 'approved' | 'rejected' | 'auto_approved' | 'expired'
+    priority: number
+    auto_approve_score: number
+    reviewed_by?: string | null
+    reviewed_at?: string | null
+    review_note?: string | null
+    created_at: string
+    expires_at: string
+}
+
+export interface PendingUpdateDetail extends PendingUpdate {
+    content: string
+    matched_doc_ids: string[]
+    metadata: Record<string, any>
+    raw_file_path?: string | null
+}

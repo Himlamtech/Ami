@@ -9,6 +9,9 @@ import type {
     ModelConfig,
     DataSource,
     DataSourceStats,
+    MonitorTarget,
+    PendingUpdate,
+    PendingUpdateDetail,
 } from '@/types/admin'
 
 export const adminApi = {
@@ -176,4 +179,48 @@ export const adminApi = {
     testDataSource: (data: any) => api.post('/admin/data-sources/test', data),
 
     triggerCrawl: (id: string) => api.post(`/admin/data-sources/${id}/crawl`),
+
+    // Monitor Targets
+    getMonitorTargets: (params?: { skip?: number; limit?: number }) =>
+        api.get<{ items: MonitorTarget[]; total: number; skip: number; limit: number }>(
+            '/admin/monitor-targets',
+            params
+        ),
+
+    createMonitorTarget: (data: {
+        name: string
+        url: string
+        collection: string
+        category: string
+        interval_hours: number
+        selector?: string
+        metadata?: Record<string, string>
+    }) => api.post<MonitorTarget>('/admin/monitor-targets', data),
+
+    updateMonitorTarget: (id: string, data: Partial<Omit<MonitorTarget, 'id'>>) =>
+        api.put<MonitorTarget>(`/admin/monitor-targets/${id}`, data),
+
+    deleteMonitorTarget: (id: string) => api.delete<{ success: boolean }>(`/admin/monitor-targets/${id}`),
+
+    // Pending approvals
+    getPendingUpdates: (params?: {
+        skip?: number
+        limit?: number
+        status?: string
+        detection_type?: string
+        category?: string
+    }) =>
+        api.get<{ items: PendingUpdate[]; total: number; skip: number; limit: number }>(
+            '/admin/approvals',
+            params
+        ),
+
+    getPendingUpdateDetail: (id: string) =>
+        api.get<PendingUpdateDetail>(`/admin/approvals/${id}`),
+
+    approvePendingUpdate: (id: string, note?: string) =>
+        api.post(`/admin/approvals/${id}/approve`, note ? { note } : undefined),
+
+    rejectPendingUpdate: (id: string, note?: string) =>
+        api.post(`/admin/approvals/${id}/reject`, note ? { note } : undefined),
 }

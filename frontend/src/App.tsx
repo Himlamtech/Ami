@@ -30,6 +30,8 @@ const DatasourcesPage = lazy(() => import('@/features/admin/pages/DatasourcesPag
 const VectorStorePage = lazy(() => import('@/features/admin/pages/VectorStorePage'))
 const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage'))
 const SettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
+const MonitorTargetsPage = lazy(() => import('@/features/admin/pages/MonitorTargetsPage'))
+const PendingApprovalsPage = lazy(() => import('@/features/admin/pages/PendingApprovalsPage'))
 
 function PageLoader() {
     return (
@@ -41,7 +43,7 @@ function PageLoader() {
 
 function App() {
     return (
-        <BrowserRouter>
+        <BrowserRouter basename="/v2">
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     {/* Auth Routes */}
@@ -79,6 +81,8 @@ function App() {
                         <Route path="knowledge" element={<KnowledgePage />} />
                         <Route path="datasources" element={<DatasourcesPage />} />
                         <Route path="vector-store" element={<VectorStorePage />} />
+                        <Route path="monitor-targets" element={<MonitorTargetsPage />} />
+                        <Route path="approvals" element={<PendingApprovalsPage />} />
                         <Route path="users" element={<UsersPage />} />
                         <Route path="settings" element={<SettingsPage />} />
                     </Route>
