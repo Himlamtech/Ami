@@ -13,7 +13,8 @@ class OpenAIConfig(BaseConfig):
     """OpenAI configuration."""
 
     openai_api_key: str = Field(default="")
-    openai_model_qa: str = Field(default="gpt-4.1-nano")
+    # Use a vision-capable model by default so image endpoints work out of the box
+    openai_model_qa: str = Field(default="gpt-4o-mini")
     openai_model_reasoning: str = Field(default="o4-mini")
     openai_max_retries: int = Field(default=3, ge=0, le=10)
     openai_timeout: float = Field(default=60.0, ge=1.0)

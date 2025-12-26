@@ -112,7 +112,7 @@ export function useChat(sessionId?: string) {
         async (content: string, attachments?: Attachment[], mode: ThinkingMode = 'fast') => {
             if (!sessionId) {
                 console.warn('[useChat] Cannot send message without a session')
-                return
+                return false
             }
             const { temperature, maxTokens } = MODE_CONFIG[mode] ?? MODE_CONFIG.fast
 
@@ -188,7 +188,7 @@ export function useChat(sessionId?: string) {
 
             // Use streaming API
             console.log('[useChat] Starting stream for:', queryContent)
-            const cancel = chatApi.smartQueryStream(
+            chatApi.smartQueryStream(
                 {
                     query: queryContent,
                     session_id: sessionId,
@@ -256,7 +256,7 @@ export function useChat(sessionId?: string) {
                 }
             )
 
-            return cancel
+            return true
         },
         [sessionId, queryClient, persistMessage]
     )

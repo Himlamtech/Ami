@@ -1,4 +1,43 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amiver2-backend
+    env_file:
+      - .env
+    environment:
+      APP_PORT: ${APP_PORT:-11121}
+      MONGODB_HOST: mongodb
+      MINIO_ENDPOINT: ami_minio:9000
+      QDRANT_HOST: qdrant
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-11121}:11121"
+    networks:
+      - ami_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: amiver2-frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-11120}:80"
+    networks:
+      - ami_network
+    restart: unless-stopped
+
   mongodb:
     image: mongo:7
     container_name: ami_mongodb
@@ -24,7 +63,7 @@ services:
     container_name: ami_qdrant
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
-      QDRANT__SERVICE__ENABLE_TLS: false
+      QDRANT__SERVICE__ENABLE_TLS: "false"
     ports:
       - "${QDRANT_PORT:-6333}:6333"
       - "${QDRANT_GRPC_PORT:-6334}:6334"
@@ -42,7 +81,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
-      - "${MINIO_ENDPOINT:-9000}:9000"
+      - "${MINIO_PORT:-9000}:9000"
       - "9001:9001"
     volumes:
       - minio_data:/data
