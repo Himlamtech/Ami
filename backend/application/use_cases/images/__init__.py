@@ -5,11 +5,16 @@ This folder is reserved for:
 - Standalone image processing (OCR, extraction)
 - Image storage management
 - Image metadata operations
-
-Currently empty - add use cases as needed.
 """
 
-# Future use cases:
-# - extract_text_from_image.py (standalone OCR)
-# - process_document_image.py (document scanning)
-# - manage_image_storage.py (upload/delete/list)
+from .generate_image import GenerateImageUseCase, GenerateImageInput, GenerateImageOutput
+from .analyze_image import AnalyzeImageUseCase, AnalyzeImageInput, AnalyzeImageOutput
+
+__all__ = [
+    "GenerateImageUseCase",
+    "GenerateImageInput",
+    "GenerateImageOutput",
+    "AnalyzeImageUseCase",
+    "AnalyzeImageInput",
+    "AnalyzeImageOutput",
+]

@@ -1,7 +1,7 @@
 """Image DTOs."""
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class GenerateImageRequest(BaseModel):
@@ -24,3 +24,10 @@ class ImageResponse(BaseModel):
 
     url: str
     prompt: Optional[str] = None
+
+
+class AnalyzeImageResponse(BaseModel):
+    """Analyze image response."""
+
+    description: str
+    metadata: Dict[str, Any]
