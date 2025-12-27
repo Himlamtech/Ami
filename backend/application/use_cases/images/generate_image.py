@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from app.infrastructure.ai.llm.openai_llm import OpenAILLMService
-from app.infrastructure.persistence.minio.minio_storage import MinIOStorage
+from app.application.interfaces.services.llm_service import ILLMService
+from app.application.interfaces.services.storage_service import IStorageService
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class GenerateImageUseCase:
 
     def __init__(
         self,
-        llm_service: OpenAILLMService,
-        storage: MinIOStorage,
+        llm_service: ILLMService,
+        storage: IStorageService,
     ):
         self.llm_service = llm_service
         self.storage = storage
@@ -67,7 +67,7 @@ class GenerateImageUseCase:
             style=input_data.style,
         )
 
-        # 2. Upload to MinIO
+        # 2. Upload to MinIO and get URL
         file_name = f"generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
 
         url = await self.storage.upload_file(
@@ -77,18 +77,9 @@ class GenerateImageUseCase:
             path_prefix="generated-images",
         )
 
-        # 3. Extract object name from URL for presigned URL generation
-        object_name = url.split(f"/{self.storage.bucket}/")[-1]
-
-        # 4. Generate presigned URL (valid for 1 hour)
-        presigned_url = await self.storage.get_presigned_url(
-            object_name=object_name,
-            expires_seconds=3600,
-        )
-
-        logger.info(f"Image generated and uploaded: {object_name}")
+        logger.info(f"Image generated and uploaded: {file_name}")
 
         return GenerateImageOutput(
-            url=presigned_url,
+            url=url,
             prompt=input_data.prompt,
         )
