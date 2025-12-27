@@ -69,25 +69,26 @@ class GenerateImageUseCase:
 
         # 2. Upload to MinIO
         file_name = f"generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
-        object_key = f"generated-images/{file_name}"
 
-        await self.storage.upload_bytes(
-            bucket="data",
-            key=object_key,
-            data=image_bytes,
+        url = await self.storage.upload_file(
+            file_data=image_bytes,
+            filename=file_name,
             content_type="image/png",
+            path_prefix="generated-images",
         )
 
-        # 3. Generate presigned URL (valid for 1 hour)
-        url = await self.storage.generate_presigned_url(
-            bucket="data",
-            key=object_key,
-            expires_in=3600,
+        # 3. Extract object name from URL for presigned URL generation
+        object_name = url.split(f"/{self.storage.bucket}/")[-1]
+
+        # 4. Generate presigned URL (valid for 1 hour)
+        presigned_url = await self.storage.get_presigned_url(
+            object_name=object_name,
+            expires_seconds=3600,
         )
 
-        logger.info(f"Image generated and uploaded: {object_key}")
+        logger.info(f"Image generated and uploaded: {object_name}")
 
         return GenerateImageOutput(
-            url=url,
+            url=presigned_url,
             prompt=input_data.prompt,
         )
