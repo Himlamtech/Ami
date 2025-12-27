@@ -45,7 +45,7 @@ class MongoDBClient:
             # Create Motor client
             self.client = AsyncIOMotorClient(
                 connection_url,
-                serverSelectionTimeoutMS=5000,
+                serverSelectionTimeoutMS=self._config.timeout_ms,
             )
 
             # Get database
