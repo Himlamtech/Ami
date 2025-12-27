@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.domain.entities.monitor_target import MonitorTarget
-from app.application.interfaces.repositories.monitor_target_repository import (
+from domain.entities.monitor_target import MonitorTarget
+from application.interfaces.repositories.monitor_target_repository import (
     IMonitorTargetRepository,
 )
 

@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 
 import pandas as pd
 
-from app.domain.enums.crawl_status import CrawlStatus
+from domain.enums.crawl_status import CrawlStatus
 
 
 class DataSheetParser:

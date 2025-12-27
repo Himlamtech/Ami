@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.config.services import ServiceRegistry
+from api.dependencies.auth import verify_admin_api_key
+from config.services import ServiceRegistry
 
 # Use cases imports
-from app.application.use_cases.vector_store import (
+from application.use_cases.vector_store import (
     # Health
     HealthCheckUseCase,
     # Collections

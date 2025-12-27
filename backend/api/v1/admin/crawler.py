@@ -3,15 +3,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
-from app.api.schemas.crawler_dto import (
+from api.schemas.crawler_dto import (
     CreateCrawlJobRequest,
     CrawlJobResponse,
 )
-from app.api.dependencies.auth import verify_admin_api_key
-from app.domain.enums.crawl_status import CrawlJobType
-from app.domain.entities.crawl_job import CrawlJob
+from api.dependencies.auth import verify_admin_api_key
+from domain.enums.crawl_status import CrawlJobType
+from domain.entities.crawl_job import CrawlJob
 from datetime import datetime
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 
 router = APIRouter(

@@ -5,10 +5,10 @@ from typing import List, Dict, Any, Optional
 import re
 import logging
 
-from app.domain.entities.chat_session import ChatSession
-from app.domain.entities.chat_message import ChatMessage, MessageIntent, EntityMention
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.application.interfaces.services.llm_service import ILLMService
+from domain.entities.chat_session import ChatSession
+from domain.entities.chat_message import ChatMessage, MessageIntent, EntityMention
+from application.interfaces.repositories.chat_repository import IChatRepository
+from application.interfaces.services.llm_service import ILLMService
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +309,7 @@ Tóm tắt:"""
 
     def _dict_to_message(self, msg_dict: Dict[str, Any]) -> ChatMessage:
         """Convert dict to ChatMessage."""
-        from app.domain.enums.chat_message_role import ChatMessageRole
+        from domain.enums.chat_message_role import ChatMessageRole
         from datetime import datetime
 
         role_str = msg_dict.get("role", "user")

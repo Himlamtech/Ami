@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from app.domain.entities.bookmark import Bookmark
+from domain.entities.bookmark import Bookmark
 
 
 class IBookmarkRepository(ABC):

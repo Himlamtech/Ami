@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 from datetime import datetime, timedelta
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.admin_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.admin_dto import (
     FeedbackOverview,
     FeedbackTrend,
     FeedbackDistribution,
@@ -17,8 +17,8 @@ from app.api.schemas.admin_dto import (
     FeedbackIssue,
     TopIssuesResponse,
 )
-from app.config.services import ServiceRegistry
-from app.domain.entities.feedback import FeedbackType, FeedbackStatus
+from config.services import ServiceRegistry
+from domain.entities.feedback import FeedbackType, FeedbackStatus
 
 
 router = APIRouter(prefix="/admin/feedback", tags=["Admin - Feedback"])

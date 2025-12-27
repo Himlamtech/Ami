@@ -2,11 +2,11 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.schemas.document_dto import QueryRequest, QueryResponse
-from app.application.use_cases.rag import QueryWithRAGUseCase, QueryWithRAGInput
-from app.domain.value_objects.rag_config import RAGConfig
-from app.domain.value_objects.generation_config import GenerationConfig
-from app.config.services import ServiceRegistry
+from api.schemas.document_dto import QueryRequest, QueryResponse
+from application.use_cases.rag import QueryWithRAGUseCase, QueryWithRAGInput
+from domain.value_objects.rag_config import RAGConfig
+from domain.value_objects.generation_config import GenerationConfig
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/generate", tags=["generation"])

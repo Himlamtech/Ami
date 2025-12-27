@@ -8,7 +8,7 @@ from typing import AsyncIterator, Optional
 import json
 import logging
 
-from app.api.schemas.smart_query_dto import (
+from api.schemas.smart_query_dto import (
     SmartQueryRequest,
     SmartQueryResponse,
     SmartQueryMetadata,
@@ -18,26 +18,26 @@ from app.api.schemas.smart_query_dto import (
     SourceTypeDTO,
     ArtifactDownloadResponse,
 )
-from app.application.use_cases.rag import SmartQueryWithRAGUseCase, SmartQueryInput
-from app.application.use_cases.personalization import (
+from application.use_cases.rag import SmartQueryWithRAGUseCase, SmartQueryInput
+from application.use_cases.personalization import (
     ExtractProfileMemoryUseCase,
     ProfileMemoryExtractionInput,
 )
-from app.application.use_cases.chat import (
+from application.use_cases.chat import (
     CreateSessionUseCase,
     CreateSessionInput,
     SendMessageUseCase,
     SendMessageInput,
 )
-from app.application.services.conversation_context_service import (
+from application.services.conversation_context_service import (
     ConversationContextService,
 )
-from app.domain.value_objects.rag_config import RAGConfig
-from app.domain.value_objects.generation_config import GenerationConfig
-from app.domain.enums.llm_mode import LLMMode
-from app.domain.enums.chat_message_role import ChatMessageRole
-from app.config.services import ServiceRegistry
-from app.config import qdrant_config
+from domain.value_objects.rag_config import RAGConfig
+from domain.value_objects.generation_config import GenerationConfig
+from domain.enums.llm_mode import LLMMode
+from domain.enums.chat_message_role import ChatMessageRole
+from config.services import ServiceRegistry
+from config import qdrant_config
 
 
 router = APIRouter(prefix="/smart-query", tags=["smart-query"])

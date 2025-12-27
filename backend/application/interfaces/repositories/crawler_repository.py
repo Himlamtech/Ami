@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
-from app.domain.entities.crawl_job import CrawlJob
-from app.domain.enums.crawl_status import CrawlJobStatus
+from domain.entities.crawl_job import CrawlJob
+from domain.enums.crawl_status import CrawlJobStatus
 
 
 class ICrawlerRepository(ABC):

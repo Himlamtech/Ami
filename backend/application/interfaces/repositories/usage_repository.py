@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 
-from app.domain.entities.usage_metric import (
+from domain.entities.usage_metric import (
     UsageMetric,
     LLMUsage,
     DailyUsageStats,

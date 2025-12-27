@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 
-from app.domain.entities.feedback import Feedback, FeedbackType, FeedbackStatus
+from domain.entities.feedback import Feedback, FeedbackType, FeedbackStatus
 
 
 class IFeedbackRepository(ABC):

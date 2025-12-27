@@ -2,22 +2,22 @@
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
-from app.domain.value_objects.rag_config import RAGConfig
-from app.domain.value_objects.generation_config import GenerationConfig
-from app.domain.value_objects.chat_response import (
+from domain.value_objects.rag_config import RAGConfig
+from domain.value_objects.generation_config import GenerationConfig
+from domain.value_objects.chat_response import (
     ResponseIntent,
     SourceType,
     SourceReference,
     ArtifactReference,
     RichChatResponse,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.repositories.document_repository import (
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.config import qdrant_config
+from config import qdrant_config
 
 
 # Keywords for artifact/file request detection (Vietnamese)

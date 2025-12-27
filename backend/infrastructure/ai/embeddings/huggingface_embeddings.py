@@ -11,9 +11,9 @@ from typing import List, Optional
 import torch
 from sentence_transformers import SentenceTransformer
 
-from app.config import embedding_config
-from app.config.ai import EmbeddingConfig
-from app.application.interfaces.services.embedding_service import IEmbeddingService
+from config import embedding_config
+from config.ai import EmbeddingConfig
+from application.interfaces.services.embedding_service import IEmbeddingService
 
 logger = logging.getLogger(__name__)
 

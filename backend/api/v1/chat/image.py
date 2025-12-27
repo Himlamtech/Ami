@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.schemas.image_dto import (
+from api.schemas.image_dto import (
     GenerateImageRequest,
     AnalyzeImageRequest,
     ImageResponse,

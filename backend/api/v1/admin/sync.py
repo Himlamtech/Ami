@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 router = APIRouter(prefix="/admin/sync", tags=["admin-sync"])
 
@@ -350,7 +350,7 @@ async def validate_content(request: ValidationRequest):
     - Outdated markers
     - Broken links (optional)
     """
-    from app.application.use_cases.validation import QualityValidatorUseCase
+    from application.use_cases.validation import QualityValidatorUseCase
 
     try:
         validator = QualityValidatorUseCase()
@@ -386,7 +386,7 @@ async def validate_content(request: ValidationRequest):
 @router.post("/validate/batch")
 async def batch_validate_content(documents: List[ValidationRequest]):
     """Batch validate multiple documents."""
-    from app.application.use_cases.validation import QualityValidatorUseCase
+    from application.use_cases.validation import QualityValidatorUseCase
 
     try:
         validator = QualityValidatorUseCase()

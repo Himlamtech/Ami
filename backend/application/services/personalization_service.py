@@ -3,12 +3,12 @@
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
-from app.domain.entities.student_profile import (
+from domain.entities.student_profile import (
     StudentProfile,
     StudentLevel,
     InteractionType,
 )
-from app.application.interfaces.repositories.student_profile_repository import (
+from application.interfaces.repositories.student_profile_repository import (
     IStudentProfileRepository,
 )
 

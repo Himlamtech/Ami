@@ -6,11 +6,11 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.llm_service import ILLMService
-from app.domain.enums.data_source import UpdateDetectionType
-from app.domain.enums.llm_mode import LLMMode
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.llm_service import ILLMService
+from domain.enums.data_source import UpdateDetectionType
+from domain.enums.llm_mode import LLMMode
 
 logger = logging.getLogger(__name__)
 

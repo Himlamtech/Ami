@@ -3,19 +3,19 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from typing import Optional
 
-from app.api.schemas.document_dto import (
+from api.schemas.document_dto import (
     DocumentResponse,
     DocumentListResponse,
 )
-from app.api.dependencies.auth import verify_admin_api_key
-from app.application.use_cases.documents import (
+from api.dependencies.auth import verify_admin_api_key
+from application.use_cases.documents import (
     UploadDocumentInput,
     ListDocumentsInput,
     DeleteDocumentInput,
 )
-from app.domain.value_objects.chunk_config import ChunkConfig
-from app.domain.exceptions.document_exceptions import DocumentNotFoundException
-from app.config.services import ServiceRegistry
+from domain.value_objects.chunk_config import ChunkConfig
+from domain.exceptions.document_exceptions import DocumentNotFoundException
+from config.services import ServiceRegistry
 
 
 router = APIRouter(
@@ -32,7 +32,7 @@ async def upload_document(
     chunk_size: int = Form(512),
 ):
     """Upload and index document."""
-    from app.application.use_cases.documents import UploadDocumentUseCase
+    from application.use_cases.documents import UploadDocumentUseCase
 
     try:
         # Get services
@@ -41,7 +41,7 @@ async def upload_document(
         vector_store = ServiceRegistry.get_vector_store()
 
         # Simple text chunker (can be improved)
-        from app.application.interfaces.processors.text_chunker import ITextChunker
+        from application.interfaces.processors.text_chunker import ITextChunker
 
         class SimpleChunker(ITextChunker):
             def chunk_text(
@@ -104,7 +104,7 @@ async def list_documents(
     limit: int = 100,
 ):
     """List documents (admin-only view)."""
-    from app.application.use_cases.documents import ListDocumentsUseCase
+    from application.use_cases.documents import ListDocumentsUseCase
 
     doc_repo = ServiceRegistry.get_document_repository()
     use_case = ListDocumentsUseCase(doc_repo)
@@ -141,7 +141,7 @@ async def delete_document(
     document_id: str,
 ):
     """Delete document (admin only)."""
-    from app.application.use_cases.documents import DeleteDocumentUseCase
+    from application.use_cases.documents import DeleteDocumentUseCase
 
     try:
         doc_repo = ServiceRegistry.get_document_repository()

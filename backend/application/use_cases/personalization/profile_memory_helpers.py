@@ -4,7 +4,7 @@ from typing import Optional, Any, Dict
 import json
 import re
 
-from app.domain.entities.student_profile import StudentProfile
+from domain.entities.student_profile import StudentProfile
 
 DEFAULT_MIN_CONFIDENCE = 0.7
 DEFAULT_MIN_INFERRED_CONFIDENCE = 0.8

@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Optional, Dict
 from datetime import datetime
 
-from app.domain.entities.monitor_target import MonitorTarget
-from app.application.interfaces.repositories.monitor_target_repository import (
+from domain.entities.monitor_target import MonitorTarget
+from application.interfaces.repositories.monitor_target_repository import (
     IMonitorTargetRepository,
 )
 

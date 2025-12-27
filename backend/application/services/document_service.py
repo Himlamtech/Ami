@@ -1,13 +1,13 @@
 """Document service - Orchestration for document operations."""
 
-from app.domain.entities.document import Document
-from app.application.interfaces.repositories.document_repository import (
+from domain.entities.document import Document
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.processors.text_chunker import ITextChunker
-from app.application.interfaces.processors.document_processor import IDocumentProcessor
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.processors.text_chunker import ITextChunker
+from application.interfaces.processors.document_processor import IDocumentProcessor
 
 
 class DocumentService:

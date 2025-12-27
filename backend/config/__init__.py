@@ -5,11 +5,11 @@ All configurations are loaded from environment variables.
 Secrets (.env) -> Config modules -> Infrastructure services
 
 Usage:
-    from app.config import app_config, mongodb_config, openai_config
-    from app.config import pagination_config, crawler_config, content_config
+    from config import app_config, mongodb_config, openai_config
+    from config import pagination_config, crawler_config, content_config
 
     # Access settings directly
-    port = app_config.app_port
+    port = app_config.BACKEND_PORT
     mongo_url = mongodb_config.get_connection_url()
     limit = pagination_config.default_page_size
 

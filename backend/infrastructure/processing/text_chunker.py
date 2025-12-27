@@ -3,7 +3,7 @@
 import re
 from typing import List
 
-from app.application.interfaces.processors import ITextChunker
+from application.interfaces.processors import ITextChunker
 
 
 class TextChunker(ITextChunker):

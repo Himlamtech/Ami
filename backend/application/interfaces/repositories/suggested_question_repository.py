@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from app.domain.entities.suggested_question import SuggestedQuestion
+from domain.entities.suggested_question import SuggestedQuestion
 
 
 class ISuggestedQuestionRepository(ABC):

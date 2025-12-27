@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 import base64
 
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.embedding_service import IEmbeddingService
 
 
 @dataclass

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
-from app.domain.entities.tool_call import ToolCall
+from domain.entities.tool_call import ToolCall
 
 
 class IOrchestratorService(ABC):

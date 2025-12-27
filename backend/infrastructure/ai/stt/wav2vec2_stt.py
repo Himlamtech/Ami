@@ -17,9 +17,9 @@ from transformers import Wav2Vec2ProcessorWithLM
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
 
-from app.application.interfaces.services.stt_service import ISTTService
-from app.config import stt_config
-from app.config.ai import STTConfig
+from application.interfaces.services.stt_service import ISTTService
+from config import stt_config
+from config.ai import STTConfig
 
 logger = logging.getLogger(__name__)
 

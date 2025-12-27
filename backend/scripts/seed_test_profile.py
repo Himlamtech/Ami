@@ -2,9 +2,9 @@
 
 import asyncio
 
-from app.config.services import ServiceRegistry
-from app.domain.entities.student_profile import StudentProfile, StudentLevel
-from app.infrastructure.persistence.mongodb.client import (
+from config.services import ServiceRegistry
+from domain.entities.student_profile import StudentProfile, StudentLevel
+from infrastructure.persistence.mongodb.client import (
     get_database,
     get_mongodb_client,
 )

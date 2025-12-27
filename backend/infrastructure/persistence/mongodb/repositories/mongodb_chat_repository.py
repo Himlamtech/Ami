@@ -12,14 +12,14 @@ def _coerce_object_id(value: str):
         return None
 
 
-from app.domain.entities.chat_session import ChatSession
-from app.domain.entities.chat_message import ChatMessage
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.infrastructure.persistence.mongodb.mappers import (
+from domain.entities.chat_session import ChatSession
+from domain.entities.chat_message import ChatMessage
+from application.interfaces.repositories.chat_repository import IChatRepository
+from infrastructure.persistence.mongodb.mappers import (
     ChatSessionMapper,
     ChatMessageMapper,
 )
-from app.infrastructure.persistence.mongodb.models import (
+from infrastructure.persistence.mongodb.models import (
     ChatSessionInDB,
     ChatMessageInDB,
 )

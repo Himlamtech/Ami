@@ -4,15 +4,15 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
 import logging
 
-from app.application.interfaces.repositories.student_profile_repository import (
+from application.interfaces.repositories.student_profile_repository import (
     IStudentProfileRepository,
 )
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.services.conversation_context_service import (
+from application.interfaces.repositories.chat_repository import IChatRepository
+from application.interfaces.services.llm_service import ILLMService
+from application.services.conversation_context_service import (
     ConversationContextService,
 )
-from app.application.use_cases.personalization.profile_memory_helpers import (
+from application.use_cases.personalization.profile_memory_helpers import (
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_INFERRED_CONFIDENCE,
     DEFAULT_OVERWRITE_CONFIDENCE,
@@ -29,8 +29,8 @@ from app.application.use_cases.personalization.profile_memory_helpers import (
     should_apply,
     validate_field,
 )
-from app.domain.entities.student_profile import StudentProfile
-from app.domain.enums.llm_mode import LLMMode
+from domain.entities.student_profile import StudentProfile
+from domain.enums.llm_mode import LLMMode
 
 logger = logging.getLogger(__name__)
 

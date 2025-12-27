@@ -2,14 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.monitor_target_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.monitor_target_dto import (
     MonitorTargetRequest,
     MonitorTargetUpdateRequest,
     MonitorTargetResponse,
     MonitorTargetListResponse,
 )
-from app.application.use_cases.monitor_targets import (
+from application.use_cases.monitor_targets import (
     CreateMonitorTargetUseCase,
     CreateMonitorTargetInput,
     ListMonitorTargetsUseCase,
@@ -19,7 +19,7 @@ from app.application.use_cases.monitor_targets import (
     DeleteMonitorTargetUseCase,
     DeleteMonitorTargetInput,
 )
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 router = APIRouter(
     prefix="/admin/monitor-targets",

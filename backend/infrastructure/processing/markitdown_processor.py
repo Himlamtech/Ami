@@ -5,7 +5,7 @@ Converts various file formats to markdown text.
 
 from markitdown import MarkItDown
 
-from app.application.interfaces.processors.document_processor import IDocumentProcessor
+from application.interfaces.processors.document_processor import IDocumentProcessor
 
 
 class MarkItDownProcessor(IDocumentProcessor):

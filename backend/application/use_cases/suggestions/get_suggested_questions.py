@@ -3,15 +3,15 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from app.application.interfaces.repositories.student_profile_repository import (
+from application.interfaces.repositories.student_profile_repository import (
     IStudentProfileRepository,
 )
-from app.application.interfaces.repositories.suggested_question_repository import (
+from application.interfaces.repositories.suggested_question_repository import (
     ISuggestedQuestionRepository,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.domain.entities.suggested_question import SuggestedQuestion
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from domain.entities.suggested_question import SuggestedQuestion
 
 
 QUESTION_COLLECTION = "suggested_questions"

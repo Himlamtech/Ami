@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.pending_update_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.pending_update_dto import (
     ApproveUpdateRequest,
     RejectUpdateRequest,
     BulkActionRequest,
@@ -16,12 +16,12 @@ from app.api.schemas.pending_update_dto import (
     BulkActionResponse,
     ApprovalStatsResponse,
 )
-from app.domain.enums.data_source import (
+from domain.enums.data_source import (
     PendingStatus,
     DataCategory,
     UpdateDetectionType,
 )
-from app.application.use_cases.approval import (
+from application.use_cases.approval import (
     ListPendingUpdatesUseCase,
     ApproveUpdateUseCase,
     RejectUpdateUseCase,
@@ -29,10 +29,10 @@ from app.application.use_cases.approval import (
     IngestPendingUpdateUseCase,
     IngestPendingUpdateInput,
 )
-from app.application.use_cases.approval.list_pending import ListPendingUpdatesInput
-from app.application.use_cases.approval.approve_update import ApproveUpdateInput
-from app.application.use_cases.approval.reject_update import RejectUpdateInput
-from app.config.services import ServiceRegistry
+from application.use_cases.approval.list_pending import ListPendingUpdatesInput
+from application.use_cases.approval.approve_update import ApproveUpdateInput
+from application.use_cases.approval.reject_update import RejectUpdateInput
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/approvals", tags=["admin-approvals"])
@@ -246,7 +246,7 @@ async def approve_update(
     doc_repo = ServiceRegistry.get_document_repository()
     embedding = ServiceRegistry.get_embedding()
     vector_store = ServiceRegistry.get_vector_store()
-    from app.infrastructure.processing import TextChunker
+    from infrastructure.processing import TextChunker
 
     use_case = ApproveUpdateUseCase(
         pending_repository=pending_repo,

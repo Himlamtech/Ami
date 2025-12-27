@@ -9,7 +9,7 @@ IMPORTANT: Vector scores are REFERENCE only - LLM makes the final decision.
 
 from typing import Dict, Any, List
 
-from app.domain.enums.tool_type import ToolType
+from domain.enums.tool_type import ToolType
 
 
 # Tool schemas for Gemini function calling

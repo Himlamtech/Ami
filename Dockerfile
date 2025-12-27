@@ -46,7 +46,7 @@ EXPOSE 11121
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${APP_PORT:-11121}/health || exit 1
+    CMD curl -f http://localhost:${BACKEND_PORT:-11121}/health || exit 1
 
 # Run application
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${APP_PORT:-11121}"
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-11121}"

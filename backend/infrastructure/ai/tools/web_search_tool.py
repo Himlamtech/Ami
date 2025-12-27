@@ -5,9 +5,9 @@ Web Search Tool Handler - Search external web for information.
 import logging
 from typing import Dict, Any, List, Optional
 
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import IToolHandler
-from app.application.interfaces.services.web_search_service import IWebSearchService
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import IToolHandler
+from application.interfaces.services.web_search_service import IWebSearchService
 
 
 logger = logging.getLogger(__name__)

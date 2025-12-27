@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from dataclasses import dataclass
 
-from app.domain.value_objects.rag_models import (
+from domain.value_objects.rag_models import (
     TextChunk,
     SearchResult,
     RAGContext,

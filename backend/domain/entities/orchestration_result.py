@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from app.domain.entities.tool_call import ToolCall
-from app.domain.enums.tool_type import ToolType
+from domain.entities.tool_call import ToolCall
+from domain.enums.tool_type import ToolType
 
 
 @dataclass

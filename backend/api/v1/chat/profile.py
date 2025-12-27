@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.config.services import ServiceRegistry
-from app.application.services.personalization_service import PersonalizationService
-from app.domain.entities.student_profile import StudentLevel
-from app.api.schemas.profile_dto import (
+from config.services import ServiceRegistry
+from application.services.personalization_service import PersonalizationService
+from domain.entities.student_profile import StudentLevel
+from api.schemas.profile_dto import (
     StudentProfileResponse,
     UpdateProfileRequest,
     SetPreferencesRequest,

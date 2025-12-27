@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from enum import Enum
-from app.domain.enums.chat_message_role import ChatMessageRole
+from domain.enums.chat_message_role import ChatMessageRole
 
 
 class MessageIntent(Enum):

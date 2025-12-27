@@ -4,8 +4,8 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 
-from app.api.dependencies.auth import get_user_id
-from app.api.schemas.bookmark_dto import (
+from api.dependencies.auth import get_user_id
+from api.schemas.bookmark_dto import (
     CreateBookmarkRequest,
     UpdateBookmarkRequest,
     BookmarkResponse,
@@ -14,8 +14,8 @@ from app.api.schemas.bookmark_dto import (
     BookmarkFoldersResponse,
     BookmarkExportResponse,
 )
-from app.domain.entities.bookmark import Bookmark
-from app.config.services import ServiceRegistry
+from domain.entities.bookmark import Bookmark
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/bookmarks", tags=["Bookmarks"])

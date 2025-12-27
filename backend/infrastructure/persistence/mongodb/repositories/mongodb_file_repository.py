@@ -4,9 +4,9 @@ from typing import Optional, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.file_metadata import FileMetadata
-from app.domain.enums.file_type import FileType
-from app.application.interfaces.repositories.file_repository import IFileRepository
+from domain.entities.file_metadata import FileMetadata
+from domain.enums.file_type import FileType
+from application.interfaces.repositories.file_repository import IFileRepository
 
 
 class MongoDBFileRepository(IFileRepository):

@@ -1,8 +1,8 @@
 """Web search service - Integration with web search APIs."""
 
 from typing import List, Dict, Any, Optional
-from app.application.interfaces.processors.web_crawler import IWebCrawler
-from app.application.interfaces.services.llm_service import ILLMService
+from application.interfaces.processors.web_crawler import IWebCrawler
+from application.interfaces.services.llm_service import ILLMService
 
 
 class WebSearchService:

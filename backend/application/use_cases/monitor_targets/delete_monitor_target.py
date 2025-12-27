@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.application.interfaces.repositories.monitor_target_repository import (
+from application.interfaces.repositories.monitor_target_repository import (
     IMonitorTargetRepository,
 )
 

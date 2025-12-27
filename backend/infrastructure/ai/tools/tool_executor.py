@@ -5,9 +5,9 @@ Tool Executor Service - Routes tool calls to appropriate handlers.
 import logging
 from typing import Dict, Any, List
 
-from app.domain.entities.tool_call import ToolCall
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import (
+from domain.entities.tool_call import ToolCall
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import (
     IToolExecutorService,
     IToolHandler,
 )

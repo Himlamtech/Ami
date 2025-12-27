@@ -13,11 +13,11 @@ from typing import List, Dict, Any
 import google.genai as genai
 from google.genai import types
 
-from app.config import gemini_config
-from app.config.ai import GeminiConfig
-from app.domain.entities.tool_call import ToolCall, ToolArguments
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.orchestrator_service import (
+from config import gemini_config
+from config.ai import GeminiConfig
+from domain.entities.tool_call import ToolCall, ToolArguments
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.orchestrator_service import (
     IOrchestratorService,
 )
 from .tool_definitions import TOOL_DEFINITIONS, ORCHESTRATOR_SYSTEM_PROMPT

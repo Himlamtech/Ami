@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 import asyncio
 
-from app.application.use_cases.crawler.crawl_url import (
+from application.use_cases.crawler.crawl_url import (
     CrawlURLUseCase,
     CrawlURLInput,
     CrawlURLOutput,

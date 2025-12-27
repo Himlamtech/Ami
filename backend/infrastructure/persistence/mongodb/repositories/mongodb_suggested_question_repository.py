@@ -6,8 +6,8 @@ from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.suggested_question import SuggestedQuestion
-from app.application.interfaces.repositories.suggested_question_repository import (
+from domain.entities.suggested_question import SuggestedQuestion
+from application.interfaces.repositories.suggested_question_repository import (
     ISuggestedQuestionRepository,
 )
 
@@ -16,7 +16,7 @@ class MongoDBSuggestedQuestionRepository(ISuggestedQuestionRepository):
     """MongoDB implementation for suggested questions."""
 
     def __init__(self, db: AsyncIOMotorDatabase):
-        from app.config import mongodb_config
+        from config import mongodb_config
 
         self.db = db
         self.collection = db[mongodb_config.collection_suggested_questions]

@@ -4,15 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 from datetime import datetime, timedelta
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.admin_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.admin_dto import (
     KnowledgeGapResponse,
     GapDetailResponse,
     LowConfidenceQueryResponse,
     CoverageAnalysisResponse,
 )
-from app.domain.entities.search_log import GapStatus
-from app.config.services import ServiceRegistry
+from domain.entities.search_log import GapStatus
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/knowledge", tags=["Admin - Knowledge Quality"])
@@ -351,7 +351,7 @@ async def trigger_gap_detection(
             # Check if gap already exists
             existing = await gap_repo.find_by_topic(query_key)
             if not existing:
-                from app.domain.entities.search_log import KnowledgeGap, GapStatus
+                from domain.entities.search_log import KnowledgeGap, GapStatus
                 import uuid
 
                 gap = KnowledgeGap(

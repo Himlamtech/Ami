@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 from datetime import datetime
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.admin_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.admin_dto import (
     AdminSessionResponse,
     AdminSessionListResponse,
     AdminMessageResponse,
@@ -13,7 +13,7 @@ from app.api.schemas.admin_dto import (
     ExportRequest,
     ExportResponse,
 )
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/conversations", tags=["Admin - Conversations"])
@@ -291,7 +291,7 @@ async def export_conversations(
     Returns export ID to track download status.
     """
     import uuid
-    from app.application.services.chat_history_service import ChatHistoryService
+    from application.services.chat_history_service import ChatHistoryService
 
     chat_repo = ServiceRegistry.get_chat_repository()
 

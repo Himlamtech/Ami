@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
-from app.api.schemas.auth_dto import LoginRequest, RegisterRequest, AuthResponse
-from app.config import app_config
-from app.config.services import ServiceRegistry
-from app.domain.entities.student_profile import StudentProfile, StudentLevel
+from api.schemas.auth_dto import LoginRequest, RegisterRequest, AuthResponse
+from config import app_config
+from config.services import ServiceRegistry
+from domain.entities.student_profile import StudentProfile, StudentLevel
 import uuid
 
 router = APIRouter(prefix="/auth", tags=["auth"])

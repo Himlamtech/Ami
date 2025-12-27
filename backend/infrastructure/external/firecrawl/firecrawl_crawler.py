@@ -9,9 +9,9 @@ from typing import Any, Dict, Optional, List
 
 from firecrawl import FirecrawlApp
 
-from app.application.interfaces.processors.web_crawler import IWebCrawler
-from app.config import firecrawl_config
-from app.config.external import FirecrawlConfig
+from application.interfaces.processors.web_crawler import IWebCrawler
+from config import firecrawl_config
+from config.external import FirecrawlConfig
 
 logger = logging.getLogger(__name__)
 

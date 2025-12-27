@@ -4,9 +4,9 @@ from typing import Optional, List, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.crawl_job import CrawlJob
-from app.domain.enums.crawl_status import CrawlJobStatus
-from app.application.interfaces.repositories.crawler_repository import (
+from domain.entities.crawl_job import CrawlJob
+from domain.enums.crawl_status import CrawlJobStatus
+from application.interfaces.repositories.crawler_repository import (
     ICrawlerRepository,
 )
 

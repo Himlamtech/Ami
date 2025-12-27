@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-from app.domain.enums.data_source import (
+from domain.enums.data_source import (
     DataCategory,
     DataType,
     SourceType,

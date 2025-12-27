@@ -10,10 +10,10 @@ from datetime import datetime, UTC
 from pathlib import Path
 from typing import Dict, Any, List, Tuple
 
-from app.application.use_cases.sync.change_detector import ChangeDetectorUseCase
-from app.domain.entities.document import Document
-from app.infrastructure.persistence.mongodb.client import get_database
-from app.infrastructure.persistence.mongodb.repositories.mongodb_document_repository import (
+from application.use_cases.sync.change_detector import ChangeDetectorUseCase
+from domain.entities.document import Document
+from infrastructure.persistence.mongodb.client import get_database
+from infrastructure.persistence.mongodb.repositories.mongodb_document_repository import (
     MongoDBDocumentRepository,
 )
 

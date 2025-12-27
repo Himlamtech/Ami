@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from app.domain.entities.chat_session import ChatSession
-from app.application.interfaces.repositories.chat_repository import IChatRepository
+from domain.entities.chat_session import ChatSession
+from application.interfaces.repositories.chat_repository import IChatRepository
 
 
 @dataclass

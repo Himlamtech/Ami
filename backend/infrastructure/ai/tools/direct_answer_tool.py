@@ -5,9 +5,9 @@ Direct Answer Tool Handler - Answer without RAG.
 import logging
 from typing import Dict, Any, Optional
 
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import IToolHandler
-from app.application.interfaces.services.llm_service import ILLMService
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import IToolHandler
+from application.interfaces.services.llm_service import ILLMService
 
 
 logger = logging.getLogger(__name__)

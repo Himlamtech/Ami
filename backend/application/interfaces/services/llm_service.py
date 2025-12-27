@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, AsyncIterator, Union
 
-from app.domain.enums.llm_mode import LLMMode
+from domain.enums.llm_mode import LLMMode
 
 
 class ILLMService(ABC):

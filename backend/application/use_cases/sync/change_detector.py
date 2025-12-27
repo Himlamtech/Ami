@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 import hashlib
 import logging
 
-from app.application.interfaces.repositories.document_repository import (
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
 

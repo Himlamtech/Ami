@@ -6,15 +6,15 @@ from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 
-from app.infrastructure.persistence.mongodb.client import (
+from infrastructure.persistence.mongodb.client import (
     get_mongodb_client,
     get_database,
 )
-from app.config.services import ServiceRegistry
-from app.api.middleware import LoggingMiddleware, admin_only_middleware
-from app.api.v1 import chat_api_router, admin_api_router, auth_api_router
-from app.api.v1.admin.config import router as config_router
-from app.application.use_cases.monitor_targets.monitor_scheduler import (
+from config.services import ServiceRegistry
+from api.middleware import LoggingMiddleware, admin_only_middleware
+from api.v1 import chat_api_router, admin_api_router, auth_api_router
+from api.v1.admin.config import router as config_router
+from application.use_cases.monitor_targets.monitor_scheduler import (
     register_monitor_targets_job,
 )
 

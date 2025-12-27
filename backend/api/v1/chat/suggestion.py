@@ -5,10 +5,10 @@ from datetime import datetime, timezone
 import random
 from typing import List
 
-from app.api.dependencies.auth import get_user_id
-from app.config.services import ServiceRegistry
-from app.api.schemas.suggestion_dto import SuggestionItem, SuggestionsResponse
-from app.application.use_cases.suggestions import (
+from api.dependencies.auth import get_user_id
+from config.services import ServiceRegistry
+from api.schemas.suggestion_dto import SuggestionItem, SuggestionsResponse
+from application.use_cases.suggestions import (
     GetSuggestedQuestionsUseCase,
     GetSuggestedQuestionsInput,
 )

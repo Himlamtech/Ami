@@ -1,11 +1,11 @@
 """Delete document use case."""
 
 from dataclasses import dataclass
-from app.domain.exceptions.document_exceptions import DocumentNotFoundException
-from app.application.interfaces.repositories.document_repository import (
+from domain.exceptions.document_exceptions import DocumentNotFoundException
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.vector_store_service import IVectorStoreService
 
 
 @dataclass

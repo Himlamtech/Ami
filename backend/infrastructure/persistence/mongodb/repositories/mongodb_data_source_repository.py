@@ -5,14 +5,14 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.data_source import DataSource, SourceAuth, CrawlConfig
-from app.domain.enums.data_source import (
+from domain.entities.data_source import DataSource, SourceAuth, CrawlConfig
+from domain.enums.data_source import (
     SourceStatus,
     DataCategory,
     DataType,
     SourceType,
 )
-from app.application.interfaces.repositories.data_source_repository import (
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
 

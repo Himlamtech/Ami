@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from typing import Optional, Dict, List
 from datetime import datetime
 
-from app.domain.entities.data_source import DataSource, SourceAuth, CrawlConfig
-from app.domain.enums.data_source import DataCategory, DataType, SourceType
-from app.application.interfaces.repositories.data_source_repository import (
+from domain.entities.data_source import DataSource, SourceAuth, CrawlConfig
+from domain.enums.data_source import DataCategory, DataType, SourceType
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
 

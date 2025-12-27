@@ -3,13 +3,13 @@
 from dataclasses import dataclass
 from typing import Optional, List
 
-from app.domain.entities.pending_update import PendingUpdate
-from app.domain.enums.data_source import (
+from domain.entities.pending_update import PendingUpdate
+from domain.enums.data_source import (
     PendingStatus,
     DataCategory,
     UpdateDetectionType,
 )
-from app.application.interfaces.repositories.pending_update_repository import (
+from application.interfaces.repositories.pending_update_repository import (
     IPendingUpdateRepository,
 )
 

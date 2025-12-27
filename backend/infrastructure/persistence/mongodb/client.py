@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, DuplicateKeyError
 
-from app.config import mongodb_config
+from config import mongodb_config
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class MongoDBClient:
     Async MongoDB client using Motor.
     Manages connection to MongoDB for document metadata and user management.
 
-    All configuration is loaded from app.config.mongodb_config.
+    All configuration is loaded from config.mongodb_config.
     Do NOT pass connection parameters directly - use environment variables.
     """
 

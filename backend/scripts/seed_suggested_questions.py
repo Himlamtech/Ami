@@ -3,14 +3,14 @@
 import asyncio
 from datetime import datetime
 
-from app.infrastructure.persistence.mongodb.client import MongoDBClient
-from app.infrastructure.persistence.mongodb.repositories.mongodb_suggested_question_repository import (
+from infrastructure.persistence.mongodb.client import MongoDBClient
+from infrastructure.persistence.mongodb.repositories.mongodb_suggested_question_repository import (
     MongoDBSuggestedQuestionRepository,
 )
-from app.infrastructure.ai.embeddings import HuggingFaceEmbeddings
-from app.infrastructure.persistence.qdrant import QdrantVectorStore
-from app.application.use_cases.suggestions import QUESTION_COLLECTION
-from app.domain.entities.suggested_question import SuggestedQuestion
+from infrastructure.ai.embeddings import HuggingFaceEmbeddings
+from infrastructure.persistence.qdrant import QdrantVectorStore
+from application.use_cases.suggestions import QUESTION_COLLECTION
+from domain.entities.suggested_question import SuggestedQuestion
 
 
 QUESTIONS = [

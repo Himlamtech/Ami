@@ -76,7 +76,7 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - "${APP_PORT:-11121}:11121"
+      - "${BACKEND_PORT:-11121}:11121"
     volumes:
       - ./backend/app:/app
       - ./data:/data

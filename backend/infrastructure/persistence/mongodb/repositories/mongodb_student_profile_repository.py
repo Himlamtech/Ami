@@ -7,14 +7,14 @@ import uuid
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.student_profile import (
+from domain.entities.student_profile import (
     StudentProfile,
     StudentLevel,
     InteractionType,
     InteractionHistory,
     TopicInterest,
 )
-from app.application.interfaces.repositories.student_profile_repository import (
+from application.interfaces.repositories.student_profile_repository import (
     IStudentProfileRepository,
 )
 

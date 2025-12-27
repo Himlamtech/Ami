@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.application.interfaces.services.tts_service import (
+from application.interfaces.services.tts_service import (
     ITTSService,
     TTSConfig,
     VoiceGender,

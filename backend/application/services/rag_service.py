@@ -8,7 +8,7 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from app.domain.value_objects.rag_models import (
+from domain.value_objects.rag_models import (
     TextChunk,
     ChunkMetadata,
     SearchResult,
@@ -18,13 +18,13 @@ from app.domain.value_objects.rag_models import (
     ChunkingStrategy,
     SearchType,
 )
-from app.application.interfaces.services.rag_service import (
+from application.interfaces.services.rag_service import (
     IRAGService,
     IndexDocumentInput,
     IndexDocumentOutput,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
 
 logger = logging.getLogger(__name__)
 

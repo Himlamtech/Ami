@@ -5,14 +5,14 @@ Image Analysis Tool Handler - Analyze image artifacts with Vision.
 import logging
 from typing import Dict, Any, Optional
 
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import IToolHandler
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import (
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import IToolHandler
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import (
     IVectorStoreService,
 )
-from app.application.use_cases.multimodal.image_query import (
+from application.use_cases.multimodal.image_query import (
     ImageQueryUseCase,
     ImageQueryInput,
 )

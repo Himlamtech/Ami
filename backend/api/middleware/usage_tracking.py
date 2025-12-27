@@ -6,8 +6,8 @@ import time
 import uuid
 from typing import Callable
 
-from app.config.services import ServiceRegistry
-from app.domain.entities.usage_metric import UsageMetric, RequestStatus
+from config.services import ServiceRegistry
+from domain.entities.usage_metric import UsageMetric, RequestStatus
 
 
 async def usage_tracking_middleware(request: Request, call_next: Callable):

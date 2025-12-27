@@ -7,17 +7,17 @@ import uuid
 import asyncio
 import logging
 
-from app.domain.entities.tool_call import ToolCall
-from app.domain.entities.orchestration_result import (
+from domain.entities.tool_call import ToolCall
+from domain.entities.orchestration_result import (
     OrchestrationResult,
     VectorSearchReference,
     OrchestrationMetrics,
 )
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.orchestrator_service import (
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.orchestrator_service import (
     IOrchestratorService,
 )
-from app.application.interfaces.services.tool_executor_service import (
+from application.interfaces.services.tool_executor_service import (
     IToolExecutorService,
 )
 

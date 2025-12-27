@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from datetime import datetime
 
-from app.domain.entities.monitor_target import MonitorTarget
+from domain.entities.monitor_target import MonitorTarget
 
 
 class IMonitorTargetRepository(ABC):

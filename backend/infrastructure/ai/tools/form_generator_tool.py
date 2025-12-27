@@ -10,8 +10,8 @@ This is a KEY tool that differentiates from RAG:
 import logging
 from typing import Dict, Any, Optional, List
 
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import IToolHandler
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import IToolHandler
 
 
 logger = logging.getLogger(__name__)

@@ -3,12 +3,12 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-from app.application.services.document_ingest_service import (
+from application.services.document_ingest_service import (
     DocumentIngestService,
     IngestPayload,
 )
-from app.domain.enums.data_source import DataCategory
-from app.domain.entities.pending_update import PendingUpdate
+from domain.enums.data_source import DataCategory
+from domain.entities.pending_update import PendingUpdate
 
 
 @dataclass

@@ -2,8 +2,8 @@
 
 import logging
 
-from app.config.services import ServiceRegistry
-from app.application.use_cases.monitor_targets import RunMonitorTargetsUseCase
+from config.services import ServiceRegistry
+from application.use_cases.monitor_targets import RunMonitorTargetsUseCase
 
 logger = logging.getLogger(__name__)
 

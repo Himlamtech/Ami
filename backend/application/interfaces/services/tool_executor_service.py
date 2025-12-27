@@ -3,8 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
-from app.domain.entities.tool_call import ToolCall
-from app.domain.enums.tool_type import ToolType
+from domain.entities.tool_call import ToolCall
+from domain.enums.tool_type import ToolType
 
 
 class IToolExecutorService(ABC):

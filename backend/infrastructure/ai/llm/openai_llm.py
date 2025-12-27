@@ -9,10 +9,10 @@ from typing import Optional, Union
 
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 
-from app.domain.enums.llm_mode import LLMMode
-from app.application.interfaces.services.llm_service import ILLMService
-from app.config import openai_config
-from app.config.ai import OpenAIConfig
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
+from config import openai_config
+from config.ai import OpenAIConfig
 
 logger = logging.getLogger(__name__)
 

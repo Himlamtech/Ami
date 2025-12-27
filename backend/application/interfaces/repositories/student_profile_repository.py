@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from app.domain.entities.student_profile import StudentProfile
+from domain.entities.student_profile import StudentProfile
 
 
 class IStudentProfileRepository(ABC):

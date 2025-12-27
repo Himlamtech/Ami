@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 
-from app.domain.entities.orchestration_result import OrchestrationResult
+from domain.entities.orchestration_result import OrchestrationResult
 
 
 class IOrchestrationLogRepository(ABC):

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from app.domain.enums.tool_type import ToolType, ToolExecutionStatus
+from domain.enums.tool_type import ToolType, ToolExecutionStatus
 
 
 @dataclass

@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 from typing import List, Optional
-from app.domain.entities.document import Document
-from app.application.interfaces.repositories.document_repository import (
+from domain.entities.document import Document
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
 

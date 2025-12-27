@@ -8,14 +8,14 @@ import logging
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.domain.enums.llm_mode import LLMMode
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.rag_service import IRAGService
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.rag_service import IRAGService
 
 # Repository imports
-from app.infrastructure.persistence.mongodb.repositories import (
+from infrastructure.persistence.mongodb.repositories import (
     MongoDBChatRepository,
     MongoDBDocumentRepository,
     MongoDBFileRepository,
@@ -110,15 +110,15 @@ class ServiceRegistry:
         provider = provider.lower()
 
         if provider == "openai":
-            from app.infrastructure.ai.llm.openai_llm import OpenAILLMService
+            from infrastructure.ai.llm.openai_llm import OpenAILLMService
 
             llm = OpenAILLMService(default_mode=mode)
         elif provider == "anthropic":
-            from app.infrastructure.ai.llm.anthropic_llm import AnthropicLLMService
+            from infrastructure.ai.llm.anthropic_llm import AnthropicLLMService
 
             llm = AnthropicLLMService(default_mode=mode)
         elif provider == "gemini":
-            from app.infrastructure.ai.llm.gemini_llm import GeminiLLMService
+            from infrastructure.ai.llm.gemini_llm import GeminiLLMService
 
             llm = GeminiLLMService(default_mode=mode)
         else:
@@ -133,7 +133,7 @@ class ServiceRegistry:
     def get_embedding(cls) -> IEmbeddingService:
         """Get embedding service."""
         if cls._embedding is None:
-            from app.infrastructure.ai.embeddings import HuggingFaceEmbeddings
+            from infrastructure.ai.embeddings import HuggingFaceEmbeddings
 
             cls._embedding = HuggingFaceEmbeddings()
         return cls._embedding
@@ -142,8 +142,8 @@ class ServiceRegistry:
     def get_vector_store(cls) -> IVectorStoreService:
         """Get vector store service."""
         if cls._vector_store is None:
-            from app.infrastructure.persistence.qdrant import QdrantVectorStore
-            from app.config import qdrant_config
+            from infrastructure.persistence.qdrant import QdrantVectorStore
+            from config import qdrant_config
 
             cls._vector_store = QdrantVectorStore(
                 default_collection=qdrant_config.collection_name
@@ -154,7 +154,7 @@ class ServiceRegistry:
     def get_storage(cls):
         """Get MinIO storage service."""
         if cls._storage is None:
-            from app.infrastructure.persistence.minio import MinIOStorage
+            from infrastructure.persistence.minio import MinIOStorage
 
             cls._storage = MinIOStorage()
         return cls._storage
@@ -163,7 +163,7 @@ class ServiceRegistry:
     def get_scheduler(cls):
         """Get APScheduler service."""
         if cls._scheduler is None:
-            from app.infrastructure.scheduling import APSchedulerService
+            from infrastructure.scheduling import APSchedulerService
 
             cls._scheduler = APSchedulerService()
             # Start scheduler asynchronously
@@ -173,7 +173,7 @@ class ServiceRegistry:
     def get_web_crawler(cls):
         """Get shared web crawler service."""
         if cls._web_crawler is None:
-            from app.infrastructure.external.firecrawl.firecrawl_crawler import (
+            from infrastructure.external.firecrawl.firecrawl_crawler import (
                 FirecrawlCrawler,
             )
 
@@ -184,7 +184,7 @@ class ServiceRegistry:
     def get_document_resolver(cls):
         """Get singleton DocumentResolver."""
         if cls._document_resolver is None:
-            from app.application.services.document_resolver import DocumentResolver
+            from application.services.document_resolver import DocumentResolver
 
             embedding = cls.get_embedding()
             vector_store = cls.get_vector_store()
@@ -200,7 +200,7 @@ class ServiceRegistry:
     def get_document_ingest_service(cls):
         """Get DocumentIngestService singleton."""
         if cls._document_ingest_service is None:
-            from app.application.services.document_ingest_service import (
+            from application.services.document_ingest_service import (
                 DocumentIngestService,
             )
 
@@ -218,12 +218,12 @@ class ServiceRegistry:
     def get_rag(cls) -> IRAGService:
         """Get RAG service (orchestrator)."""
         if cls._rag is None:
-            from app.application.services.rag_service import RAGService
-            from app.domain.value_objects.rag_models import (
+            from application.services.rag_service import RAGService
+            from domain.value_objects.rag_models import (
                 ChunkingConfig,
                 RAGSearchConfig,
             )
-            from app.config import rag_config
+            from config import rag_config
 
             embedding = cls.get_embedding()
             vector_store = cls.get_vector_store()
@@ -308,7 +308,7 @@ class ServiceRegistry:
         """Get monitor target repository."""
         cls._ensure_initialized()
         if cls._monitor_target_repo is None:
-            from app.infrastructure.persistence.mongodb.repositories import (
+            from infrastructure.persistence.mongodb.repositories import (
                 MongoDBMonitorTargetRepository,
             )
 
@@ -390,28 +390,28 @@ class ServiceRegistry:
     @classmethod
     def get_orchestrate_query_use_case(cls):
         """Get orchestrate query use case."""
-        from app.application.use_cases.orchestration.orchestrate_query import (
+        from application.use_cases.orchestration.orchestrate_query import (
             OrchestrateQueryUseCase,
         )
-        from app.infrastructure.ai.orchestrator.gemini_orchestrator import (
+        from infrastructure.ai.orchestrator.gemini_orchestrator import (
             GeminiOrchestratorService,
         )
-        from app.infrastructure.ai.tools.tool_executor import ToolExecutorService
-        from app.infrastructure.ai.tools.rag_tool import RAGToolHandler
-        from app.infrastructure.ai.tools.web_search_tool import WebSearchToolHandler
-        from app.infrastructure.external.web_search.gemini_web_search import (
+        from infrastructure.ai.tools.tool_executor import ToolExecutorService
+        from infrastructure.ai.tools.rag_tool import RAGToolHandler
+        from infrastructure.ai.tools.web_search_tool import WebSearchToolHandler
+        from infrastructure.external.web_search.gemini_web_search import (
             GeminiWebSearchService,
         )
-        from app.infrastructure.ai.tools.direct_answer_tool import (
+        from infrastructure.ai.tools.direct_answer_tool import (
             DirectAnswerToolHandler,
         )
-        from app.infrastructure.ai.tools.form_generator_tool import (
+        from infrastructure.ai.tools.form_generator_tool import (
             FormGeneratorToolHandler,
         )
-        from app.infrastructure.ai.tools.clarification_tool import (
+        from infrastructure.ai.tools.clarification_tool import (
             ClarificationToolHandler,
         )
-        from app.infrastructure.ai.tools.image_analysis_tool import (
+        from infrastructure.ai.tools.image_analysis_tool import (
             ImageAnalysisToolHandler,
         )
 

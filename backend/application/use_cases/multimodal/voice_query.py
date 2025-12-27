@@ -3,12 +3,12 @@
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 
-from app.application.interfaces.services.stt_service import ISTTService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.domain.entities.chat_message import ChatMessage
+from application.interfaces.services.stt_service import ISTTService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.repositories.chat_repository import IChatRepository
+from domain.entities.chat_message import ChatMessage
 
 
 @dataclass

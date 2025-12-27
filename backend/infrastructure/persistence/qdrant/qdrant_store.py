@@ -21,9 +21,9 @@ from qdrant_client.models import (
     FilterSelector,
 )
 
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.config import qdrant_config, embedding_config
-from app.config.persistence import QdrantConfig
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from config import qdrant_config, embedding_config
+from config.persistence import QdrantConfig
 
 logger = logging.getLogger(__name__)
 

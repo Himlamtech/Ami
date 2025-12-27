@@ -8,24 +8,24 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 
-from app.application.use_cases.orchestration.orchestrate_query import (
+from application.use_cases.orchestration.orchestrate_query import (
     OrchestrateQueryUseCase,
     OrchestrateQueryInput,
     OrchestrateQueryOutput,
 )
-from app.application.use_cases.personalization import (
+from application.use_cases.personalization import (
     ExtractProfileMemoryUseCase,
     ProfileMemoryExtractionInput,
 )
-from app.application.use_cases.chat import (
+from application.use_cases.chat import (
     CreateSessionUseCase,
     CreateSessionInput,
     SendMessageUseCase,
     SendMessageInput,
 )
-from app.domain.enums.chat_message_role import ChatMessageRole
-from app.domain.enums.llm_mode import LLMMode
-from app.config import ServiceRegistry
+from domain.enums.chat_message_role import ChatMessageRole
+from domain.enums.llm_mode import LLMMode
+from config import ServiceRegistry
 
 
 logger = logging.getLogger(__name__)

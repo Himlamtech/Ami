@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from app.domain.entities.file_metadata import FileMetadata
-from app.domain.enums.file_type import FileType
+from domain.entities.file_metadata import FileMetadata
+from domain.enums.file_type import FileType
 
 
 class IFileRepository(ABC):

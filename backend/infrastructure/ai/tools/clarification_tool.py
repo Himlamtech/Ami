@@ -7,8 +7,8 @@ Used when the query is ambiguous or lacks necessary information.
 import logging
 from typing import Dict, Any, List
 
-from app.domain.enums.tool_type import ToolType
-from app.application.interfaces.services.tool_executor_service import IToolHandler
+from domain.enums.tool_type import ToolType
+from application.interfaces.services.tool_executor_service import IToolHandler
 
 
 logger = logging.getLogger(__name__)

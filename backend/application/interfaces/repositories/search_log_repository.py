@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from datetime import datetime
 
-from app.domain.entities.search_log import (
+from domain.entities.search_log import (
     SearchLog,
     KnowledgeGap,
     SearchResultQuality,
