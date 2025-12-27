@@ -6,14 +6,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 import uuid
 
-from app.domain.entities.search_log import (
+from domain.entities.search_log import (
     SearchLog,
     SearchResult,
     KnowledgeGap,
     SearchResultQuality,
     GapStatus,
 )
-from app.application.interfaces.repositories.search_log_repository import (
+from application.interfaces.repositories.search_log_repository import (
     ISearchLogRepository,
     IKnowledgeGapRepository,
 )

@@ -4,15 +4,15 @@ import logging
 from typing import List
 from datetime import datetime
 
-from app.application.interfaces.repositories.monitor_target_repository import (
+from application.interfaces.repositories.monitor_target_repository import (
     IMonitorTargetRepository,
 )
-from app.application.interfaces.processors.web_crawler import IWebCrawler
-from app.application.services.document_ingest_service import (
+from application.interfaces.processors.web_crawler import IWebCrawler
+from application.services.document_ingest_service import (
     DocumentIngestService,
     IngestPayload,
 )
-from app.domain.enums.data_source import DataCategory
+from domain.enums.data_source import DataCategory
 
 logger = logging.getLogger(__name__)
 

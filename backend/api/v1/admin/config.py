@@ -1,7 +1,7 @@
 """Configuration routes."""
 
 from fastapi import APIRouter
-from app.config import app_config
+from config import app_config
 
 
 router = APIRouter(prefix="/config", tags=["configuration"])

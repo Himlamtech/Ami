@@ -710,3 +710,73 @@ class WebsiteInfoResponse(BaseModel):
     urls_by_status: Dict[str, int]  # crawled, pending, failed
     categories: List[str]
     url_tree: List[Dict[str, Any]]  # Hierarchical structure
+
+
+# ===== Orchestration Models =====
+
+
+class ToolCallInDB(BaseModel):
+    """Tool call model as stored in database."""
+
+    tool_type: str
+    arguments: Dict[str, Any] = Field(default_factory=dict)
+    execution_status: str = "pending"
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    execution_time_ms: Optional[float] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+
+class VectorSearchReferenceInDB(BaseModel):
+    """Vector search reference model."""
+
+    top_score: float = 0.0
+    avg_score: float = 0.0
+    chunk_count: int = 0
+    has_high_confidence: bool = False
+    confidence_threshold: float = 0.7
+    sample_chunks: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class OrchestrationMetricsInDB(BaseModel):
+    """Orchestration metrics model."""
+
+    decision_time_ms: float = 0.0
+    tool_execution_time_ms: float = 0.0
+    synthesis_time_ms: float = 0.0
+    total_time_ms: float = 0.0
+    tokens_used: int = 0
+
+
+class OrchestrationLogInDB(BaseModel):
+    """Orchestration log model as stored in database."""
+
+    id: str = Field(alias="_id")
+
+    # Query info
+    query: str
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+
+    # Tool decisions
+    tool_calls: List[ToolCallInDB] = Field(default_factory=list)
+    primary_tool: Optional[str] = None
+
+    # Results
+    final_answer: Optional[str] = None
+    success: bool = True
+    error: Optional[str] = None
+
+    # References
+    vector_reference: Optional[VectorSearchReferenceInDB] = None
+
+    # Metrics
+    metrics: Optional[OrchestrationMetricsInDB] = None
+
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        populate_by_name = True

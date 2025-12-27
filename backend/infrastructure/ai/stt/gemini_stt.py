@@ -10,9 +10,9 @@ from typing import Dict, Any, Optional
 import google.genai as genai
 from google.genai import types
 
-from app.application.interfaces.services.stt_service import ISTTService
-from app.config import gemini_config
-from app.config.ai import GeminiConfig
+from application.interfaces.services.stt_service import ISTTService
+from config import gemini_config
+from config.ai import GeminiConfig
 
 logger = logging.getLogger(__name__)
 

@@ -940,13 +940,10 @@ With Personalization:
   },
   
   "academic_profile": {
+    "student_id": "B22DCVT303",
     "major": "IT",
     "specialization": "AI",       // Optional
-    "year": 1,                    // 1-4
-    "semester": 1,                // 1-8
-    "gpa": 3.8,
-    "enrollment_date": ISODate("2025-08-01T00:00:00Z"),
-    "expected_graduation": ISODate("2029-06-01T00:00:00Z")
+    "program_length_years": 4.5   // PTIT default
   },
   
   "preferences": {
@@ -959,10 +956,24 @@ With Personalization:
   },
   
   "interests": [
-    "AI/Machine Learning",
-    "Web Development",
-    "Career Guidance"
+    {
+      "topic": "AI/Machine Learning",
+      "score": 0.82,
+      "last_seen": ISODate("2025-12-20T09:00:00Z"),
+      "source": "chat"
+    },
+    {
+      "topic": "Web Development",
+      "score": 0.63,
+      "last_seen": ISODate("2025-12-18T14:00:00Z"),
+      "source": "chat"
+    }
   ],
+  "interest_decay_policy": {
+    "decay_factor": 0.95,
+    "min_score": 0.05,
+    "stale_after_days": 90
+  },
   
   "chat_preferences": {
     "max_context_messages": 5,
@@ -990,6 +1001,25 @@ With Personalization:
 }
 ```
 
+**Derived fields (runtime, not stored):**
+```
+intake_year = parse_year(student_id)          # B22... → 2022
+current_year = current_year - intake_year + 1 # Clamp to 1..5 (PTIT 4.5y)
+current_semester = min(current_year * 2 - offset, 9)
+```
+
+**Note:** Các trường như GPA, enrollment_date, expected_graduation không lưu trong AMI (cần lấy từ hệ thống SIS/đào tạo nếu có).
+
+```mermaid
+flowchart TD
+    A[student_id] --> B{Valid pattern BYY...?}
+    B -->|Yes| C[Parse intake_year = 2000 + YY]
+    C --> D[years_elapsed = now.year - intake_year + 1]
+    D --> E[Clamp to 1..5 (PTIT 4.5y)]
+    E --> F[Compute current_semester (max 9)]
+    B -->|No| G[Ask user / leave unknown]
+```
+
 ### 8.3 Personalization Endpoints
 
 ```
@@ -1001,7 +1031,70 @@ DELETE /api/v1/users/profile             # Delete account
 GET    /api/v1/users/statistics          # Get user statistics
 ```
 
+### 8.4 Long-term Memory (Draft)
+
+**Goal:** Extract durable student traits/preferences from conversations and reuse in future responses.
+
+**Flow (short):**
+1. Chat message saved → enqueue memory extraction job.
+2. LLM extracts memory candidates (traits, preferences, background) with evidence.
+3. Merge/dedupe with existing memory (by similarity + type).
+4. Persist memory (MongoDB) + vector embedding (Qdrant).
+5. On new queries, retrieve top-K memories and inject into user_context for orchestration.
+
+**Minimal fields (memory record):**
+```
+id, user_id, type, content, confidence, evidence_message_ids,
+source, created_at, updated_at, decay_score, vector_id
+```
+
 ---
+
+### 8.5 Suggested Questions (Question Bank + Embedding)
+
+**Goal:** When a student opens chat, show 3 suggested PTIT questions that best match their interests/profile.
+
+**Flow (short):**
+1. Question bank stored in MongoDB (source of truth).
+2. Each question has embedding stored in Qdrant.
+3. Build a profile query string from interests + major/year.
+4. Embed query string → cosine search in Qdrant (top_k=10).
+5. Filter active questions in Mongo → return top 3.
+6. Fallback: if profile is empty, return 3 popular/general questions.
+
+**Question Bank (Mongo):**
+```json
+{
+  "_id": ObjectId("507f1f77bcf86cd799439099"),
+  "text": "Học phí PTIT năm nay là bao nhiêu?",
+  "tags": ["hoc_phi", "tai_chinh"],
+  "category": "finance",
+  "is_active": true,
+  "created_at": ISODate("2025-12-26T10:00:00Z"),
+  "updated_at": ISODate("2025-12-26T10:00:00Z")
+}
+```
+
+**Qdrant Payload:**
+```json
+{
+  "question_id": "507f1f77bcf86cd799439099",
+  "text": "Học phí PTIT năm nay là bao nhiêu?",
+  "tags": ["hoc_phi", "tai_chinh"],
+  "category": "finance"
+}
+```
+
+**Profile Query String (example):**
+```
+"DTVT năm 2. Sở thích: AI, NLP, an ninh mạng."
+```
+
+**Endpoint (draft):**
+```
+GET /api/v1/suggestions/questions?user_id=...
+-> { questions: [{id, text, category}], source: "profile+embedding" }
+```
 
 ## 9. Error Handling & Recovery
 
@@ -1176,4 +1269,3 @@ All components must:
 - Log all important events
 - Monitor performance metrics
 - Support graceful degradation
-

@@ -15,10 +15,10 @@ from anthropic import (
     RateLimitError,
 )
 
-from app.domain.enums.llm_mode import LLMMode
-from app.application.interfaces.services.llm_service import ILLMService
-from app.config import anthropic_config
-from app.config.ai import AnthropicConfig
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
+from config import anthropic_config
+from config.ai import AnthropicConfig
 
 logger = logging.getLogger(__name__)
 

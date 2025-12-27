@@ -9,10 +9,10 @@ from typing import Optional, AsyncIterator, Union
 
 import google.genai as genai
 from google.genai import types
-from app.domain.enums.llm_mode import LLMMode
-from app.application.interfaces.services.llm_service import ILLMService
-from app.config import gemini_config
-from app.config.ai import GeminiConfig
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
+from config import gemini_config
+from config.ai import GeminiConfig
 
 logger = logging.getLogger(__name__)
 

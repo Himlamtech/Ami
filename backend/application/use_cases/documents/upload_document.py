@@ -3,13 +3,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from app.domain.entities.document import Document
-from app.domain.value_objects.chunk_config import ChunkConfig
-from app.application.interfaces.repositories.document_repository import (
+from domain.entities.document import Document
+from domain.value_objects.chunk_config import ChunkConfig
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
 
 
 @dataclass

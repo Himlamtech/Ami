@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.application.interfaces.repositories.data_source_repository import (
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
 

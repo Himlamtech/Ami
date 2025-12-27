@@ -2,10 +2,10 @@
 
 from typing import Optional
 from datetime import datetime
-from app.domain.entities.file_metadata import FileMetadata
-from app.domain.enums.file_type import FileType
-from app.application.interfaces.repositories.file_repository import IFileRepository
-from app.application.interfaces.services.storage_service import IStorageService
+from domain.entities.file_metadata import FileMetadata
+from domain.enums.file_type import FileType
+from application.interfaces.repositories.file_repository import IFileRepository
+from application.interfaces.services.storage_service import IStorageService
 
 
 class FileUploadService:

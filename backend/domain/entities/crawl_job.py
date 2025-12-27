@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any
-from app.domain.enums.crawl_status import CrawlJobStatus, CrawlJobType
+from domain.enums.crawl_status import CrawlJobStatus, CrawlJobType
 
 
 @dataclass

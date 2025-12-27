@@ -5,20 +5,19 @@ from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.application.interfaces.repositories.bookmark_repository import (
+from application.interfaces.repositories.bookmark_repository import (
     IBookmarkRepository,
 )
-from app.domain.entities.bookmark import Bookmark
+from domain.entities.bookmark import Bookmark
+from config.persistence import mongodb_config
 
 
 class MongoDBBookmarkRepository(IBookmarkRepository):
     """MongoDB implementation for bookmark data access."""
 
-    COLLECTION = "bookmarks"
-
     def __init__(self, database: AsyncIOMotorDatabase):
         self._db = database
-        self._collection = database[self.COLLECTION]
+        self._collection = database[mongodb_config.collection_bookmarks]
 
     async def create(self, bookmark: Bookmark) -> Bookmark:
         """Create a new bookmark."""

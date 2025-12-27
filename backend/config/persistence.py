@@ -8,14 +8,14 @@ Note: pydantic-settings automatically maps environment variables to field names
 
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
-from .base import BaseConfig
+from .base import BaseConfig, ENV_FILES
 
 
 class MongoDBConfig(BaseConfig):
     """MongoDB configuration."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -30,6 +30,28 @@ class MongoDBConfig(BaseConfig):
     mongo_user: str = Field(default="admin")
     mongo_password: str = Field(default="")
     mongo_db: str = Field(default="ami_db")
+
+    # MongoDB Collection Names
+    collection_users: str = Field(default="users")
+    collection_bookmarks: str = Field(default="bookmarks")
+    collection_chat_sessions: str = Field(default="chat_sessions")
+    collection_chat_messages: str = Field(default="chat_messages")
+    collection_documents: str = Field(default="documents")
+    collection_vector_mappings: str = Field(default="vector_mappings")
+    collection_feedback: str = Field(default="feedback")
+    collection_file_metadata: str = Field(default="file_metadata")
+    collection_crawler_jobs: str = Field(default="crawler_jobs")
+    collection_data_sources: str = Field(default="data_sources")
+    collection_search_logs: str = Field(default="search_logs")
+    collection_monitor_targets: str = Field(default="monitor_targets")
+    collection_student_profiles: str = Field(default="student_profiles")
+    collection_pending_updates: str = Field(default="pending_updates")
+    collection_usage_metrics: str = Field(default="usage_metrics")
+    collection_suggested_questions: str = Field(default="suggested_questions")
+
+    # MongoDB Tuning
+    mongodb_timeout_ms: int = Field(default=5000, ge=1000)
+    mongodb_default_limit: int = Field(default=50, ge=1, le=1000)
 
     # Convenience properties
     @property
@@ -57,6 +79,16 @@ class MongoDBConfig(BaseConfig):
         if self.mongodb_url:
             return self.mongodb_url
         return f"mongodb://{self.mongo_user}:{self.mongo_password}@{self.mongodb_host}:{self.mongodb_port}/?authSource=admin"
+
+    @property
+    def timeout_ms(self) -> int:
+        """Get MongoDB server selection timeout in milliseconds."""
+        return self.mongodb_timeout_ms
+
+    @property
+    def default_limit(self) -> int:
+        """Get default limit for queries."""
+        return self.mongodb_default_limit
 
 
 class QdrantConfig(BaseConfig):

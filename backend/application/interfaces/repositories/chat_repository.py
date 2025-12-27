@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from app.domain.entities.chat_session import ChatSession
-from app.domain.entities.chat_message import ChatMessage
+from domain.entities.chat_session import ChatSession
+from domain.entities.chat_message import ChatMessage
 
 
 class IChatRepository(ABC):

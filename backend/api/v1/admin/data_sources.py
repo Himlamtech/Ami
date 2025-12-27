@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.data_source_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.data_source_dto import (
     CreateDataSourceRequest,
     UpdateDataSourceRequest,
     TestDataSourceRequest,
@@ -14,31 +14,31 @@ from app.api.schemas.data_source_dto import (
     CrawlConfigResponse,
     AuthConfigResponse,
 )
-from app.domain.enums.data_source import (
+from domain.enums.data_source import (
     DataCategory,
     SourceType,
     SourceStatus,
 )
-from app.domain.entities.data_source import DataSource
-from app.application.use_cases.data_source import (
+from domain.entities.data_source import DataSource
+from application.use_cases.data_source import (
     CreateDataSourceUseCase,
     ListDataSourcesUseCase,
     UpdateDataSourceUseCase,
     DeleteDataSourceUseCase,
     TestDataSourceUseCase,
 )
-from app.application.use_cases.data_source.create_data_source import (
+from application.use_cases.data_source.create_data_source import (
     CreateDataSourceInput,
 )
-from app.application.use_cases.data_source.list_data_sources import ListDataSourcesInput
-from app.application.use_cases.data_source.update_data_source import (
+from application.use_cases.data_source.list_data_sources import ListDataSourcesInput
+from application.use_cases.data_source.update_data_source import (
     UpdateDataSourceInput,
 )
-from app.application.use_cases.data_source.delete_data_source import (
+from application.use_cases.data_source.delete_data_source import (
     DeleteDataSourceInput,
 )
-from app.application.use_cases.data_source.test_data_source import TestDataSourceInput
-from app.config.services import ServiceRegistry
+from application.use_cases.data_source.test_data_source import TestDataSourceInput
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/data-sources", tags=["admin-data-sources"])

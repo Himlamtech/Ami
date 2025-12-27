@@ -4,11 +4,11 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from enum import Enum
 
-from app.domain.value_objects.rag_config import RAGConfig
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.llm_service import ILLMService
-from app.application.interfaces.services.web_search_service import IWebSearchService
+from domain.value_objects.rag_config import RAGConfig
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.llm_service import ILLMService
+from application.interfaces.services.web_search_service import IWebSearchService
 
 
 class QuerySource(str, Enum):

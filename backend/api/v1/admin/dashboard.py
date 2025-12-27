@@ -3,12 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.document_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.document_dto import (
     DocumentResponse,
     DocumentListResponse,
 )
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])

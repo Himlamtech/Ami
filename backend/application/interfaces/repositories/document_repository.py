@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
-from app.domain.entities.document import Document
+from domain.entities.document import Document
 
 
 class IDocumentRepository(ABC):

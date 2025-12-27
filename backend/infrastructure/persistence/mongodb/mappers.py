@@ -4,10 +4,10 @@ These mappers handle conversion between domain entities (pure Python)
 and MongoDB models (Pydantic with database-specific fields).
 """
 
-from app.domain.entities.document import Document
-from app.domain.entities.chat_session import ChatSession
-from app.domain.entities.chat_message import ChatMessage
-from app.infrastructure.persistence.mongodb.models import (
+from domain.entities.document import Document
+from domain.entities.chat_session import ChatSession
+from domain.entities.chat_message import ChatMessage
+from infrastructure.persistence.mongodb.models import (
     DocumentInDB,
     ChatSessionInDB,
     ChatMessageInDB,
@@ -110,7 +110,7 @@ class ChatMessageMapper:
     @staticmethod
     def to_entity(model: ChatMessageInDB) -> ChatMessage:
         """Convert MongoDB model to domain entity."""
-        from app.domain.enums.chat_message_role import ChatMessageRole
+        from domain.enums.chat_message_role import ChatMessageRole
 
         return ChatMessage(
             id=model.id,
@@ -127,7 +127,7 @@ class ChatMessageMapper:
     @staticmethod
     def to_model(entity: ChatMessage) -> ChatMessageInDB:
         """Convert domain entity to MongoDB model."""
-        from app.infrastructure.persistence.mongodb.models import (
+        from infrastructure.persistence.mongodb.models import (
             ChatMessageRole as DBRole,
         )
 

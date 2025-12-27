@@ -137,3 +137,55 @@
 .animate-pulse-dot:nth-child(3) {
     animation-delay: 0.4s;
 }
+
+@keyframes float-slow {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+@keyframes float-fast {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-18px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.animate-float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-fast {
+    animation: float-fast 4.5s ease-in-out infinite;
+}
+
+.bg-grid-soft {
+    background-image: linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.bg-radial-soft {
+    background: radial-gradient(circle at 20% 10%, rgba(225, 29, 72, 0.08), transparent 45%),
+        radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.06), transparent 50%);
+}
+
+.bg-radial-red {
+    background: radial-gradient(circle at 20% 10%, rgba(225, 29, 72, 0.05), transparent 45%),
+        radial-gradient(circle at 70% 15%, rgba(225, 29, 72, 0.03), transparent 55%);
+}

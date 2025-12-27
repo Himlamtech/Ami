@@ -1,7 +1,7 @@
 """Health check use case."""
 
 from dataclasses import dataclass
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.vector_store_service import IVectorStoreService
 
 
 @dataclass

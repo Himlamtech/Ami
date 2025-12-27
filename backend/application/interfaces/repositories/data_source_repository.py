@@ -3,8 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from app.domain.entities.data_source import DataSource
-from app.domain.enums.data_source import SourceStatus, DataCategory
+from domain.entities.data_source import DataSource
+from domain.enums.data_source import SourceStatus, DataCategory
 
 
 class IDataSourceRepository(ABC):

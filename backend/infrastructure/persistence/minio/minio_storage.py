@@ -10,9 +10,9 @@ from typing import Optional
 
 from minio import Minio
 
-from app.application.interfaces.services.storage_service import IStorageService
-from app.config import minio_config
-from app.config.persistence import MinIOConfig
+from application.interfaces.services.storage_service import IStorageService
+from config import minio_config
+from config.persistence import MinIOConfig
 
 logger = logging.getLogger(__name__)
 

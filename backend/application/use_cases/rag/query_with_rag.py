@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
-from app.domain.value_objects.rag_config import RAGConfig
-from app.domain.value_objects.generation_config import GenerationConfig
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.services.llm_service import ILLMService
+from domain.value_objects.rag_config import RAGConfig
+from domain.value_objects.generation_config import GenerationConfig
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.services.llm_service import ILLMService
 
 
 @dataclass

@@ -3,8 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 
-from app.domain.entities.pending_update import PendingUpdate
-from app.domain.enums.data_source import (
+from domain.entities.pending_update import PendingUpdate
+from domain.enums.data_source import (
     PendingStatus,
     UpdateDetectionType,
     DataCategory,

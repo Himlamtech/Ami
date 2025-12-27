@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from typing import Optional, List
 
-from app.domain.entities.data_source import DataSource
-from app.domain.enums.data_source import SourceStatus, DataCategory
-from app.application.interfaces.repositories.data_source_repository import (
+from domain.entities.data_source import DataSource
+from domain.enums.data_source import SourceStatus, DataCategory
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
 

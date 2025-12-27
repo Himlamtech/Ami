@@ -9,10 +9,10 @@ from typing import Optional, Union
 
 from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
 
-from app.domain.enums.llm_mode import LLMMode
-from app.application.interfaces.services.llm_service import ILLMService
-from app.config import openai_config
-from app.config.ai import OpenAIConfig
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
+from config import openai_config
+from config.ai import OpenAIConfig
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,7 @@ class OpenAILLMService(ILLMService):
             messages.append({"role": "user", "content": prompt})
 
             kwargs.setdefault("max_tokens", 4096)
+            kwargs = self._normalize_generation_kwargs(model, kwargs)
 
             logger.debug(f"Generating with {model}")
 
@@ -107,6 +108,7 @@ class OpenAILLMService(ILLMService):
             messages.append({"role": "user", "content": prompt})
 
             kwargs.setdefault("max_tokens", 4096)
+            kwargs = self._normalize_generation_kwargs(model, kwargs)
 
             logger.debug(f"Streaming with {model}")
 
@@ -172,6 +174,7 @@ class OpenAILLMService(ILLMService):
             ]
 
             kwargs.setdefault("max_tokens", 4096)
+            kwargs = self._normalize_generation_kwargs(model, kwargs)
 
             logger.debug(f"Image QA with {model}")
 
@@ -195,6 +198,18 @@ class OpenAILLMService(ILLMService):
         except Exception as e:
             logger.error(f"Error in image_qa: {e}")
             raise RuntimeError(f"Failed to process image: {str(e)}")
+
+    @staticmethod
+    def _normalize_generation_kwargs(model: str, kwargs: dict) -> dict:
+        """Map max_tokens for reasoning models that require max_completion_tokens."""
+        if model.startswith(("o1", "o3", "o4")):
+            kwargs.pop("temperature", None)
+            kwargs.pop("top_p", None)
+            if "max_completion_tokens" in kwargs:
+                kwargs.pop("max_tokens", None)
+            elif "max_tokens" in kwargs:
+                kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
+        return kwargs
 
 
 if __name__ == "__main__":

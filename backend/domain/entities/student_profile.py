@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+import re
 from enum import Enum
 
 
@@ -52,6 +53,7 @@ class TopicInterest:
     score: float = 0.0  # 0.0 - 1.0
     interaction_count: int = 0
     last_accessed: Optional[datetime] = None
+    source: str = "chat"
 
     def increment(self) -> None:
         """Increment interest score."""
@@ -82,14 +84,25 @@ class StudentProfile:
     student_id: Optional[str] = None  # MSV: B21DCCN123
     name: Optional[str] = None
     email: Optional[str] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    address: Optional[str] = None
     level: StudentLevel = StudentLevel.FRESHMAN
     major: Optional[str] = None  # CNTT, ATTT, etc.
     class_name: Optional[str] = None  # D21CQCN01-N
+    faculty: Optional[str] = None
+    year: Optional[int] = None  # Derived from student_id if available
 
     # Learning preferences
     preferred_language: str = "vi"
     preferred_detail_level: str = "medium"  # brief, medium, detailed
     topics_of_interest: List[TopicInterest] = field(default_factory=list)
+    interest_decay_factor: float = 0.95
+    interest_min_score: float = 0.05
+    interest_stale_days: int = 90
+    personality_summary: Optional[str] = None
+    personality_traits: List[str] = field(default_factory=list)
 
     # Interaction history (recent)
     interaction_history: List[InteractionHistory] = field(default_factory=list)
@@ -114,6 +127,8 @@ class StudentProfile:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Record a new interaction."""
+        self.apply_interest_decay()
+
         interaction = InteractionHistory(
             interaction_type=interaction_type,
             topic=topic,
@@ -129,7 +144,8 @@ class StudentProfile:
             ]
 
         # Update topic interest
-        self._update_topic_interest(topic)
+        source = (metadata or {}).get("source", "chat")
+        self._update_topic_interest(topic, source)
 
         # Update stats
         if interaction_type == InteractionType.QUESTION:
@@ -140,11 +156,40 @@ class StudentProfile:
         self.last_active_at = datetime.now()
         self.updated_at = datetime.now()
 
-    def _update_topic_interest(self, topic: str) -> None:
+    def record_interest_batch(self, items: List[Dict[str, Any]]) -> None:
+        """Record multiple interest updates with a single decay step."""
+        if not items:
+            return
+
+        self.apply_interest_decay()
+
+        for item in items:
+            topic = item.get("topic")
+            if not topic:
+                continue
+            metadata = item.get("metadata") or {}
+            interaction = InteractionHistory(
+                interaction_type=InteractionType.SEARCH,
+                topic=topic,
+                metadata=metadata,
+            )
+            self.interaction_history.append(interaction)
+            if len(self.interaction_history) > self.max_history_items:
+                self.interaction_history = self.interaction_history[
+                    -self.max_history_items :
+                ]
+            source = metadata.get("source", "chat")
+            self._update_topic_interest(topic, source)
+
+        self.last_active_at = datetime.now()
+        self.updated_at = datetime.now()
+
+    def _update_topic_interest(self, topic: str, source: str = "chat") -> None:
         """Update topic interest score."""
         for ti in self.topics_of_interest:
             if ti.topic.lower() == topic.lower():
                 ti.increment()
+                ti.source = source or ti.source
                 return
 
         # New topic
@@ -154,6 +199,7 @@ class StudentProfile:
                 score=0.2,
                 interaction_count=1,
                 last_accessed=datetime.now(),
+                source=source or "chat",
             )
         )
 
@@ -181,13 +227,53 @@ class StudentProfile:
 
     def apply_interest_decay(self) -> None:
         """Apply decay to all interest scores (call periodically)."""
+        now = datetime.now()
         for ti in self.topics_of_interest:
-            ti.decay()
+            if ti.last_accessed:
+                days = (now - ti.last_accessed).days
+                if days > 0:
+                    ti.decay(self.interest_decay_factor**days)
 
         # Remove very low scores
         self.topics_of_interest = [
-            ti for ti in self.topics_of_interest if ti.score > 0.01
+            ti
+            for ti in self.topics_of_interest
+            if ti.score >= self.interest_min_score
+            and (
+                not ti.last_accessed
+                or (now - ti.last_accessed).days < self.interest_stale_days
+            )
         ]
+
+    def get_academic_progress(self) -> Dict[str, Optional[int]]:
+        """Derive academic year/semester from student_id."""
+        intake_year = self._parse_intake_year(self.student_id)
+        if not intake_year:
+            return {"intake_year": None, "current_year": None, "current_semester": None}
+
+        now = datetime.now()
+        current_year = max(1, now.year - intake_year + 1)
+        current_year = min(current_year, 5)
+
+        # Semester heuristic: Aug-Dec -> semester 1, Jan-Jul -> semester 2
+        semester_in_year = 1 if now.month >= 8 else 2
+        current_semester = min((current_year - 1) * 2 + semester_in_year, 9)
+
+        return {
+            "intake_year": intake_year,
+            "current_year": current_year,
+            "current_semester": current_semester,
+        }
+
+    @staticmethod
+    def _parse_intake_year(student_id: Optional[str]) -> Optional[int]:
+        """Parse intake year from student_id like B22DCVT303 -> 2022."""
+        if not student_id:
+            return None
+        match = re.match(r"^[A-Za-z](\d{2})", student_id.strip())
+        if not match:
+            return None
+        return 2000 + int(match.group(1))
 
     def to_prompt_context(self) -> str:
         """Generate context string for LLM prompts."""
@@ -210,6 +296,11 @@ class StudentProfile:
         interests = [t.topic for t in self.get_top_interests(3)]
         if interests:
             parts.append(f"quan tâm đến: {', '.join(interests)}")
+
+        if self.personality_summary:
+            parts.append(f"tính cách: {self.personality_summary}")
+        elif self.personality_traits:
+            parts.append(f"tính cách: {', '.join(self.personality_traits[:3])}")
 
         return "; ".join(parts) if parts else ""
 

@@ -5,13 +5,13 @@ from datetime import datetime, timedelta
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.feedback import (
+from domain.entities.feedback import (
     Feedback,
     FeedbackType,
     FeedbackCategory,
     FeedbackStatus,
 )
-from app.application.interfaces.repositories.feedback_repository import (
+from application.interfaces.repositories.feedback_repository import (
     IFeedbackRepository,
 )
 

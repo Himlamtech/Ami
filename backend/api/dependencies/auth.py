@@ -3,7 +3,7 @@
 from fastapi import Header, HTTPException, status, Depends
 from typing import Optional
 
-from app.config import app_config
+from config import app_config
 
 
 def verify_admin_api_key(

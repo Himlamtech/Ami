@@ -4,8 +4,8 @@ from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
-from app.config.services import ServiceRegistry
-from app.api.schemas.multimodal_dto import (
+from config.services import ServiceRegistry
+from api.schemas.multimodal_dto import (
     VoiceQueryResponse,
     ImageQueryResponse,
     TTSRequest,
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/multimodal", tags=["Multimodal"])
 
 
 def _get_stt_service():
-    from app.infrastructure.ai.stt import Wav2Vec2STTService
+    from infrastructure.ai.stt import Wav2Vec2STTService
 
     return Wav2Vec2STTService()
 
@@ -41,7 +41,7 @@ async def voice_query(
     language: str = Form("vi"),
 ):
     """Process voice query through STT + RAG pipeline."""
-    from app.application.use_cases.multimodal import VoiceQueryUseCase, VoiceQueryInput
+    from application.use_cases.multimodal import VoiceQueryUseCase, VoiceQueryInput
 
     if not audio.filename:
         raise HTTPException(
@@ -100,7 +100,7 @@ async def image_query(
     session_id: Optional[str] = Form(None),
 ):
     """Process image query with Vision + RAG."""
-    from app.application.use_cases.multimodal import ImageQueryUseCase, ImageQueryInput
+    from application.use_cases.multimodal import ImageQueryUseCase, ImageQueryInput
 
     if not image.filename:
         raise HTTPException(

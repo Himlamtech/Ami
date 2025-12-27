@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 import logging
 
-from app.application.interfaces.repositories.pending_update_repository import (
+from application.interfaces.repositories.pending_update_repository import (
     IPendingUpdateRepository,
 )
-from app.application.interfaces.repositories.document_repository import (
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.application.services.document_resolver import DocumentResolver
-from app.application.use_cases.sync.change_detector import ChangeDetectorUseCase
-from app.domain.entities.pending_update import PendingUpdate
-from app.domain.enums.data_source import (
+from application.services.document_resolver import DocumentResolver
+from application.use_cases.sync.change_detector import ChangeDetectorUseCase
+from domain.entities.pending_update import PendingUpdate
+from domain.enums.data_source import (
     DataCategory,
     PendingStatus,
     UpdateDetectionType,

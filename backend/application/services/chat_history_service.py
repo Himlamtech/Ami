@@ -1,8 +1,8 @@
 """Chat history service - Advanced chat operations."""
 
 from datetime import datetime, timedelta
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.application.interfaces.services.llm_service import ILLMService
+from application.interfaces.repositories.chat_repository import IChatRepository
+from application.interfaces.services.llm_service import ILLMService
 
 
 class ChatHistoryService:

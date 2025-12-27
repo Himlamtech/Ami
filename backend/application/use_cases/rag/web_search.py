@@ -3,10 +3,10 @@
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 
-from app.application.interfaces.services.web_search_service import (
+from application.interfaces.services.web_search_service import (
     IWebSearchService,
 )
-from app.application.interfaces.services.llm_service import ILLMService
+from application.interfaces.services.llm_service import ILLMService
 
 
 @dataclass

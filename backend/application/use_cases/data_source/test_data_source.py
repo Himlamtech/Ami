@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Optional, Dict
 
-from app.domain.enums.data_source import SourceType
+from domain.enums.data_source import SourceType
 
 
 @dataclass

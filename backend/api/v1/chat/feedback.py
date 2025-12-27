@@ -3,15 +3,15 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, status
-from app.infrastructure.persistence.mongodb.client import get_database
+from infrastructure.persistence.mongodb.client import get_database
 
-from app.application.services.feedback_service import (
+from application.services.feedback_service import (
     FeedbackService,
     FeedbackType,
     FeedbackCategory,
 )
-from app.config.services import ServiceRegistry
-from app.api.schemas.feedback_dto import (
+from config.services import ServiceRegistry
+from api.schemas.feedback_dto import (
     SubmitFeedbackRequest,
     FeedbackResponse,
     FeedbackStatsResponse,

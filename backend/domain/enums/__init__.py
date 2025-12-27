@@ -13,6 +13,7 @@ from .data_source import (
     UpdateDetectionType,
     PendingStatus,
 )
+from .tool_type import ToolType, ToolExecutionStatus
 
 __all__ = [
     "UserRole",
@@ -29,4 +30,6 @@ __all__ = [
     "SourceStatus",
     "UpdateDetectionType",
     "PendingStatus",
+    "ToolType",
+    "ToolExecutionStatus",
 ]

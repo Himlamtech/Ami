@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Dict
 
-from app.application.interfaces.repositories.pending_update_repository import (
+from application.interfaces.repositories.pending_update_repository import (
     IPendingUpdateRepository,
 )
 

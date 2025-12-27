@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
-from app.domain.enums.data_source import (
+from domain.enums.data_source import (
     UpdateDetectionType,
     PendingStatus,
     DataCategory,

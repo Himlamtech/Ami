@@ -1,17 +1,20 @@
-from fastapi import FastAPI
+import uuid
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 
-from app.infrastructure.persistence.mongodb.client import (
+from infrastructure.persistence.mongodb.client import (
     get_mongodb_client,
     get_database,
 )
-from app.config.services import ServiceRegistry
-from app.api.middleware import LoggingMiddleware, admin_only_middleware
-from app.api.v1 import chat_api_router, admin_api_router, auth_api_router
-from app.api.v1.admin.config import router as config_router
-from app.application.use_cases.monitor_targets.monitor_scheduler import (
+from config.services import ServiceRegistry
+from api.middleware import LoggingMiddleware, admin_only_middleware
+from api.v1 import chat_api_router, admin_api_router, auth_api_router
+from api.v1.admin.config import router as config_router
+from application.use_cases.monitor_targets.monitor_scheduler import (
     register_monitor_targets_job,
 )
 
@@ -67,6 +70,20 @@ app.add_middleware(
 )
 app.add_middleware(LoggingMiddleware)
 
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = f"req_{uuid.uuid4()}"
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Validation error",
+            "details": exc.errors(),
+            "request_id": request_id,
+        },
+    )
+
+
 # Routes
 API_V1 = "/api/v1"
 app.include_router(chat_api_router, prefix=API_V1, tags=["chat"])
@@ -77,16 +94,9 @@ app.include_router(config_router, prefix=API_V1, tags=["admin-config"])
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": "AMI Backend"}
+    return {"status": "ok", "service": "Ami Backend"}
 
 
 @app.get("/health/admin")
 async def admin_health_check():
-    return {"status": "ok", "service": "AMI Backend (Admin)"}
-    """Handle 500 Internal Server errors."""
-    logger.error(f"Internal error: {exc}")
-    return {
-        "error": "Internal Server Error",
-        "message": "An unexpected error occurred",
-        "code": 500,
-    }
+    return {"status": "ok", "service": "Admin Backend"}

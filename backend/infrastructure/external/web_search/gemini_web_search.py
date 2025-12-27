@@ -10,13 +10,13 @@ from typing import List, Optional
 import google.genai as genai
 from google.genai import types
 
-from app.application.interfaces.services.web_search_service import (
+from application.interfaces.services.web_search_service import (
     IWebSearchService,
     WebSearchResponse,
     SearchResult,
 )
-from app.config import gemini_config
-from app.config.ai import GeminiConfig
+from config import gemini_config
+from config.ai import GeminiConfig
 
 logger = logging.getLogger(__name__)
 

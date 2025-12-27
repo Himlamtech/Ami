@@ -11,9 +11,9 @@ from typing import List, Optional
 import torch
 from sentence_transformers import SentenceTransformer
 
-from app.config import embedding_config
-from app.config.ai import EmbeddingConfig
-from app.application.interfaces.services.embedding_service import IEmbeddingService
+from config import embedding_config
+from config.ai import EmbeddingConfig
+from application.interfaces.services.embedding_service import IEmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,13 @@ class HuggingFaceEmbeddings(IEmbeddingService):
         model_name = self.config.model
 
         if device is None:
-            device = torch.device(self.config.device)
+            configured_device = self.config.device
+            if configured_device == "cuda" and not torch.cuda.is_available():
+                logger.warning(
+                    "Embedding device set to cuda but CUDA is unavailable; falling back to cpu"
+                )
+                configured_device = "cpu"
+            device = torch.device(configured_device)
 
         logger.info(f"Loading HuggingFace model: {model_name}")
         # Load model with trust_remote_code for custom models

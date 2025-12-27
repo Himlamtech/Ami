@@ -4,22 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 import json
 
-from app.api.schemas.chat_dto import (
+from api.schemas.chat_dto import (
     CreateSessionRequest,
     SendMessageRequest,
     ChatSessionResponse,
     ChatMessageResponse,
     ChatHistoryResponse,
 )
-from app.api.dependencies.auth import get_user_id
-from app.application.use_cases.chat import (
+from api.dependencies.auth import get_user_id
+from application.use_cases.chat import (
     CreateSessionInput,
     SendMessageInput,
     GetHistoryInput,
 )
-from app.domain.enums.chat_message_role import ChatMessageRole
-from app.domain.exceptions.chat_exceptions import ChatSessionNotFoundException
-from app.config.services import ServiceRegistry
+from domain.enums.chat_message_role import ChatMessageRole
+from domain.exceptions.chat_exceptions import ChatSessionNotFoundException
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -31,7 +31,7 @@ async def create_session(
     user_id: str = Depends(get_user_id),
 ):
     """Create new chat session."""
-    from app.application.use_cases.chat import CreateSessionUseCase
+    from application.use_cases.chat import CreateSessionUseCase
 
     chat_repo = ServiceRegistry.get_chat_repository()
     use_case = CreateSessionUseCase(chat_repo)
@@ -56,7 +56,7 @@ async def create_session(
 @router.post("/messages", response_model=ChatMessageResponse)
 async def send_message(request: SendMessageRequest):
     """Send message in chat session."""
-    from app.application.use_cases.chat import SendMessageUseCase
+    from application.use_cases.chat import SendMessageUseCase
 
     try:
         chat_repo = ServiceRegistry.get_chat_repository()
@@ -89,7 +89,7 @@ async def send_message(request: SendMessageRequest):
 @router.get("/sessions/{session_id}/history", response_model=ChatHistoryResponse)
 async def get_history(session_id: str, limit: int = 50, skip: int = 0):
     """Get chat history for session."""
-    from app.application.use_cases.chat import GetHistoryUseCase
+    from application.use_cases.chat import GetHistoryUseCase
 
     try:
         chat_repo = ServiceRegistry.get_chat_repository()

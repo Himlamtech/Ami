@@ -4,12 +4,12 @@ from typing import Optional, List, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.document import Document
-from app.application.interfaces.repositories.document_repository import (
+from domain.entities.document import Document
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.infrastructure.persistence.mongodb.mappers import DocumentMapper
-from app.infrastructure.persistence.mongodb.models import DocumentInDB
+from infrastructure.persistence.mongodb.mappers import DocumentMapper
+from infrastructure.persistence.mongodb.models import DocumentInDB
 
 
 class MongoDBDocumentRepository(IDocumentRepository):

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any
-from app.domain.enums.file_type import FileType
+from domain.enums.file_type import FileType
 
 
 @dataclass

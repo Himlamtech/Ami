@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 from datetime import datetime
 
-from app.application.interfaces.processors.web_crawler import IWebCrawler
-from app.application.interfaces.processors.document_processor import IDocumentProcessor
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.repositories.data_source_repository import (
+from application.interfaces.processors.web_crawler import IWebCrawler
+from application.interfaces.processors.document_processor import IDocumentProcessor
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
-from app.application.interfaces.repositories.document_repository import (
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
 

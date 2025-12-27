@@ -10,7 +10,7 @@ const client = axios.create({
 export const userApi = {
     // Chat endpoints
     chat: {
-        query: (data: any) => client.post('/chat/query', data),
+        query: (data: any) => client.post('/smart-query', data),
         getSessions: () => client.get('/chat/sessions'),
     },
     // Bookmarks endpoints
@@ -21,7 +21,9 @@ export const userApi = {
     },
     // Profile endpoints
     profile: {
-        get: () => client.get('/users/profile'),
-        update: (data: any) => client.put('/users/profile', data),
+        get: (userId: string) => client.get(`/profile/${userId}`),
+        update: (userId: string, data: any) => client.put(`/profile/${userId}`, data),
+        setPreferences: (userId: string, data: any) =>
+            client.put(`/profile/${userId}/preferences`, data),
     },
 };

@@ -5,18 +5,18 @@ from dataclasses import dataclass
 from typing import Optional, List
 from datetime import datetime
 
-from app.domain.entities.document import Document
-from app.domain.enums.data_source import UpdateDetectionType
-from app.application.interfaces.repositories.pending_update_repository import (
+from domain.entities.document import Document
+from domain.enums.data_source import UpdateDetectionType
+from application.interfaces.repositories.pending_update_repository import (
     IPendingUpdateRepository,
 )
-from app.application.interfaces.repositories.document_repository import (
+from application.interfaces.repositories.document_repository import (
     IDocumentRepository,
 )
-from app.application.interfaces.services.embedding_service import IEmbeddingService
-from app.application.interfaces.services.vector_store_service import IVectorStoreService
-from app.application.interfaces.processors.text_chunker import ITextChunker
-from app.domain.value_objects.chunk_config import ChunkConfig
+from application.interfaces.services.embedding_service import IEmbeddingService
+from application.interfaces.services.vector_store_service import IVectorStoreService
+from application.interfaces.processors.text_chunker import ITextChunker
+from domain.value_objects.chunk_config import ChunkConfig
 
 
 @dataclass

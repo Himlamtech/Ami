@@ -57,6 +57,8 @@ export interface SuggestedQuestion {
     id: string
     text: string
     category?: string
+    relevance_score?: number
+    source?: string
 }
 
 export type ThinkingMode = 'fast' | 'thinking'

@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Depends, Query
 from datetime import datetime, timedelta
 
-from app.api.dependencies.auth import verify_admin_api_key
-from app.api.schemas.admin_dto import (
+from api.dependencies.auth import verify_admin_api_key
+from api.schemas.admin_dto import (
     AnalyticsOverview,
     UsageAnalyticsResponse,
     UsageTrend,
@@ -16,7 +16,7 @@ from app.api.schemas.admin_dto import (
     PerformanceAnalyticsResponse,
     BudgetAlertRequest,
 )
-from app.config.services import ServiceRegistry
+from config.services import ServiceRegistry
 
 
 router = APIRouter(prefix="/admin/analytics", tags=["Admin - Analytics"])
@@ -61,6 +61,7 @@ async def get_analytics_overview(
 
     return AnalyticsOverview(
         requests=stats.get("total_requests", 0),
+        total_requests=stats.get("total_requests", 0),
         active_users=stats.get("unique_users", 0),
         avg_latency_ms=stats.get("avg_latency_ms", 0.0),
         error_rate=stats.get("error_rate", 0.0),

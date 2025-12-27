@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from app.domain.entities.usage_metric import (
+from domain.entities.usage_metric import (
     UsageMetric,
     LLMUsage,
     DailyUsageStats,
     RequestStatus,
     LLMProvider,
 )
-from app.application.interfaces.repositories.usage_repository import (
+from application.interfaces.repositories.usage_repository import (
     IUsageMetricRepository,
     ILLMUsageRepository,
     IDailyStatsRepository,

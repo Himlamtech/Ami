@@ -10,8 +10,8 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
 
-from app.application.interfaces.services.scheduler_service import ISchedulerService
-from app.config import mongodb_config
+from application.interfaces.services.scheduler_service import ISchedulerService
+from config import mongodb_config
 
 logger = logging.getLogger(__name__)
 

@@ -8,6 +8,7 @@ from .data_source_repository import IDataSourceRepository
 from .pending_update_repository import IPendingUpdateRepository
 from .monitor_target_repository import IMonitorTargetRepository
 from .student_profile_repository import IStudentProfileRepository
+from .suggested_question_repository import ISuggestedQuestionRepository
 from .feedback_repository import IFeedbackRepository
 from .usage_repository import (
     IUsageMetricRepository,
@@ -19,6 +20,7 @@ from .search_log_repository import (
     IKnowledgeGapRepository,
 )
 from .bookmark_repository import IBookmarkRepository
+from .orchestration_log_repository import IOrchestrationLogRepository
 
 __all__ = [
     # Core
@@ -32,6 +34,7 @@ __all__ = [
     "IMonitorTargetRepository",
     # Profile
     "IStudentProfileRepository",
+    "ISuggestedQuestionRepository",
     # Feedback
     "IFeedbackRepository",
     # Analytics
@@ -43,4 +46,6 @@ __all__ = [
     "IKnowledgeGapRepository",
     # Bookmarks
     "IBookmarkRepository",
+    # Orchestration
+    "IOrchestrationLogRepository",
 ]

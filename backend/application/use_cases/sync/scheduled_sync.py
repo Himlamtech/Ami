@@ -5,13 +5,13 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from app.domain.entities.data_source import DataSource
-from app.domain.enums.data_source import SourceStatus
-from app.application.interfaces.repositories.data_source_repository import (
+from domain.entities.data_source import DataSource
+from domain.enums.data_source import SourceStatus
+from application.interfaces.repositories.data_source_repository import (
     IDataSourceRepository,
 )
-from app.application.interfaces.services.scheduler_service import ISchedulerService
-from app.application.use_cases.sync.change_detector import ChangeDetectorUseCase
+from application.interfaces.services.scheduler_service import ISchedulerService
+from application.use_cases.sync.change_detector import ChangeDetectorUseCase
 
 logger = logging.getLogger(__name__)
 

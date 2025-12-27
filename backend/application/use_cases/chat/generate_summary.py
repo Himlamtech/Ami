@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass
 from typing import List
-from app.domain.entities.chat_session import ChatSession
-from app.domain.entities.chat_message import ChatMessage
-from app.domain.exceptions.chat_exceptions import ChatSessionNotFoundException
-from app.application.interfaces.repositories.chat_repository import IChatRepository
-from app.application.interfaces.services.llm_service import ILLMService
+from domain.entities.chat_session import ChatSession
+from domain.entities.chat_message import ChatMessage
+from domain.exceptions.chat_exceptions import ChatSessionNotFoundException
+from application.interfaces.repositories.chat_repository import IChatRepository
+from application.interfaces.services.llm_service import ILLMService
 
 
 @dataclass
