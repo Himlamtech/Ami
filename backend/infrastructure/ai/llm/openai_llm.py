@@ -232,12 +232,12 @@ class OpenAILLMService(ILLMService):
             image_url = response.data[0].url
             
             # Download image bytes
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image_url) as resp:
-                    if resp.status != 200:
-                        raise RuntimeError(f"Failed to download image: HTTP {resp.status}")
-                    image_bytes = await resp.read()
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(image_url)
+                if resp.status_code != 200:
+                    raise RuntimeError(f"Failed to download image: HTTP {resp.status_code}")
+                image_bytes = resp.content
             
             logger.debug(f"Generated image: {len(image_bytes)} bytes")
             return image_bytes
