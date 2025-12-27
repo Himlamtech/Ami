@@ -1,63 +1,103 @@
-# AMI Project - Copilot Instructions
+# AMI Project - Coding Guidelines
 
-> PTIT Intelligent Assistant - RAG-Powered Chatbot System
+> AMI Intelligent Assistant - RAG-Powered Chatbot System
 
 ---
 
-## 1. Coding Philosophy
+## ⚡ QUICK START WORKFLOW
 
-### Mindset
-- **Simple first**: Giải quyết vấn đề bằng cách đơn giản nhất trước
+**Mỗi lần code, làm theo thứ tự này:**
+
+1. **📖 Đọc docs usecase** → Hiểu luồng chính
+   - Vào `/docs/usecase/` chọn file liên quan (01_CHAT, 02_INGESTION, 04_ADMIN, etc)
+   - Đọc flow diagram + data model + API schema
+   - Hiểu error handling, edge cases
+
+2. **🏗️ Check architecture** → Biết code vào đâu
+   - Backend: `backend/app/{config,domain,application,infrastructure,api}`
+   - Frontend: `frontend/src/{pages,components,api,hooks}`
+   - Xem file tương tự đã có để theo pattern
+
+3. **💻 Code ngắn gọn** → Không over-engineer
+   - YAGNI: Chỉ code cần thiết
+   - KISS: Đơn giản > Phức tạp
+   - Verify: Test luồng trước khi commit
+
+---
+
+## 📚 Use Cases Reference (Pick One Before Coding)
+
+| Cần code | Xem file này | Flow |
+|---------|------------|------|
+| Chat, Q&A, Voice, Image | **01_CHAT_WORKFLOWS.md** | User query → Embed → Search → Generate |
+| Upload, Crawler, Approval, Processing | **02_INGESTION_WORKFLOWS.md** | File/URL → Parse → Chunk (300-500) → Embed → Store |
+| Bookmarks, Suggestions, Engagement | **03_USER_ENGAGEMENT.md** | User action → Analyze → Recommend |
+| Analytics, Feedback, Cost, Dashboard | **04_ADMIN_ANALYTICS.md** | Collect → Aggregate → Display |
+| User management, Ban, Profile, Settings | **05_ADMIN_USER_MANAGEMENT.md** | Search → Filter → Action |
+| Index & Overview | **00_INDEX.md** | Tra cứu nhanh all 19 UCs |
+
+---
+
+## 🏗️ Code Organization
+
+### Backend (Python)
+```
+backend/app/
+├── domain/          # Entities, business logic (NO external deps)
+├── application/     # Use cases, interfaces (depends on domain)
+├── infrastructure/  # DB, AI, external services
+└── api/            # Routes, schemas, middleware
+```
+
+### Frontend (TypeScript/React)
+```
+frontend/src/
+├── pages/          # Full page components
+│   ├── user/       # Chat, Bookmarks, Profile
+│   └── admin/      # Analytics, Users, Feedback, Conversations
+├── components/     # Reusable UI components
+├── api/            # API clients (user-api.ts, admin-api.ts)
+├── hooks/          # Custom React hooks
+└── utils/          # Helper functions
+```
+
+### Routes
+- User: `/api/v1/chat`, `/api/v1/bookmarks`, `/api/v1/users/profile`
+- Admin: `/api/v1/admin/analytics`, `/api/v1/admin/users`, `/api/v1/admin/documents`
+
+---
+
+## ✅ Checklist Trước Khi Commit
+
+- [ ] Đã đọc docs usecase liên quan?
+- [ ] Code follow pattern tương tự file khác?
+- [ ] Không hardcode config/secrets (dùng .env)?
+- [ ] Imports đúng layer (domain → application → infrastructure)?
+- [ ] Test đạt (nếu có)?
+- [ ] < 200 lines/file (nếu > thì split)?
+- [ ] Không over-engineer?
+
+---
+
+## 📋 Coding Philosophy
+
+- **Simple first**: Giải quyết bằng cách đơn giản nhất trước
+- **Readable**: Code phải hiểu được sau 6 tháng
+- **Configurable**: Model, endpoints, timeouts → env var, không hardcode
 - **No over-engineering**: Không tạo abstraction khi chưa cần
-- **Pragmatic**: Code hoạt động > Code "đẹp" nhưng phức tạp
-- **Readable**: Code phải dễ đọc, dễ hiểu sau 6 tháng
-- **Configurable**: Mọi thứ trong code có thể thay đổi đều phải qua config/env, ví dụ như model, endpoints, timeouts, thresholds đều phải set thông qua config mà không được hardcode
-- **Environment**: Chạy venv trước khi run/test/codegen để active dependencies đúng đã cài đặt
-### Code Style
-```python
-# ✅ Good - Ngắn gọn, rõ ràng
-class UserService:
-    def __init__(self, repo: IUserRepository):
-        self.repo = repo
-    
-    async def get_user(self, id: str) -> User | None:
-        return await self.repo.find_by_id(id)
-
-# ❌ Bad - Over-engineering
-class UserService:
-    def __init__(self, repo: IUserRepository, cache: ICache, logger: ILogger, ...):
-        self._repo = repo
-        self._cache = cache
-        self._logger = logger
-        # 10 more dependencies...
-    
-    async def get_user(self, id: str) -> Result[User, Error]:
-        # 50 lines of "defensive" code
-```
-
-### Principles
-1. **YAGNI**: Không code feature chưa cần
-2. **KISS**: Keep It Simple, Stupid
-3. **DRY**: Nhưng đừng quá sớm - duplicate 2 lần OK, 3 lần thì refactor
-4. **Single file > Multiple files**: Nếu < 200 lines, giữ trong 1 file
-
-### When Using AI/MCP Tools
-- Đọc context đầy đủ trước khi sửa
-- Sửa từng phần nhỏ, test ngay
-- Không generate code dài > 100 lines/lần
-- Prefer edit existing > create new
+- **YAGNI**: Chỉ code feature thực sự cần
 
 ---
 
-## 2. Project Requirements
+## 🔗 Key Files
 
-### Package Management
-```bash
-# Dùng uv - KHÔNG dùng pip
-uv sync              # Install dependencies
-uv add <package>     # Add new package
-uv run python ...    # Run with venv
-```
+- **Docs**: `docs/usecase/*.md` (đọc trước khi code!)
+- **Backend Main**: `backend/main.py`
+- **Frontend Main**: `frontend/src/App.tsx`
+- **Config**: `backend/app/config/*.py`
+- **Middleware**: `backend/app/api/middleware/`
+
+---
 
 ### Configuration Rules
 ```python
@@ -99,39 +139,6 @@ class MyService:
 
 ---
 
-## 3. Use Cases
-
-### USER Features (Student-facing)
-| ID | Feature | Description | Status |
-|----|---------|-------------|--------|
-| UC-U-001 | Smart Q&A | RAG với personalization theo profile | ✅ Done |
-| UC-U-002 | Voice Query | STT (Wav2Vec2/Gemini) → RAG → Response | ✅ Done |
-| UC-U-003 | Image Query | Vision AI → RAG → Response | ✅ Done |
-| UC-U-004 | Bookmark Q&A | Lưu Q&A quan trọng với tags, notes | 🔄 Planned |
-| UC-U-005 | Session Management | CRUD conversations, search, export | ✅ Done |
-| UC-U-006 | Feedback | 👍👎, rating 1-5, categories | ✅ Done |
-| UC-U-007 | Suggestions | Related questions, popular topics | 🔄 Planned |
-| UC-U-008 | Profile Settings | Major, level, preferences | ✅ Done |
-
-### ADMIN Features
-| ID | Feature | Description | Status |
-|----|---------|-------------|--------|
-| UC-A-001 | Conversation History | View/filter/export all sessions | 🔄 Planned |
-| UC-A-002 | Feedback Dashboard | Analytics, trends, negative feedback | 🔄 Planned |
-| UC-A-003 | Usage Analytics | Requests, DAU/MAU, latency, errors | 🔄 Planned |
-| UC-A-004 | Cost Tracking | LLM token usage, cost by provider/model | 🔄 Planned |
-| UC-A-005 | Knowledge Quality | Coverage, gaps, low-confidence queries | 🔄 Planned |
-| UC-A-006 | User Profiles | View profiles, interests, engagement | 🔄 Planned |
-| UC-A-007 | Document Management | Upload, version, approve, delete | ✅ Done |
-| UC-A-008 | Data Sources | Crawl config, schedule, sync | ✅ Done |
-
-### Data Pipeline (Existing)
-- **Ingest**: Upload files, web scraping, web crawling
-- **Approval**: Pending updates workflow với diff viewer
-- **Sync**: Scheduled crawling, change detection
-- **Vector**: Auto-chunking, embedding, indexing
-
----
 
 ## 4. Architecture
 
@@ -150,142 +157,41 @@ app/
 - `infrastructure` → knows `application`, `domain`
 - `api` → knows all
 
-### Folder Structure
-```
-app/
-├── config/                    # All configurations
-│   ├── base.py               # AppConfig
-│   ├── persistence.py        # MongoDB, Qdrant, MinIO
-│   ├── ai.py                 # OpenAI, Anthropic, Embeddings
-│   └── external.py           # Firecrawl, etc.
-│
-├── domain/
-│   ├── entities/             # Business objects
-│   ├── enums/                # Enumerations
-│   ├── exceptions/           # Domain exceptions
-│   └── value_objects/        # Immutable value types
-│
-├── application/
-│   ├── interfaces/           # Abstract interfaces
-│   │   ├── repositories/     # Data access contracts
-│   │   ├── services/         # Service contracts
-│   │   └── processors/       # Processing contracts
-│   ├── use_cases/            # Business operations
-│   │   ├── chat/
-│   │   ├── rag/
-│   │   ├── documents/
-│   │   └── ...
-│   └── services/             # Application services
-│
-├── infrastructure/
-│   ├── persistence/          # Data storage
-│   │   ├── mongodb/          # Document DB
-│   │   ├── qdrant/           # Vector DB
-│   │   └── minio/            # File storage
-│   ├── ai/                   # AI services
-│   │   ├── llm/              # LLM providers
-│   │   ├── embeddings/       # Text embeddings
-│   │   └── stt/              # Speech-to-Text
-│   ├── external/             # Third-party APIs
-│   ├── processing/           # Data transformation
-│   ├── scheduling/           # Background jobs
-│   └── factory/              # DI container
-│
-└── api/
-    ├── routes/               # API endpoints
-    ├── schemas/              # Request/Response DTOs
-    ├── dependencies/         # FastAPI dependencies
-    └── middleware/           # Custom middleware
-```
+## 4. Code Organization by Layer
 
-### Key Patterns
+| Layer | Path | Purpose |
+|-------|------|---------|
+| Domain | `domain/entities/` | Business logic, NO external deps |
+| Application | `application/use_cases/` | Workflows, interfaces |
+| Infrastructure | `infrastructure/<type>/` | DB, AI, external APIs |
+| API | `api/v1/<feature>/` | Routes, schemas |
 
-**1. Factory Pattern (DI)**
-```python
-factory = get_factory()
-llm = factory.get_llm_service(provider="openai")
-```
+## 5. Naming Conventions
 
-**2. Repository Pattern**
-```python
-class IUserRepository(ABC):
-    async def find_by_id(self, id: str) -> User | None: ...
-
-class MongoDBUserRepository(IUserRepository):
-    async def find_by_id(self, id: str) -> User | None:
-        # MongoDB implementation
-```
-
-**3. Use Case Pattern**
-```python
-class QueryWithRAGUseCase:
-    def __init__(self, embedding_svc, vector_store, llm_svc):
-        # Inject interfaces, not implementations
-    
-    async def execute(self, input: QueryInput) -> QueryOutput:
-        # 1. Embed → 2. Search → 3. Generate
-```
-
-### External Services
-
-| Service  | Port  | Purpose                        |
-|----------|-------|--------------------------------|
-| MongoDB  | 27017 | Documents, users, chat history |
-| Qdrant   | 6333  | Vector embeddings              |
-| MinIO    | 9000  | File storage (S3-compatible)   |
-| Backend  | 11121 | FastAPI API                    |
-| Frontend | 11120 | React dev server               |
-
-### Quick Commands
-```bash
-make up              # Start Docker services
-make dev             # Run backend
-make frontend        # Run frontend
-make migrate         # Import documents
-```
+- Files: `snake_case.py`
+- Classes: `PascalCase`
+- Functions: `snake_case`
+- Constants: `UPPER_SNAKE_CASE`
 
 ---
 
-## 5. New Entities (Planned)
+## 📌 Before You Code
 
-### Analytics & Tracking
-```python
-UsageMetric      # Request/latency/error tracking
-LLMUsage         # Token usage, cost per provider/model
-SearchLog        # Query logs for gap detection
-```
+**ALWAYS check these first:**
 
-### User Experience
-```python
-Bookmark         # Saved Q&A pairs with tags
-Suggestion       # Proactive recommendations
-PromptTemplate   # Dynamic system prompts
-```
+1. Is there a similar file in the codebase?
+   - Follow the same pattern
+   
+2. Does the feature have a usecase doc?
+   - Read `docs/usecase/*.md`
+   - Understand the flow
 
-### Configuration
-```python
-ModelConfig      # LLM model settings per use case
-DocumentVersion  # Document versioning
-```
+3. Is this in the right layer?
+   - Domain logic → `domain/`
+   - Use case → `application/use_cases/`
+   - Data access → `infrastructure/`
+   - Route handler → `api/`
 
 ---
 
-## 6. API Endpoints (Planned)
-
-### Admin Analytics
-```
-GET  /api/v1/admin/analytics/overview
-GET  /api/v1/admin/analytics/costs
-GET  /api/v1/admin/analytics/usage
-GET  /api/v1/admin/feedback/dashboard
-GET  /api/v1/admin/knowledge/gaps
-GET  /api/v1/admin/conversations
-```
-
-### User Features
-```
-POST /api/v1/bookmarks
-GET  /api/v1/bookmarks
-GET  /api/v1/suggestions
-POST /api/v1/chat/sessions/{id}/export
-```
+**Remember: Docs → Code → Test ✅**
