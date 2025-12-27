@@ -101,6 +101,13 @@ class SmartQueryMetadata(BaseModel):
 class SmartQueryResponse(BaseModel):
     """Rich response with content, artifacts, and sources."""
 
+    session_id: Optional[str] = Field(
+        None, description="Chat session ID for traceability"
+    )
+    message_id: Optional[str] = Field(
+        None, description="Assistant message ID for traceability"
+    )
+    request_id: str = Field(..., description="Request ID for traceability")
     content: str = Field(..., description="Main text response")
     intent: ResponseIntentDTO = Field(
         ResponseIntentDTO.GENERAL_ANSWER, description="Detected intent"
@@ -125,6 +132,9 @@ class SmartQueryResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
+                "session_id": "session_123",
+                "message_id": "msg_456",
+                "request_id": "req_789",
                 "content": "Đây là mẫu đơn nghỉ học tạm thời. Bạn có thể tải về và điền thông tin theo hướng dẫn.",
                 "intent": "form_request",
                 "artifacts": [

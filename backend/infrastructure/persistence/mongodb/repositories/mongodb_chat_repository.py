@@ -4,6 +4,14 @@ from typing import Optional, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
+
+def _coerce_object_id(value: str):
+    try:
+        return ObjectId(value)
+    except Exception:
+        return None
+
+
 from app.domain.entities.chat_session import ChatSession
 from app.domain.entities.chat_message import ChatMessage
 from app.application.interfaces.repositories.chat_repository import IChatRepository
@@ -31,6 +39,8 @@ class MongoDBChatRepository(IChatRepository):
         """Create new chat session."""
         session_model = ChatSessionMapper.to_model(session)
         session_dict = session_model.dict(by_alias=True, exclude={"id"})
+        if session.id:
+            session_dict["_id"] = session.id
 
         result = await self.sessions_collection.insert_one(session_dict)
         session.id = str(result.inserted_id)
@@ -38,10 +48,11 @@ class MongoDBChatRepository(IChatRepository):
 
     async def get_session_by_id(self, session_id: str) -> Optional[ChatSession]:
         """Get chat session by ID."""
-        try:
-            doc = await self.sessions_collection.find_one({"_id": ObjectId(session_id)})
-        except:
-            return None
+        doc = await self.sessions_collection.find_one({"_id": session_id})
+        if not doc:
+            obj_id = _coerce_object_id(session_id)
+            if obj_id is not None:
+                doc = await self.sessions_collection.find_one({"_id": obj_id})
 
         if not doc:
             return None
@@ -55,16 +66,31 @@ class MongoDBChatRepository(IChatRepository):
         session_model = ChatSessionMapper.to_model(session)
         session_dict = session_model.dict(by_alias=True, exclude={"id"})
 
-        await self.sessions_collection.update_one(
-            {"_id": ObjectId(session.id)}, {"$set": session_dict}
+        result = await self.sessions_collection.update_one(
+            {"_id": session.id}, {"$set": session_dict}
         )
+        if result.matched_count == 0:
+            obj_id = _coerce_object_id(session.id)
+            if obj_id is not None:
+                await self.sessions_collection.update_one(
+                    {"_id": obj_id}, {"$set": session_dict}
+                )
 
         return session
 
     async def delete_session(self, session_id: str) -> bool:
         """Delete chat session (soft delete)."""
         result = await self.sessions_collection.update_one(
-            {"_id": ObjectId(session_id)}, {"$set": {"is_deleted": True}}
+            {"_id": session_id}, {"$set": {"is_deleted": True}}
+        )
+        if result.modified_count > 0:
+            return True
+
+        obj_id = _coerce_object_id(session_id)
+        if obj_id is None:
+            return False
+        result = await self.sessions_collection.update_one(
+            {"_id": obj_id}, {"$set": {"is_deleted": True}}
         )
         return result.modified_count > 0
 

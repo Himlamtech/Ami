@@ -1,24 +1,8 @@
-# AMI USE CASE DOCUMENTATION - COMPLETE GUIDE
+## Ami Use Case Documentation
 
-## Overview
-
-This directory contains comprehensive use case documentation for the AMI (PTIT Intelligent Assistant) system. Each use case includes:
-- Complete workflow diagrams (Mermaid)
-- Sequence diagrams with all interactions
-- Data models (JSON schemas)
-- API endpoints
-- Error handling & recovery strategies
-- Performance metrics & SLA targets
-- Integration points
-
----
-
-## Available Use Cases (Completed)
-
-### User Features (Student-Facing)
+### User Features
 
 #### UC-001: Intelligent Chat Interaction with RAG
-**File:** [chat.md](chat.md) - Sections 1-3
 
 Core functionality for text-based Q&A with Retrieval-Augmented Generation.
 
@@ -45,8 +29,6 @@ GET    /api/v1/chat/sessions/{id}/export
 ---
 
 #### UC-002: Voice Query Processing
-**File:** [chat.md](chat.md) - Section 4
-
 Enable hands-free interaction via speech-to-text.
 
 **Workflow:**
@@ -70,8 +52,6 @@ POST   /api/v1/chat/voice-stream (WebSocket)
 ---
 
 #### UC-003: Image Query Processing
-**File:** [chat.md](chat.md) - Section 5
-
 Process images (announcements, schedules, etc.) with Vision AI + OCR.
 
 **Workflow:**
@@ -95,8 +75,6 @@ GET    /api/v1/chat/images/{id}
 ---
 
 #### UC-004: Session Management & History
-**File:** [chat.md](chat.md) - Section 2
-
 Complete conversation session lifecycle & management.
 
 **Workflow:**
@@ -581,6 +559,135 @@ PUT    /api/v1/admin/conversations/{id}/note
 | UC-017 | Cost Tracking | Admin | PLANNED | P2 | 0% |
 | UC-018 | User Management | Admin | PLANNED | P2 | 0% |
 | UC-019 | Conversation Review | Admin | PLANNED | P2 | 0% |
+| UC-020 | Query Orchestration | System | DONE | P0 | 100% |
+
+---
+
+#### UC-020: Query Orchestration (Function Calling)
+**Status:** DONE - Implemented
+
+Intelligent routing using LLM function calling to decide which tool(s) to use.
+
+**Core Concept:**
+- Vector search ALWAYS runs first
+- Vector scores are REFERENCE signals, not hard thresholds
+- LLM makes intelligent decisions based on query + vector results
+- Tools are functions that LLM can call based on context
+
+**Available Tools:**
+
+| Tool | Purpose | When to use |
+|------|---------|-------------|
+| `use_rag_context` | Use vector search results | High relevance scores, PTIT-specific questions |
+| `search_web` | External web search | Current events, external info, low relevance |
+| `answer_directly` | General knowledge | Greetings, simple math, definitions |
+| `fill_form` | Generate pre-filled forms | Form requests (đơn xin nghỉ học, etc.) |
+| `clarify_question` | Ask for clarification | Ambiguous queries |
+
+**Workflow:**
+```
+User Query
+    ↓
+┌─────────────────┐
+│  Vector Search  │ ← ALWAYS runs
+│  (Hybrid: BM25  │
+│  + Semantic)    │
+└────────┬────────┘
+         ↓
+┌─────────────────────────────────────────────────┐
+│           LLM Orchestrator (Gemini)             │
+│                                                 │
+│  Input:                                         │
+│  - Original query                               │
+│  - Vector results (chunks + scores)             │
+│  - User context (profile, session)              │
+│                                                 │
+│  Output: Tool decision via function calling     │
+│  - Which tool(s) to use                         │
+│  - Arguments for each tool                      │
+│  - Reasoning (for logging)                      │
+└────────────────────┬────────────────────────────┘
+                     ↓
+         ┌───────────┴───────────┐
+         ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐
+│  Tool Executor  │    │  Tool Executor  │  (Parallel if possible)
+│  (RAG/Web/Form) │    │  (Direct/Clarify)│
+└────────┬────────┘    └────────┬────────┘
+         └───────────┬───────────┘
+                     ↓
+         ┌───────────────────────┐
+         │  Response Synthesis   │ ← LLM combines results
+         │  (if multiple tools)  │
+         └───────────┬───────────┘
+                     ↓
+              Final Response
+```
+
+**Key Design Decisions:**
+
+1. **Vector Score as Reference:**
+   - Score 0.0-1.0 is a SIGNAL, not a rule
+   - LLM considers: query intent, chunk relevance, user context
+   - No hardcoded thresholds (e.g., "if score < 0.5 then search_web")
+
+2. **Form Generation:**
+   - High score on form templates → `fill_form` tool
+   - Combines template + user profile from MongoDB
+   - Outputs Markdown pre-filled form
+
+3. **Multi-tool Support:**
+   - LLM can decide to use multiple tools
+   - Results are synthesized into single response
+
+**Data Model:**
+
+```python
+@dataclass
+class ToolCall:
+    tool_type: ToolType  # use_rag_context, search_web, etc.
+    arguments: ToolArguments
+    execution_status: ToolExecutionStatus
+    result: Optional[Dict[str, Any]]
+    error: Optional[str]
+    execution_time_ms: Optional[float]
+
+@dataclass
+class OrchestrationResult:
+    query: str
+    tool_calls: List[ToolCall]
+    primary_tool: Optional[ToolType]
+    final_answer: Optional[str]
+    vector_reference: VectorSearchReference
+    metrics: OrchestrationMetrics
+```
+
+**Configuration:**
+- LLM: `gemini_config.model_reasoning` for orchestrator
+- LLM: `gemini_config.model_qa` for synthesis
+- Storage: MongoDB `orchestration_logs` collection
+- Cache: Redis for frequent patterns
+
+**Architecture Files:**
+
+| Layer | Path | Description |
+|-------|------|-------------|
+| Domain | `domain/enums/tool_type.py` | ToolType, ToolExecutionStatus |
+| Domain | `domain/entities/tool_call.py` | ToolCall entity |
+| Domain | `domain/entities/orchestration_result.py` | OrchestrationResult |
+| Application | `application/interfaces/services/orchestrator_service.py` | IOrchestratorService |
+| Application | `application/interfaces/services/tool_executor_service.py` | IToolExecutorService |
+| Application | `application/use_cases/orchestration/` | OrchestrateQueryUseCase |
+| Infrastructure | `infrastructure/ai/orchestrator/` | GeminiOrchestratorService |
+| Infrastructure | `infrastructure/ai/tools/` | Tool handlers (RAG, Web, Form, etc.) |
+| Infrastructure | `infrastructure/persistence/mongodb/repositories/` | OrchestrationLogRepository |
+
+**Key Endpoints:**
+```
+POST   /api/v1/chat/orchestrate     # Query with orchestration
+GET    /api/v1/admin/orchestration/logs  # View orchestration logs
+GET    /api/v1/admin/orchestration/stats # Tool usage analytics
+```
 
 ---
 

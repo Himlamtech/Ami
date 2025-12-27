@@ -33,11 +33,19 @@ class MongoDBStudentProfileRepository(IStudentProfileRepository):
             "student_id": profile.student_id,
             "name": profile.name,
             "email": profile.email,
+            "phone": profile.phone,
+            "gender": profile.gender,
+            "date_of_birth": profile.date_of_birth,
+            "address": profile.address,
             "level": profile.level.value,
             "major": profile.major,
             "class_name": profile.class_name,
+            "faculty": profile.faculty,
+            "year": profile.year,
             "preferred_language": profile.preferred_language,
             "preferred_detail_level": profile.preferred_detail_level,
+            "personality_summary": profile.personality_summary,
+            "personality_traits": profile.personality_traits,
             "topics_of_interest": [
                 {
                     "topic": t.topic,
@@ -46,6 +54,7 @@ class MongoDBStudentProfileRepository(IStudentProfileRepository):
                     "last_accessed": (
                         t.last_accessed.isoformat() if t.last_accessed else None
                     ),
+                    "source": t.source,
                 }
                 for t in profile.topics_of_interest
             ],
@@ -75,6 +84,7 @@ class MongoDBStudentProfileRepository(IStudentProfileRepository):
                     score=t.get("score", 0.0),
                     interaction_count=t.get("interaction_count", 0),
                     last_accessed=last_accessed,
+                    source=t.get("source", "chat"),
                 )
             )
 
@@ -99,11 +109,19 @@ class MongoDBStudentProfileRepository(IStudentProfileRepository):
             student_id=doc.get("student_id"),
             name=doc.get("name"),
             email=doc.get("email"),
+            phone=doc.get("phone"),
+            gender=doc.get("gender"),
+            date_of_birth=doc.get("date_of_birth"),
+            address=doc.get("address"),
             level=StudentLevel(doc.get("level", "freshman")),
             major=doc.get("major"),
             class_name=doc.get("class_name"),
+            faculty=doc.get("faculty"),
+            year=doc.get("year"),
             preferred_language=doc.get("preferred_language", "vi"),
             preferred_detail_level=doc.get("preferred_detail_level", "medium"),
+            personality_summary=doc.get("personality_summary"),
+            personality_traits=doc.get("personality_traits", []),
             topics_of_interest=topics,
             interaction_history=history,
             total_questions=doc.get("total_questions", 0),

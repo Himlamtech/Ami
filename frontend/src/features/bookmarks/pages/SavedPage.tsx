@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Bookmark as BookmarkIcon, Trash2, ExternalLink, Clock, Tag } from 'lucide-react'
+import { Search, Bookmark as BookmarkIcon, Trash2, ExternalLink, Clock, Tag, Pin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,14 @@ export default function SavedPage() {
     const handleDelete = async (id: string) => {
         await bookmarksApi.delete(id)
         setBookmarks(bookmarks.filter((b) => b.id !== id))
+    }
+
+    const handlePin = async (id: string) => {
+        const updated = await bookmarksApi.pin(id)
+        setBookmarks((prev) => {
+            const next = prev.map((b) => (b.id === id ? { ...b, ...updated, is_pinned: true } : b))
+            return [...next].sort((a, b) => Number(!!b.is_pinned) - Number(!!a.is_pinned))
+        })
     }
 
     return (
@@ -107,6 +115,11 @@ export default function SavedPage() {
                                                 {bookmark.response}
                                             </p>
                                             <div className="flex items-center gap-2 flex-wrap">
+                                                {bookmark.is_pinned && (
+                                                    <Badge variant="default" className="text-xs">
+                                                        Đã ghim
+                                                    </Badge>
+                                                )}
                                                 {bookmark.tags.map((tag) => (
                                                     <Badge key={tag} variant="secondary" className="text-xs">
                                                         {tag}
@@ -123,6 +136,15 @@ export default function SavedPage() {
                                                 <a href={`/chat/${bookmark.session_id}`}>
                                                     <ExternalLink className="w-4 h-4" />
                                                 </a>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handlePin(bookmark.id)}
+                                                className={bookmark.is_pinned ? 'text-primary' : undefined}
+                                                title={bookmark.is_pinned ? 'Đã ghim' : 'Ghim'}
+                                            >
+                                                <Pin className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"

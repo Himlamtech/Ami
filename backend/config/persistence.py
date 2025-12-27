@@ -8,14 +8,14 @@ Note: pydantic-settings automatically maps environment variables to field names
 
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
-from .base import BaseConfig
+from .base import BaseConfig, ENV_FILES
 
 
 class MongoDBConfig(BaseConfig):
     """MongoDB configuration."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -47,6 +47,7 @@ class MongoDBConfig(BaseConfig):
     collection_student_profiles: str = Field(default="student_profiles")
     collection_pending_updates: str = Field(default="pending_updates")
     collection_usage_metrics: str = Field(default="usage_metrics")
+    collection_suggested_questions: str = Field(default="suggested_questions")
 
     # MongoDB Tuning
     mongodb_timeout_ms: int = Field(default=5000, ge=1000)

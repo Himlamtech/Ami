@@ -1,6 +1,6 @@
 """Student profile and personalization routes."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from app.config.services import ServiceRegistry
 from app.application.services.personalization_service import PersonalizationService
@@ -11,6 +11,7 @@ from app.api.schemas.profile_dto import (
     SetPreferencesRequest,
     PersonalizedContextResponse,
     InteractionRecord,
+    TopicInterestResponse,
 )
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
@@ -25,6 +26,7 @@ def _get_service() -> PersonalizationService:
 async def get_profile(user_id: str):
     service = _get_service()
     profile = await service.get_or_create_profile(user_id)
+    progress = profile.get_academic_progress()
 
     return StudentProfileResponse(
         id=profile.id,
@@ -32,11 +34,31 @@ async def get_profile(user_id: str):
         student_id=profile.student_id,
         name=profile.name,
         email=profile.email,
+        phone=profile.phone,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        address=profile.address,
         level=profile.level.value,
         major=profile.major,
         class_name=profile.class_name,
+        faculty=profile.faculty,
+        year=profile.year,
+        intake_year=progress.get("intake_year"),
+        current_year=progress.get("current_year"),
+        current_semester=progress.get("current_semester"),
         preferred_detail_level=profile.preferred_detail_level,
+        personality_summary=profile.personality_summary,
+        personality_traits=profile.personality_traits,
         top_interests=[t.topic for t in profile.get_top_interests(5)],
+        interests=[
+            TopicInterestResponse(
+                topic=t.topic,
+                score=t.score,
+                last_accessed=t.last_accessed.isoformat() if t.last_accessed else None,
+                source=t.source,
+            )
+            for t in profile.get_top_interests(10)
+        ],
         total_questions=profile.total_questions,
         total_downloads=profile.total_downloads,
     )
@@ -60,10 +82,18 @@ async def update_profile(user_id: str, request: UpdateProfileRequest):
         user_id=user_id,
         student_id=request.student_id,
         name=request.name,
+        email=request.email,
+        phone=request.phone,
+        gender=request.gender,
+        date_of_birth=request.date_of_birth,
+        address=request.address,
         major=request.major,
+        faculty=request.faculty,
+        year=request.year,
         level=level,
         class_name=request.class_name,
     )
+    progress = profile.get_academic_progress()
 
     return StudentProfileResponse(
         id=profile.id,
@@ -71,11 +101,31 @@ async def update_profile(user_id: str, request: UpdateProfileRequest):
         student_id=profile.student_id,
         name=profile.name,
         email=profile.email,
+        phone=profile.phone,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        address=profile.address,
         level=profile.level.value,
         major=profile.major,
         class_name=profile.class_name,
+        faculty=profile.faculty,
+        year=profile.year,
+        intake_year=progress.get("intake_year"),
+        current_year=progress.get("current_year"),
+        current_semester=progress.get("current_semester"),
         preferred_detail_level=profile.preferred_detail_level,
+        personality_summary=profile.personality_summary,
+        personality_traits=profile.personality_traits,
         top_interests=[t.topic for t in profile.get_top_interests(5)],
+        interests=[
+            TopicInterestResponse(
+                topic=t.topic,
+                score=t.score,
+                last_accessed=t.last_accessed.isoformat() if t.last_accessed else None,
+                source=t.source,
+            )
+            for t in profile.get_top_interests(10)
+        ],
         total_questions=profile.total_questions,
         total_downloads=profile.total_downloads,
     )
@@ -90,6 +140,7 @@ async def set_preferences(user_id: str, request: SetPreferencesRequest):
         detail_level=request.detail_level,
         language=request.language,
     )
+    progress = profile.get_academic_progress()
 
     return StudentProfileResponse(
         id=profile.id,
@@ -97,11 +148,31 @@ async def set_preferences(user_id: str, request: SetPreferencesRequest):
         student_id=profile.student_id,
         name=profile.name,
         email=profile.email,
+        phone=profile.phone,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        address=profile.address,
         level=profile.level.value,
         major=profile.major,
         class_name=profile.class_name,
+        faculty=profile.faculty,
+        year=profile.year,
+        intake_year=progress.get("intake_year"),
+        current_year=progress.get("current_year"),
+        current_semester=progress.get("current_semester"),
         preferred_detail_level=profile.preferred_detail_level,
+        personality_summary=profile.personality_summary,
+        personality_traits=profile.personality_traits,
         top_interests=[t.topic for t in profile.get_top_interests(5)],
+        interests=[
+            TopicInterestResponse(
+                topic=t.topic,
+                score=t.score,
+                last_accessed=t.last_accessed.isoformat() if t.last_accessed else None,
+                source=t.source,
+            )
+            for t in profile.get_top_interests(10)
+        ],
         total_questions=profile.total_questions,
         total_downloads=profile.total_downloads,
     )

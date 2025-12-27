@@ -1,5 +1,6 @@
 """Bookmark API routes for saving and organizing Q&A pairs."""
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
 
@@ -186,15 +187,20 @@ async def update_bookmark(
             detail="Access denied",
         )
 
-    updated = await repo.update(
-        bookmark_id=bookmark_id,
-        title=request.title,
-        tags=[t.lower().strip() for t in (request.tags or [])],
-        notes=request.notes,
-        folder=request.folder,
-        is_archived=request.is_archived,
-        is_pinned=request.is_pinned,
-    )
+    if request.title is not None:
+        bookmark.title = request.title
+    if request.tags is not None:
+        bookmark.tags = [t.lower().strip() for t in request.tags]
+    if request.notes is not None:
+        bookmark.notes = request.notes
+    if request.folder is not None:
+        bookmark.folder = request.folder
+    if request.is_archived is not None:
+        bookmark.is_archived = request.is_archived
+    if request.is_pinned is not None:
+        bookmark.is_pinned = request.is_pinned
+
+    updated = await repo.update(bookmark)
 
     return _to_response(updated)
 
@@ -224,6 +230,32 @@ async def delete_bookmark(
     return {"status": "deleted"}
 
 
+@router.post("/{bookmark_id}/pin", response_model=BookmarkResponse)
+async def pin_bookmark(
+    bookmark_id: str,
+    user_id: str = Depends(get_user_id),
+):
+    """Pin a bookmark."""
+    repo = ServiceRegistry.get_bookmark_repository()
+
+    bookmark = await repo.get_by_id(bookmark_id)
+    if not bookmark:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bookmark not found",
+        )
+
+    if bookmark.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    bookmark.is_pinned = True
+    updated = await repo.update(bookmark)
+    return _to_response(updated)
+
+
 @router.post("/{bookmark_id}/export", response_model=BookmarkExportResponse)
 async def export_bookmark(
     bookmark_id: str,
@@ -245,10 +277,39 @@ async def export_bookmark(
             detail="Access denied",
         )
 
+    content = json.dumps(
+        _to_response(bookmark).dict(), ensure_ascii=False, indent=2, default=str
+    )
     return BookmarkExportResponse(
-        bookmark=_to_response(bookmark),
-        export_format="json",
-        export_url=f"/bookmarks/{bookmark_id}/download",
+        format="json",
+        content=content,
+        filename=f"bookmark_{bookmark_id}.json",
+    )
+
+
+@router.get("/export/json", response_model=BookmarkExportResponse)
+async def export_bookmarks_json(
+    user_id: str = Depends(get_user_id),
+):
+    """Export all bookmarks as JSON."""
+    repo = ServiceRegistry.get_bookmark_repository()
+
+    bookmarks = await repo.get_by_user(
+        user_id=user_id,
+        skip=0,
+        limit=1000,
+        include_archived=True,
+    )
+    content = json.dumps(
+        [_to_response(bookmark).dict() for bookmark in bookmarks],
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    )
+    return BookmarkExportResponse(
+        format="json",
+        content=content,
+        filename="bookmarks.json",
     )
 
 

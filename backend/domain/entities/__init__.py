@@ -14,6 +14,7 @@ from .student_profile import (
     InteractionHistory,
     TopicInterest,
 )
+from .suggested_question import SuggestedQuestion
 from .feedback import (
     Feedback,
     FeedbackType,
@@ -35,6 +36,12 @@ from .search_log import (
     GapStatus,
 )
 from .bookmark import Bookmark
+from .tool_call import ToolCall, ToolArguments
+from .orchestration_result import (
+    OrchestrationResult,
+    VectorSearchReference,
+    OrchestrationMetrics,
+)
 
 __all__ = [
     # Documents
@@ -58,6 +65,7 @@ __all__ = [
     "InteractionType",
     "InteractionHistory",
     "TopicInterest",
+    "SuggestedQuestion",
     # Feedback
     "Feedback",
     "FeedbackType",
@@ -77,4 +85,10 @@ __all__ = [
     "GapStatus",
     # Bookmarks
     "Bookmark",
+    # Orchestration
+    "ToolCall",
+    "ToolArguments",
+    "OrchestrationResult",
+    "VectorSearchReference",
+    "OrchestrationMetrics",
 ]

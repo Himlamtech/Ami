@@ -30,6 +30,8 @@ from app.infrastructure.persistence.mongodb.repositories import (
     MongoDBKnowledgeGapRepository,
     MongoDBStudentProfileRepository,
     MongoDBBookmarkRepository,
+    MongoDBOrchestrationLogRepository,
+    MongoDBSuggestedQuestionRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,6 +77,8 @@ class ServiceRegistry:
     _student_profile_repo = None
     _bookmark_repo = None
     _monitor_target_repo = None
+    _orchestration_log_repo = None
+    _suggested_question_repo = None
 
     @classmethod
     def initialize(cls, db: AsyncIOMotorDatabase):
@@ -366,3 +370,82 @@ class ServiceRegistry:
         if cls._bookmark_repo is None:
             cls._bookmark_repo = MongoDBBookmarkRepository(cls._db)
         return cls._bookmark_repo
+
+    @classmethod
+    def get_orchestration_log_repository(cls) -> MongoDBOrchestrationLogRepository:
+        """Get orchestration log repository."""
+        cls._ensure_initialized()
+        if cls._orchestration_log_repo is None:
+            cls._orchestration_log_repo = MongoDBOrchestrationLogRepository(cls._db)
+        return cls._orchestration_log_repo
+
+    @classmethod
+    def get_suggested_question_repository(cls) -> MongoDBSuggestedQuestionRepository:
+        """Get suggested question repository."""
+        cls._ensure_initialized()
+        if cls._suggested_question_repo is None:
+            cls._suggested_question_repo = MongoDBSuggestedQuestionRepository(cls._db)
+        return cls._suggested_question_repo
+
+    @classmethod
+    def get_orchestrate_query_use_case(cls):
+        """Get orchestrate query use case."""
+        from app.application.use_cases.orchestration.orchestrate_query import (
+            OrchestrateQueryUseCase,
+        )
+        from app.infrastructure.ai.orchestrator.gemini_orchestrator import (
+            GeminiOrchestratorService,
+        )
+        from app.infrastructure.ai.tools.tool_executor import ToolExecutorService
+        from app.infrastructure.ai.tools.rag_tool import RAGToolHandler
+        from app.infrastructure.ai.tools.web_search_tool import WebSearchToolHandler
+        from app.infrastructure.external.web_search.gemini_web_search import (
+            GeminiWebSearchService,
+        )
+        from app.infrastructure.ai.tools.direct_answer_tool import (
+            DirectAnswerToolHandler,
+        )
+        from app.infrastructure.ai.tools.form_generator_tool import (
+            FormGeneratorToolHandler,
+        )
+        from app.infrastructure.ai.tools.clarification_tool import (
+            ClarificationToolHandler,
+        )
+        from app.infrastructure.ai.tools.image_analysis_tool import (
+            ImageAnalysisToolHandler,
+        )
+
+        cls._ensure_initialized()
+
+        # Create orchestrator service
+        orchestrator = GeminiOrchestratorService()
+
+        # Create tool handlers
+        rag_handler = RAGToolHandler(llm_service=cls.get_llm(provider="gemini"))
+        web_search_service = GeminiWebSearchService()
+        web_handler = WebSearchToolHandler(web_search_service=web_search_service)
+        direct_handler = DirectAnswerToolHandler(
+            llm_service=cls.get_llm(provider="gemini")
+        )
+        form_handler = FormGeneratorToolHandler()
+        clarify_handler = ClarificationToolHandler()
+        image_handler = ImageAnalysisToolHandler(
+            llm_service=cls.get_llm(provider="gemini"),
+            embedding_service=cls.get_embedding(),
+            vector_store=cls.get_vector_store(),
+        )
+
+        # Create tool executor
+        tool_executor = ToolExecutorService()
+        tool_executor.register_handler(rag_handler)
+        tool_executor.register_handler(web_handler)
+        tool_executor.register_handler(direct_handler)
+        tool_executor.register_handler(form_handler)
+        tool_executor.register_handler(clarify_handler)
+        tool_executor.register_handler(image_handler)
+
+        # Create use case
+        return OrchestrateQueryUseCase(
+            orchestrator=orchestrator,
+            tool_executor=tool_executor,
+        )

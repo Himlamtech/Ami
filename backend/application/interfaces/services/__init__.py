@@ -11,6 +11,8 @@ from .web_search_service import (
     SearchResult as WebSearchResult,
 )
 from .rag_service import IRAGService, IndexDocumentInput, IndexDocumentOutput
+from .orchestrator_service import IOrchestratorService
+from .tool_executor_service import IToolExecutorService, IToolHandler
 
 __all__ = [
     "ILLMService",
@@ -25,4 +27,8 @@ __all__ = [
     "IRAGService",
     "IndexDocumentInput",
     "IndexDocumentOutput",
+    # Orchestration
+    "IOrchestratorService",
+    "IToolExecutorService",
+    "IToolHandler",
 ]

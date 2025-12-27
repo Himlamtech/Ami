@@ -1,8 +1,10 @@
 """Smart Query routes with streaming support."""
 
-from fastapi import APIRouter, HTTPException, status
+import asyncio
+import uuid
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 import json
 import logging
 
@@ -17,11 +19,23 @@ from app.api.schemas.smart_query_dto import (
     ArtifactDownloadResponse,
 )
 from app.application.use_cases.rag import SmartQueryWithRAGUseCase, SmartQueryInput
+from app.application.use_cases.personalization import (
+    ExtractProfileMemoryUseCase,
+    ProfileMemoryExtractionInput,
+)
+from app.application.use_cases.chat import (
+    CreateSessionUseCase,
+    CreateSessionInput,
+    SendMessageUseCase,
+    SendMessageInput,
+)
 from app.application.services.conversation_context_service import (
     ConversationContextService,
 )
 from app.domain.value_objects.rag_config import RAGConfig
 from app.domain.value_objects.generation_config import GenerationConfig
+from app.domain.enums.llm_mode import LLMMode
+from app.domain.enums.chat_message_role import ChatMessageRole
 from app.config.services import ServiceRegistry
 from app.config import qdrant_config
 
@@ -31,8 +45,11 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=SmartQueryResponse)
-async def smart_query(request: SmartQueryRequest):
+async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTasks):
     """Smart query with artifact detection and rich response (non-streaming)."""
+    request_id = f"req_{uuid.uuid4()}"
+    session_id = request.session_id or f"session_{uuid.uuid4()}"
+    response_message_id = f"msg_{uuid.uuid4()}"
     try:
         embedding_service = ServiceRegistry.get_embedding()
         vector_store = ServiceRegistry.get_vector_store()
@@ -50,16 +67,16 @@ async def smart_query(request: SmartQueryRequest):
 
         context_service = ConversationContextService(chat_repo)
         conversation_context = ""
-        if request.session_id:
+        if session_id:
             try:
                 context_window = await context_service.build_context_window(
-                    request.session_id, max_messages=6
+                    session_id, max_messages=6
                 )
                 conversation_context = context_window.get_context_string()
             except Exception as exc:  # pragma: no cover - best effort context
                 logger.warning(
                     "Failed to build conversation context for session %s: %s",
-                    request.session_id,
+                    session_id,
                     exc,
                 )
 
@@ -72,7 +89,7 @@ async def smart_query(request: SmartQueryRequest):
 
         input_data = SmartQueryInput(
             query=request.query,
-            session_id=request.session_id,
+            session_id=session_id,
             user_info=request.user_info,
             collection=request.collection,
             rag_config=RAGConfig(
@@ -118,7 +135,10 @@ async def smart_query(request: SmartQueryRequest):
             for s in result.sources
         ]
 
-        return SmartQueryResponse(
+        response = SmartQueryResponse(
+            session_id=session_id,
+            message_id=response_message_id,
+            request_id=request_id,
             content=result.content,
             intent=ResponseIntentDTO(result.intent.value),
             artifacts=artifacts,
@@ -133,13 +153,59 @@ async def smart_query(request: SmartQueryRequest):
             ),
             created_at=result.created_at,
         )
+        user_id = (request.user_info or {}).get("user_id")
+        persisted_session_id = session_id
+        assistant_message_id = None
+        if user_id:
+            persisted_session_id, _, assistant_message_id = await _persist_chat_history(
+                user_id=user_id,
+                session_id=session_id,
+                user_message=request.query,
+                assistant_message=result.content,
+                request_id=request_id,
+            )
+            response.session_id = persisted_session_id
+            if assistant_message_id:
+                response.message_id = assistant_message_id
 
-    except HTTPException:
-        raise
+        if user_id or persisted_session_id:
+            background_tasks.add_task(
+                _run_profile_memory_extraction,
+                user_id=user_id,
+                session_id=persisted_session_id,
+                user_message=request.query,
+                assistant_message=result.content,
+                conversation_history=[],
+            )
+
+        return response
+
+    except HTTPException as exc:
+        detail = exc.detail
+        if isinstance(detail, dict):
+            detail = {
+                **detail,
+                "request_id": request_id,
+                "session_id": session_id,
+                "message_id": response_message_id,
+            }
+        else:
+            detail = {
+                "error": detail,
+                "request_id": request_id,
+                "session_id": session_id,
+                "message_id": response_message_id,
+            }
+        raise HTTPException(status_code=exc.status_code, detail=detail)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Smart query failed: {str(e)}",
+            detail={
+                "error": f"Smart query failed: {str(e)}",
+                "request_id": request_id,
+                "session_id": session_id,
+                "message_id": response_message_id,
+            },
         )
 
 
@@ -148,6 +214,16 @@ async def smart_query_stream(request: SmartQueryRequest):
     """Smart query with streaming response (Server-Sent Events)."""
 
     async def event_generator() -> AsyncIterator[str]:
+        assistant_chunks: list[str] = []
+        request_id = f"req_{uuid.uuid4()}"
+        session_id = request.session_id or f"session_{uuid.uuid4()}"
+        response_message_id = f"msg_{uuid.uuid4()}"
+        meta_payload = {
+            "session_id": session_id,
+            "message_id": response_message_id,
+            "request_id": request_id,
+        }
+        yield f"data: {json.dumps({'meta': meta_payload})}\n\n"
         try:
             embedding_service = ServiceRegistry.get_embedding()
             vector_store = ServiceRegistry.get_vector_store()
@@ -158,28 +234,37 @@ async def smart_query_stream(request: SmartQueryRequest):
             if not all(
                 [embedding_service, vector_store, llm_service, document_repo, chat_repo]
             ):
-                yield f"data: {json.dumps({'error': 'Required services not available'})}\n\n"
+                yield (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "error": "Required services not available",
+                            "request_id": request_id,
+                        }
+                    )
+                    + "\n\n"
+                )
                 return
 
             context_service = ConversationContextService(chat_repo)
             conversation_context = ""
-            if request.session_id:
+            if session_id:
                 try:
                     context_window = await context_service.build_context_window(
-                        request.session_id, max_messages=6
+                        session_id, max_messages=6
                     )
                     conversation_context = context_window.get_context_string()
                 except Exception as exc:  # pragma: no cover - best effort context
                     logger.warning(
                         "Failed to build conversation context for session %s: %s",
-                        request.session_id,
+                        session_id,
                         exc,
                     )
 
             # Step 1: RAG retrieval (same as non-streaming)
             input_data = SmartQueryInput(
                 query=request.query,
-                session_id=request.session_id,
+                session_id=session_id,
                 user_info=request.user_info,
                 collection=request.collection or qdrant_config.collection_name,
                 rag_config=RAGConfig(
@@ -264,13 +349,48 @@ async def smart_query_stream(request: SmartQueryRequest):
                 max_tokens=input_data.generation_config.max_tokens,
             ):
                 # Send each content chunk
+                assistant_chunks.append(chunk)
                 yield f"data: {json.dumps({'content': chunk})}\n\n"
 
             # Send completion signal
+            user_id = (request.user_info or {}).get("user_id")
+            persisted_session_id = session_id
+            assistant_message_id = None
+            if user_id:
+                persisted_session_id, _, assistant_message_id = (
+                    await _persist_chat_history(
+                        user_id=user_id,
+                        session_id=session_id,
+                        user_message=request.query,
+                        assistant_message="".join(assistant_chunks),
+                        request_id=request_id,
+                    )
+                )
+
+            if assistant_message_id:
+                meta_payload = {
+                    "session_id": persisted_session_id,
+                    "message_id": assistant_message_id,
+                    "request_id": request_id,
+                }
+                yield f"data: {json.dumps({'meta': meta_payload})}\n\n"
+
+            if user_id or persisted_session_id:
+                await _run_profile_memory_extraction(
+                    user_id=user_id,
+                    session_id=persisted_session_id,
+                    user_message=request.query,
+                    assistant_message="".join(assistant_chunks),
+                    conversation_history=[],
+                )
             yield "data: [DONE]\n\n"
 
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield (
+                "data: "
+                + json.dumps({"error": str(e), "request_id": request_id})
+                + "\n\n"
+            )
 
     return StreamingResponse(
         event_generator(),
@@ -395,6 +515,96 @@ async def preview_artifact(document_id: str, artifact_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview failed: {str(e)}",
         )
+
+
+async def _run_profile_memory_extraction(
+    user_id: Optional[str],
+    session_id: Optional[str],
+    user_message: str,
+    assistant_message: str,
+    conversation_history: list,
+) -> None:
+    try:
+        profile_repo = ServiceRegistry.get_student_profile_repository()
+        chat_repo = ServiceRegistry.get_chat_repository()
+        llm_service = ServiceRegistry.get_llm(mode=LLMMode.QA)
+        if not profile_repo:
+            return
+        use_case = ExtractProfileMemoryUseCase(
+            profile_repository=profile_repo,
+            llm_service=llm_service,
+            chat_repository=chat_repo,
+        )
+        await use_case.execute(
+            ProfileMemoryExtractionInput(
+                user_id=user_id,
+                session_id=session_id,
+                user_message=user_message,
+                assistant_message=assistant_message,
+                conversation_history=conversation_history or [],
+            )
+        )
+    except Exception as exc:
+        logger.warning("Profile memory extraction failed: %s", exc)
+
+
+async def _persist_chat_history(
+    user_id: str,
+    session_id: str,
+    user_message: str,
+    assistant_message: str,
+    request_id: str,
+) -> tuple[str, Optional[str], Optional[str]]:
+    try:
+        chat_repo = ServiceRegistry.get_chat_repository()
+        if not chat_repo:
+            return session_id, None, None
+
+        resolved_session_id = session_id
+        if resolved_session_id:
+            session = await chat_repo.get_session_by_id(resolved_session_id)
+        else:
+            session = None
+
+        if not session:
+            create_use_case = CreateSessionUseCase(chat_repo)
+            created = await create_use_case.execute(
+                CreateSessionInput(
+                    user_id=user_id,
+                    session_id=resolved_session_id or None,
+                    title="New Conversation",
+                )
+            )
+            resolved_session_id = created.session.id
+
+        send_use_case = SendMessageUseCase(chat_repo)
+        user_message_id = None
+        assistant_message_id = None
+        if user_message:
+            result = await send_use_case.execute(
+                SendMessageInput(
+                    session_id=resolved_session_id,
+                    role=ChatMessageRole.USER,
+                    content=user_message,
+                    metadata={"source": "smart_query", "request_id": request_id},
+                )
+            )
+            user_message_id = result.message.id
+        if assistant_message:
+            result = await send_use_case.execute(
+                SendMessageInput(
+                    session_id=resolved_session_id,
+                    role=ChatMessageRole.ASSISTANT,
+                    content=assistant_message,
+                    metadata={"source": "smart_query", "request_id": request_id},
+                )
+            )
+            assistant_message_id = result.message.id
+
+        return resolved_session_id, user_message_id, assistant_message_id
+    except Exception as exc:
+        logger.warning("Chat persistence failed: %s", exc)
+        return session_id, None, None
 
 
 __all__ = ["router"]

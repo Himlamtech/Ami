@@ -12,6 +12,8 @@ export interface Bookmark {
     tags: string[]
     notes?: string
     folder?: string
+    is_pinned?: boolean
+    is_archived?: boolean
     created_at: string
     updated_at: string
 }
@@ -31,5 +33,9 @@ export const bookmarksApi = {
     search: (query: string, tags?: string) =>
         api.get<BookmarkListResponse>('/bookmarks/search', { q: query, tags }),
 
-    create: (data: Partial<Bookmark>) => api.post<Bookmark>('/bookmarks', data)
+    create: (data: Partial<Bookmark>) => api.post<Bookmark>('/bookmarks', data),
+
+    pin: (id: string) => api.post<Bookmark>(`/bookmarks/${id}/pin`),
+
+    exportJson: () => api.get<{ format: string; content: string; filename: string }>('/bookmarks/export/json'),
 }

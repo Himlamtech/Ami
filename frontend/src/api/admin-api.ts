@@ -6,7 +6,7 @@ const client = axios.create({
     baseURL: `${API_URL}/admin`,
     headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+        'X-Admin-API-Key': localStorage.getItem('adminToken') || '',
     },
 });
 
@@ -28,13 +28,13 @@ export const adminApi = {
     },
     // User management endpoints
     users: {
-        list: () => client.get('/users'),
+        list: (filters?: any) => client.get('/users', { params: filters }),
         detail: (id: string) => client.get(`/users/${id}`),
-        ban: (id: string) => client.post(`/users/${id}/ban`),
+        sessions: (id: string) => client.get(`/users/${id}/sessions`),
     },
     // Document management endpoints
     documents: {
         list: () => client.get('/documents'),
-        approve: (id: string) => client.post(`/documents/${id}/approve`),
+        delete: (id: string) => client.delete(`/documents/${id}`),
     },
 };

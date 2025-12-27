@@ -173,12 +173,22 @@ export const chatApi = {
             comment: data.comment
         }),
 
-    getSuggestions: async (): Promise<SuggestedQuestion[]> => {
-        const response = await api.get<{ suggestions: any[] }>('/suggestions')
-        return response.suggestions.map(s => ({
+    getSuggestions: async (params?: {
+        count?: number
+        includePopular?: boolean
+        includePersonalized?: boolean
+    }): Promise<SuggestedQuestion[]> => {
+        const response = await api.get<{ suggestions: any[] }>('/suggestions', {
+            count: params?.count,
+            include_popular: params?.includePopular,
+            include_personalized: params?.includePersonalized,
+        })
+        return response.suggestions.map((s) => ({
             id: s.id,
             text: s.text,
-            category: s.category
+            category: s.category,
+            relevance_score: s.relevance_score,
+            source: s.source,
         }))
     },
 

@@ -104,7 +104,10 @@ export const adminApi = {
 
     // Analytics
     getAnalytics: (params?: { period?: string; groupBy?: string }) =>
-        api.get('/admin/analytics', params),
+        api.get('/admin/analytics/usage', {
+            period: params?.period,
+            group_by: params?.groupBy,
+        }),
 
     getCostBreakdown: (params?: { period?: string }) =>
         api.get('/admin/analytics/costs', params),

@@ -1,12 +1,20 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /code
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    build-essential cmake g++ gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ../pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+COPY pyproject.toml ./
 
-COPY . .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -U pip setuptools wheel \
+    && pip install -e .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "11121"]
+COPY backend/ ./backend/
+
+ENV PYTHONPATH=/code:$PYTHONPATH
+WORKDIR /code/backend
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "11121"]

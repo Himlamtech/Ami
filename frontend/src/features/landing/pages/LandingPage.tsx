@@ -1,4 +1,8 @@
 import Hero from "../components/Hero"
+import Features from "../components/Features"
+import Flow from "../components/Flow"
+import Demo from "../components/Demo"
+import Faq from "../components/Faq"
 import Footer from "../components/Footer"
 
 export default function LandingPage() {
@@ -26,7 +30,10 @@ export default function LandingPage() {
 
             <main className="flex-1">
                 <Hero />
-                {/* Feature placeholders can be added here */}
+                <Features />
+                <Flow />
+                <Demo />
+                <Faq />
             </main>
 
             <Footer />

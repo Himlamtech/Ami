@@ -72,6 +72,8 @@ class PersonalizationService:
     async def get_personalized_context(self, user_id: str) -> PersonalizedContext:
         """Get personalized context for response generation."""
         profile = await self.get_or_create_profile(user_id)
+        profile.apply_interest_decay()
+        await self.profile_repository.update(profile)
 
         # Build greeting
         greeting = self._build_greeting(profile)
@@ -133,6 +135,12 @@ class PersonalizationService:
         if profile.major:
             parts.append(f"Sinh viên ngành {profile.major}.")
 
+        if profile.personality_summary:
+            parts.append(f"Tính cách: {profile.personality_summary}.")
+        elif profile.personality_traits:
+            traits = ", ".join(profile.personality_traits[:3])
+            parts.append(f"Tính cách: {traits}.")
+
         return " ".join(parts)
 
     def _suggest_related_topics(self, profile: StudentProfile) -> List[str]:
@@ -163,7 +171,14 @@ class PersonalizationService:
         user_id: str,
         student_id: Optional[str] = None,
         name: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        gender: Optional[str] = None,
+        date_of_birth: Optional[str] = None,
+        address: Optional[str] = None,
         major: Optional[str] = None,
+        faculty: Optional[str] = None,
+        year: Optional[int] = None,
         level: Optional[StudentLevel] = None,
         class_name: Optional[str] = None,
     ) -> StudentProfile:
@@ -174,12 +189,31 @@ class PersonalizationService:
             profile.student_id = student_id
         if name is not None:
             profile.name = name
+        if email is not None:
+            profile.email = email
+        if phone is not None:
+            profile.phone = phone
+        if gender is not None:
+            profile.gender = gender
+        if date_of_birth is not None:
+            profile.date_of_birth = date_of_birth
+        if address is not None:
+            profile.address = address
         if major is not None:
             profile.major = major
+        if faculty is not None:
+            profile.faculty = faculty
+        if year is not None:
+            profile.year = year
         if level is not None:
             profile.level = level
         if class_name is not None:
             profile.class_name = class_name
+
+        if profile.year is None:
+            progress = profile.get_academic_progress()
+            if progress.get("current_year"):
+                profile.year = progress["current_year"]
 
         return await self.profile_repository.update(profile)
 

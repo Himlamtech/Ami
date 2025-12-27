@@ -190,6 +190,7 @@ class AnalyticsOverview(BaseModel):
     """Real-time analytics overview."""
 
     requests: int
+    total_requests: int
     active_users: int
     avg_latency_ms: float
     error_rate: float

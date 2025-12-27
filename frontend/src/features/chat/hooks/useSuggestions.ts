@@ -5,7 +5,7 @@ import type { SuggestedQuestion } from '@/types/chat'
 export function useSuggestions() {
     const { data: suggestions = [], isLoading } = useQuery<SuggestedQuestion[]>({
         queryKey: ['suggestions'],
-        queryFn: () => chatApi.getSuggestions(),
+        queryFn: () => chatApi.getSuggestions({ count: 5 }),
         staleTime: 1000 * 60 * 5, // 5 minutes
     })
 

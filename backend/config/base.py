@@ -7,15 +7,20 @@ Note: pydantic-settings automatically maps environment variables to field names
 """
 
 from typing import Literal
+from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+ENV_FILES = (".env", str(BASE_DIR / ".env"))
 
 
 class BaseConfig(BaseSettings):
     """Base configuration shared across all config modules."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

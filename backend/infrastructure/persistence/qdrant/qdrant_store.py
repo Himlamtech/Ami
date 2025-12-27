@@ -256,7 +256,9 @@ class QdrantVectorStore(IVectorStoreService):
                 api_key=self.config.api_key if self.config.api_key else None,
                 timeout=self.config.timeout,
             )
-            if not hasattr(self.client, "search"):
+            if not (
+                hasattr(self.client, "search") or hasattr(self.client, "query_points")
+            ):
                 raise AttributeError("Qdrant client missing search support")
             self.client.get_collections()
             self._use_in_memory = False
@@ -512,27 +514,39 @@ class QdrantVectorStore(IVectorStoreService):
             # Build filter
             query_filter = self._build_filter(actual_filter)
 
-            results = self.client.search(
-                collection_name=resolved_collection,
-                query_vector=actual_vector,
-                limit=actual_limit,
-                query_filter=query_filter,
-                score_threshold=score_threshold,
-                with_payload=True,
-            )
+            if hasattr(self.client, "search"):
+                results = self.client.search(
+                    collection_name=resolved_collection,
+                    query_vector=actual_vector,
+                    limit=actual_limit,
+                    query_filter=query_filter,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                )
+            else:
+                response = self.client.query_points(
+                    collection_name=resolved_collection,
+                    query=actual_vector,
+                    query_filter=query_filter,
+                    limit=actual_limit,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                )
+                results = getattr(response, "points", [])
 
             formatted = []
             for r in results:
-                content_value = r.payload.get("content", "")
+                payload = getattr(r, "payload", {}) or {}
+                content_value = payload.get("content", "")
                 formatted.append(
                     {
-                        "id": str(r.id),
+                        "id": str(getattr(r, "id", "")),
                         "content": content_value,
                         "text": content_value,
                         "metadata": {
-                            k: v for k, v in r.payload.items() if k != "content"
+                            k: v for k, v in payload.items() if k != "content"
                         },
-                        "score": float(r.score),
+                        "score": float(getattr(r, "score", 0.0)),
                     }
                 )
 

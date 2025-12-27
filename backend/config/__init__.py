@@ -71,6 +71,9 @@ from .constants import (
     UserConstants,
 )
 
+# Service Registry
+from .services import ServiceRegistry
+
 __all__ = [
     # App
     "app_config",
@@ -113,4 +116,6 @@ __all__ = [
     "LLMConstants",
     "ApprovalConstants",
     "UserConstants",
+    # Service Registry
+    "ServiceRegistry",
 ]

@@ -8,6 +8,7 @@ from .mongodb_data_source_repository import MongoDBDataSourceRepository
 from .mongodb_pending_update_repository import MongoDBPendingUpdateRepository
 from .mongodb_monitor_target_repository import MongoDBMonitorTargetRepository
 from .mongodb_student_profile_repository import MongoDBStudentProfileRepository
+from .mongodb_suggested_question_repository import MongoDBSuggestedQuestionRepository
 from .mongodb_feedback_repository import MongoDBFeedbackRepository
 from .mongodb_usage_repository import (
     MongoDBUsageMetricRepository,
@@ -19,6 +20,7 @@ from .mongodb_search_log_repository import (
     MongoDBKnowledgeGapRepository,
 )
 from .mongodb_bookmark_repository import MongoDBBookmarkRepository
+from .mongodb_orchestration_log_repository import MongoDBOrchestrationLogRepository
 
 __all__ = [
     # Core
@@ -32,6 +34,7 @@ __all__ = [
     "MongoDBMonitorTargetRepository",
     # Profile
     "MongoDBStudentProfileRepository",
+    "MongoDBSuggestedQuestionRepository",
     # Feedback
     "MongoDBFeedbackRepository",
     # Analytics
@@ -43,4 +46,6 @@ __all__ = [
     "MongoDBKnowledgeGapRepository",
     # Bookmarks
     "MongoDBBookmarkRepository",
+    # Orchestration
+    "MongoDBOrchestrationLogRepository",
 ]
