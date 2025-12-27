@@ -1,8 +1,10 @@
 """Generate Image use case - DALL-E integration."""
 
-from dataclasses import dataclass
-from typing import Optional
 import logging
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
 
 from app.infrastructure.ai.llm.openai_llm import OpenAILLMService
 from app.infrastructure.persistence.minio.minio_storage import MinIOStorage
@@ -66,9 +68,6 @@ class GenerateImageUseCase:
         )
 
         # 2. Upload to MinIO
-        import uuid
-        from datetime import datetime
-
         file_name = f"generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.png"
         object_key = f"generated-images/{file_name}"
 

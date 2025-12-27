@@ -4,6 +4,7 @@ Supports Vision (GPT-4 Vision) for image QA.
 """
 
 import base64
+import httpx
 import logging
 from typing import Optional, Union
 
@@ -232,7 +233,6 @@ class OpenAILLMService(ILLMService):
             image_url = response.data[0].url
             
             # Download image bytes
-            import httpx
             async with httpx.AsyncClient() as client:
                 resp = await client.get(image_url)
                 if resp.status_code != 200:
