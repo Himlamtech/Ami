@@ -4,6 +4,7 @@ Supports Vision (GPT-4 Vision) for image QA.
 """
 
 import base64
+import httpx
 import logging
 from typing import Optional, Union
 
@@ -195,6 +196,64 @@ class OpenAILLMService(ILLMService):
         except Exception as e:
             logger.error(f"Error in image_qa: {e}")
             raise RuntimeError(f"Failed to process image: {str(e)}")
+
+    async def generate_image(
+        self,
+        prompt: str,
+        size: str = "1024x1024",
+        style: str = "natural",
+        **kwargs,
+    ) -> bytes:
+        """
+        Generate image using DALL-E.
+
+        Args:
+            prompt: Image description prompt
+            size: Image size ("1024x1024", "1792x1024", "1024x1792")
+            style: Image style ("natural" or "vivid")
+            **kwargs: Additional generation parameters
+
+        Returns:
+            Image bytes (PNG format)
+        """
+        try:
+            logger.debug(f"Generating image with DALL-E: {prompt[:50]}...")
+
+            # Use DALL-E 3 for higher quality
+            response = await self.client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size=size,
+                quality="standard",
+                style=style,
+                n=1,
+            )
+
+            # Get image URL
+            image_url = response.data[0].url
+            
+            # Download image bytes
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(image_url)
+                if resp.status_code != 200:
+                    raise RuntimeError(f"Failed to download image: HTTP {resp.status_code}")
+                image_bytes = resp.content
+            
+            logger.debug(f"Generated image: {len(image_bytes)} bytes")
+            return image_bytes
+
+        except RateLimitError as e:
+            logger.error(f"Rate limit in generate_image: {e}")
+            raise RuntimeError("Rate limit exceeded.")
+        except APITimeoutError as e:
+            logger.error(f"Timeout in generate_image: {e}")
+            raise RuntimeError("Request timeout.")
+        except APIError as e:
+            logger.error(f"API error in generate_image: {e}")
+            raise RuntimeError(f"API error: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error in generate_image: {e}")
+            raise RuntimeError(f"Failed to generate image: {str(e)}")
 
 
 if __name__ == "__main__":
