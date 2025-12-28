@@ -21,10 +21,7 @@ export default function ChatLayout() {
                     <Menu className="h-5 w-5" />
                 </Button>
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-white" />
-                    </div>
-                    <span className="font-bold text-neutral-900">AMI</span>
+                    <span className="font-bold text-2xl text-red-600">AMI</span>
                 </div>
             </header>
 

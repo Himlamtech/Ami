@@ -13,7 +13,8 @@ export default function WelcomeScreen({ onQuestionSelect }: WelcomeScreenProps) 
     return (
         <div className="flex flex-col items-center justify-center h-full px-6 py-12">
             <div className="text-center max-w-2xl space-y-2">
-                <h2 className="text-3xl font-semibold text-neutral-900">AMI / AI Assistant</h2>
+                <h1 className="text-4xl font-bold text-red-600 mb-2">AMI</h1>
+                <h2 className="text-2xl font-semibold text-neutral-900">AI Assistant</h2>
                 <p className="text-base text-neutral-500">
                     Hỏi AMI bất cứ điều gì về PTIT.
                 </p>

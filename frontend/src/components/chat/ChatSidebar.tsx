@@ -92,11 +92,8 @@ export default function ChatSidebar({ onClose }: ChatSidebarProps) {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary">
-                        <Bot className="w-4.5 h-4.5" />
-                    </div>
                     <div>
-                        <span className="font-semibold text-base text-neutral-900 block leading-none">AMI</span>
+                        <span className="font-bold text-2xl text-red-600 block leading-none">AMI</span>
                         <span className="text-xs text-neutral-500 mt-0.5 block">AI Assistant</span>
                     </div>
                 </div>
@@ -317,7 +314,7 @@ function SessionItem({ session }: { session: Session }) {
                         handleBookmark()
                     }}>
                         <Bookmark className="w-4 h-4 mr-2" />
-                        Share link
+                        Bookmark
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => {
                         e.preventDefault()
@@ -325,10 +322,6 @@ function SessionItem({ session }: { session: Session }) {
                     }}>
                         <PenLine className="w-4 h-4 mr-2" />
                         Rename
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Start group chat
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
