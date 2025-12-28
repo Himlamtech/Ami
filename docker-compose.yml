@@ -76,9 +76,9 @@ services:
       minio:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT:-11121}:11121"
+      - "11101:11121" # Host:Container - Dev local 11121, Docker expose 11101
     volumes:
-      - ./backend/app:/app
+      - ./backend:/code/backend
       - ./data:/data
     networks:
       - ami_network
@@ -91,12 +91,8 @@ services:
     container_name: ami_frontend
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: http://backend:11121
     ports:
-      - "${FRONTEND_PORT:-11120}:80"
-    volumes:
-      - ./frontend/src:/app/src
+      - "11100:80" # Frontend exposed on 11100
     networks:
       - ami_network
     restart: unless-stopped

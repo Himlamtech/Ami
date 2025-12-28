@@ -41,17 +41,23 @@ pytest_cache/
 logs/
 *.log
 
-# Assets (if not needed in container)
-# Uncomment if assets are mounted as volume
-# assets/
-
 # Development files (KEEP pyproject.toml for Docker build!)
 Makefile
-# pyproject.toml  # NEEDED FOR DOCKER BUILD
 uv.lock
-# *.toml  # NEEDED FOR DOCKER BUILD
 
 # Docker files
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+
+# Frontend (exclude when building backend)
+frontend/
+node_modules/
+
+# Data (large files not needed in image)
+data/raw/*
+data/*.csv
+data/*.json
+
+# Postman collections
+postman/

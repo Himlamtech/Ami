@@ -14,7 +14,16 @@ export default defineConfig({
         port: 11120,
         proxy: {
             '/api': {
-                target: 'http://localhost:11121',
+                target: 'http://localhost:11121',  // Dev local backend
+                changeOrigin: true,
+            },
+        },
+    },
+    preview: {
+        port: 11120,
+        proxy: {
+            '/api': {
+                target: 'http://localhost:11101',  // Docker backend (exposed port)
                 changeOrigin: true,
             },
         },
