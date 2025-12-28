@@ -32,6 +32,11 @@ class ApiClient {
             ...(fetchOptions.headers as Record<string, string>),
         }
 
+        const amiApiKey = import.meta.env.VITE_AMI_API_KEY
+        if (amiApiKey) {
+            headers['X-AMI-API-Key'] = amiApiKey
+        }
+
         // Set Content-Type to json if not FormData
         if (!(fetchOptions.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json'
@@ -113,6 +118,10 @@ class ApiClient {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         }
+        const amiApiKey = import.meta.env.VITE_AMI_API_KEY
+        if (amiApiKey) {
+            headers['X-AMI-API-Key'] = amiApiKey
+        }
         try {
             const authStorage = localStorage.getItem('ami-auth')
             if (authStorage) {
@@ -126,23 +135,19 @@ class ApiClient {
             }
         } catch (e) { }
 
-        console.log('[API] Starting SSE stream to:', `${this.baseUrl}${endpoint}`)
         fetch(`${this.baseUrl}${endpoint}`, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
             signal: controller.signal,
         }).then(async (response) => {
-            console.log('[API] Stream response status:', response.status)
             if (!response.ok) {
                 const errorText = await response.text().catch(() => '')
-                console.error('[API] Stream request failed:', errorText || response.statusText)
                 signalDone()
                 return
             }
             const reader = response.body?.getReader()
             if (!reader) {
-                console.error('[API] No reader available')
                 signalDone()
                 return
             }
@@ -153,14 +158,12 @@ class ApiClient {
             while (true) {
                 const { done, value } = await reader.read()
                 if (done) {
-                    console.log('[API] Stream done, total chunks:', chunkCount)
                     signalDone()
                     break
                 }
 
                 const chunk = decoder.decode(value, { stream: true })
                 chunkCount++
-                console.log(`[API] Raw chunk #${chunkCount}:`, chunk)
                 buffer += chunk.replace(/\r/g, '')
 
                 let boundaryIndex = buffer.indexOf('\n\n')
@@ -172,9 +175,7 @@ class ApiClient {
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             const payload = line.slice(6)
-                            console.log('[API] SSE data:', payload)
                             if (payload === '[DONE]') {
-                                console.log('[API] Received [DONE] signal')
                                 signalDone()
                                 controller.abort()
                                 return
@@ -189,8 +190,6 @@ class ApiClient {
         }).catch((err) => {
             if (err.name === 'AbortError') {
                 signalDone()
-            } else {
-                console.error('Stream error:', err)
             }
         })
 

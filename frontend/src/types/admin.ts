@@ -45,6 +45,40 @@ export interface AdminConversation {
     hasNegativeFeedback: boolean
 }
 
+export interface AdminMessage {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    sources: any[]
+    feedback?: any
+    created_at: string
+}
+
+export interface AdminUserProfile {
+    id: string
+    user_id: string
+    name: string
+    student_id: string
+    major?: string
+    level?: string
+}
+
+export interface AdminConversationDetail {
+    session: {
+        id: string
+        user_id: string
+        user_name?: string
+        title: string
+        message_count: number
+        status: string
+        has_negative_feedback: boolean
+        last_activity: string
+        created_at: string
+    }
+    messages: AdminMessage[]
+    user_profile?: AdminUserProfile
+}
+
 export interface FeedbackItem {
     id: string
     type: 'helpful' | 'not_helpful' | 'incomplete' | 'incorrect'

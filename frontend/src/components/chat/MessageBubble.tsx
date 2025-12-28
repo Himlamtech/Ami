@@ -4,12 +4,12 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import {
     Bot,
-    ThumbsUp,
-    ThumbsDown,
     Copy,
     Bookmark,
     Check,
     ExternalLink,
+    ThumbsUp,
+    ThumbsDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -20,22 +20,31 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn, formatTime } from '@/lib/utils'
-import type { Attachment, Message, Source } from '@/types/chat'
+import type { Attachment, Message, Source, ToolProgress } from '@/types/chat'
 import { FileText } from 'lucide-react'
 
 interface MessageBubbleProps {
     message: Message
-    onFeedback?: (type: 'helpful' | 'not_helpful') => void
+    onFeedback?: (messageId: string, type: 'helpful' | 'not_helpful') => void
 }
 
 export default function MessageBubble({ message, onFeedback }: MessageBubbleProps) {
     const [copied, setCopied] = useState(false)
+    const [feedbackGiven, setFeedbackGiven] = useState<'helpful' | 'not_helpful' | null>(
+        message.feedback?.type || null
+    )
     const isUser = message.role === 'user'
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(message.content)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+    }
+
+    const handleFeedback = (type: 'helpful' | 'not_helpful') => {
+        if (feedbackGiven === type) return
+        setFeedbackGiven(type)
+        onFeedback?.(message.id, type)
     }
 
     const markdownContent = (
@@ -107,6 +116,34 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
 
             {/* Message content */}
             <div className={cn('flex flex-col max-w-[80%]', isUser ? 'items-end' : 'items-start')}>
+                {!isUser && (message.toolStage || (message.tools && message.tools.length > 0)) && (
+                    <div className="mb-2 rounded-xl border border-[color:var(--border)] bg-[var(--surface)]/80 px-3 py-2 text-xs text-neutral-600 w-full">
+                        {message.toolStage && (
+                            <div className="font-medium text-neutral-700">
+                                Trạng thái: {renderStageLabel(message.toolStage)}
+                            </div>
+                        )}
+                        {message.tools && message.tools.length > 0 && (
+                            <div className="mt-1 space-y-1">
+                                {message.tools.map((tool) => (
+                                    <div key={tool.id} className="flex items-center justify-between gap-3">
+                                        <div className="truncate">
+                                            <span className="font-medium text-neutral-700">
+                                                {renderToolLabel(tool.type)}
+                                            </span>
+                                            {tool.reasoning && (
+                                                <span className="text-neutral-400"> · {tool.reasoning}</span>
+                                            )}
+                                        </div>
+                                        <span className="shrink-0 text-neutral-500">
+                                            {renderToolStatus(tool.status)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
                 <div
                     className={cn(
                         'rounded-2xl px-4 py-3 text-sm leading-relaxed',
@@ -120,23 +157,39 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                     )}
                     {message.isStreaming ? (
                         <div className="space-y-3">
-                            {markdownContent}
-                            <div className="flex items-center gap-2 text-neutral-500">
-                                <span className="text-sm">AMI đang suy nghĩ</span>
-                                <div className="flex gap-1">
-                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
-                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
-                                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse-dot" />
+                            {message.content ? (
+                                markdownContent
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="h-3 w-40 rounded-full bg-[var(--surface2)] animate-pulse" />
+                                    <div className="h-3 w-72 rounded-full bg-[var(--surface2)] animate-pulse" />
+                                    <div className="h-3 w-60 rounded-full bg-[var(--surface2)] animate-pulse" />
                                 </div>
-                            </div>
+                            )}
+                            {message.content ? null : (
+                                <span className="text-xs text-neutral-500">Đang tạo phản hồi…</span>
+                            )}
                         </div>
                     ) : (
                         markdownContent
                     )}
                 </div>
 
+                {!isUser && message.steps && message.steps.length > 0 && (
+                    <div className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-[var(--surface)]/70 px-3 py-2 text-xs text-neutral-600">
+                        <p className="text-[11px] font-medium uppercase text-neutral-400 mb-1">
+                            Quy trình xử lý
+                        </p>
+                        <ol className="space-y-1 list-decimal list-inside">
+                            {message.steps.map((step, index) => (
+                                <li key={`${step}-${index}`}>{step}</li>
+                            ))}
+                        </ol>
+                    </div>
+                )}
+
                 {/* Sources */}
-                {!isUser && message.sources && message.sources.length > 0 && (
+                {!isUser && !message.isStreaming && message.sources && message.sources.length > 0 && (
                     <div className="mt-2 p-2.5 bg-[var(--surface2)] rounded-xl shadow-sm w-full">
                         <p className="text-xs font-medium text-neutral-400 mb-1.5">📄 Nguồn:</p>
                         <div className="space-y-1">
@@ -147,44 +200,31 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                     </div>
                 )}
 
+                {!isUser && !message.isStreaming && message.webSources && message.webSources.length > 0 && (
+                    <div className="mt-2 p-2.5 bg-[var(--surface2)] rounded-xl shadow-sm w-full">
+                        <p className="text-xs font-medium text-neutral-400 mb-1.5">🌐 Web đã tham chiếu:</p>
+                        <div className="space-y-1">
+                            {message.webSources.map((url, index) => (
+                                <a
+                                    key={`${url}-${index}`}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-xs text-neutral-600 hover:text-primary transition-colors"
+                                >
+                                    <span className="text-neutral-400">[{index + 1}]</span>
+                                    <span className="flex-1 truncate">{url}</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Actions */}
                 {!isUser && !message.isStreaming && (
                     <div className="flex items-center gap-1 mt-2">
                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={cn(
-                                            'h-8 px-2 text-neutral-500 hover:text-success',
-                                            message.feedback?.type === 'helpful' && 'text-success bg-success/10'
-                                        )}
-                                        onClick={() => onFeedback?.('helpful')}
-                                    >
-                                        <ThumbsUp className="w-4 h-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Hữu ích</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={cn(
-                                            'h-8 px-2 text-neutral-500 hover:text-error',
-                                            message.feedback?.type === 'not_helpful' && 'text-error bg-error/10'
-                                        )}
-                                        onClick={() => onFeedback?.('not_helpful')}
-                                    >
-                                        <ThumbsDown className="w-4 h-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Không hữu ích</TooltipContent>
-                            </Tooltip>
-
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
@@ -201,6 +241,40 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{copied ? 'Đã sao chép' : 'Sao chép'}</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={cn(
+                                            "h-8 px-2",
+                                            feedbackGiven === 'helpful' ? 'text-success' : 'text-neutral-500'
+                                        )}
+                                        onClick={() => handleFeedback('helpful')}
+                                    >
+                                        <ThumbsUp className="w-4 h-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Hữu ích</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={cn(
+                                            "h-8 px-2",
+                                            feedbackGiven === 'not_helpful' ? 'text-error' : 'text-neutral-500'
+                                        )}
+                                        onClick={() => handleFeedback('not_helpful')}
+                                    >
+                                        <ThumbsDown className="w-4 h-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Không hữu ích</TooltipContent>
                             </Tooltip>
 
                             <Tooltip>
@@ -223,6 +297,17 @@ export default function MessageBubble({ message, onFeedback }: MessageBubbleProp
 }
 
 function SourceItem({ source, index }: { source: Source; index: number }) {
+    if (!source.url) {
+        return (
+            <div className="flex items-center gap-2 text-xs text-neutral-600">
+                <span className="text-neutral-400">[{index}]</span>
+                <span className="flex-1 truncate">{source.title}</span>
+                {source.score !== undefined && (
+                    <span className="text-neutral-400">(score: {source.score.toFixed(2)})</span>
+                )}
+            </div>
+        )
+    }
     return (
         <a
             href={source.url}
@@ -238,6 +323,40 @@ function SourceItem({ source, index }: { source: Source; index: number }) {
             <ExternalLink className="w-3 h-3" />
         </a>
     )
+}
+
+const renderToolLabel = (toolType: ToolProgress['type']) => {
+    const mapping: Record<string, string> = {
+        use_rag_context: 'RAG Context',
+        search_web: 'Tìm kiếm web',
+        answer_directly: 'Trả lời trực tiếp',
+        fill_form: 'Tạo biểu mẫu',
+        clarify_question: 'Làm rõ câu hỏi',
+        analyze_image: 'Phân tích ảnh',
+    }
+    return mapping[toolType] || toolType
+}
+
+const renderToolStatus = (status: ToolProgress['status']) => {
+    const mapping: Record<ToolProgress['status'], string> = {
+        pending: 'Chờ',
+        running: 'Đang chạy',
+        success: 'Hoàn tất',
+        failed: 'Lỗi',
+        skipped: 'Bỏ qua',
+    }
+    return mapping[status]
+}
+
+const renderStageLabel = (stage: string) => {
+    const mapping: Record<string, string> = {
+        starting: 'Khởi tạo',
+        deciding_tools: 'Đang suy luận',
+        executing_tools: 'Đang chạy tool',
+        synthesizing: 'Đang tổng hợp',
+        completed: 'Hoàn tất',
+    }
+    return mapping[stage] || stage
 }
 
 function AttachmentGallery({ attachments }: { attachments: Attachment[] }) {

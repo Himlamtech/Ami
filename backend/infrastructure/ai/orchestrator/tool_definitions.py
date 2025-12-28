@@ -248,7 +248,7 @@ ORCHESTRATOR_SYSTEM_PROMPT = """You are AMI's Query Orchestrator. Your job is to
 
 **Context Information:**
 - Query: {query}
-- User: Major={major}, Year={year}, Language={language}
+- User: Name={name}, StudentID={student_id}, Major={major}, Year={year}, Class={class_name}, Faculty={faculty}, Language={language}
 - Vector Search Results (REFERENCE ONLY, not hard rules):
   - Max Score: {max_score}
   - Top Chunks: {top_chunks_preview}

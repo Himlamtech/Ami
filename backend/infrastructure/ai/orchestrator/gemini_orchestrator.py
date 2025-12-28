@@ -117,8 +117,12 @@ class GeminiOrchestratorService(IOrchestratorService):
 
         return ORCHESTRATOR_SYSTEM_PROMPT.format(
             query=query,
+            name=user_context.get("name", "Unknown"),
+            student_id=user_context.get("student_id", "Unknown"),
             major=user_context.get("major", "Unknown"),
             year=user_context.get("year", "Unknown"),
+            class_name=user_context.get("class_name", "Unknown"),
+            faculty=user_context.get("faculty", "Unknown"),
             language=user_context.get("language", "vi"),
             max_score=f"{max_score:.2f}",
             top_chunks_preview=chunks_preview,
@@ -343,8 +347,12 @@ class GeminiOrchestratorService(IOrchestratorService):
 **User Question:** {query}
 
 **User Context:**
+- Name: {user_context.get('name', 'Unknown')}
+- Student ID: {user_context.get('student_id', 'Unknown')}
 - Major: {user_context.get('major', 'Unknown')}
 - Year: {user_context.get('year', 'Unknown')}
+- Class: {user_context.get('class_name', 'Unknown')}
+- Faculty: {user_context.get('faculty', 'Unknown')}
 - Language preference: {user_context.get('language', 'vi')}
 
 **Tool Results:**

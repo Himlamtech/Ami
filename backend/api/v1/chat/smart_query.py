@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from fastapi import APIRouter, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse
 from typing import AsyncIterator, Optional
 import json
@@ -32,6 +32,8 @@ from application.use_cases.chat import (
 from application.services.conversation_context_service import (
     ConversationContextService,
 )
+from application.services.personalization_service import PersonalizationService
+from api.dependencies.auth import get_user_id
 from domain.value_objects.rag_config import RAGConfig
 from domain.value_objects.generation_config import GenerationConfig
 from domain.enums.llm_mode import LLMMode
@@ -44,8 +46,34 @@ router = APIRouter(prefix="/smart-query", tags=["smart-query"])
 logger = logging.getLogger(__name__)
 
 
+def _build_profile_context(profile) -> str:
+    if not profile:
+        return ""
+    progress = profile.get_academic_progress()
+    parts = []
+    if profile.name:
+        parts.append(f"Họ tên: {profile.name}")
+    if profile.student_id:
+        parts.append(f"Mã sinh viên: {profile.student_id}")
+    if profile.major:
+        parts.append(f"Ngành: {profile.major}")
+    if profile.class_name:
+        parts.append(f"Lớp: {profile.class_name}")
+    if profile.faculty:
+        parts.append(f"Khoa/Viện: {profile.faculty}")
+    if progress.get("current_year"):
+        parts.append(f"Năm học: {progress['current_year']}")
+    if progress.get("current_semester"):
+        parts.append(f"Học kỳ: {progress['current_semester']}")
+    return " | ".join(parts)
+
+
 @router.post("", response_model=SmartQueryResponse)
-async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTasks):
+async def smart_query(
+    request: SmartQueryRequest,
+    background_tasks: BackgroundTasks,
+    x_user_id: str = Depends(get_user_id),
+):
     """Smart query with artifact detection and rich response (non-streaming)."""
     request_id = f"req_{uuid.uuid4()}"
     session_id = request.session_id or f"session_{uuid.uuid4()}"
@@ -80,6 +108,43 @@ async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTa
                     exc,
                 )
 
+        profile_repo = ServiceRegistry.get_student_profile_repository()
+        profile = None
+        personalized_prompt = ""
+        if x_user_id and x_user_id != "anonymous" and profile_repo:
+            try:
+                profile = await profile_repo.get_or_create(x_user_id)
+                personalization = await PersonalizationService(
+                    profile_repo
+                ).get_personalized_context(x_user_id)
+                if personalization.prompt_additions:
+                    personalized_prompt = personalization.prompt_additions
+            except Exception as exc:
+                logger.warning("Failed to load profile for %s: %s", x_user_id, exc)
+
+        user_context = _build_profile_context(profile)
+        system_prompt = SmartQueryWithRAGUseCase.DEFAULT_SYSTEM_PROMPT
+        if user_context:
+            system_prompt += f"\n\nNgữ cảnh người dùng: {user_context}"
+        if personalized_prompt:
+            system_prompt += f"\n{personalized_prompt}"
+
+        user_info = dict(request.user_info or {})
+        if profile and "user_id" not in user_info:
+            user_info["user_id"] = x_user_id
+            if profile.name:
+                user_info.setdefault("name", profile.name)
+            if profile.student_id:
+                user_info.setdefault("student_id", profile.student_id)
+            if profile.class_name:
+                user_info.setdefault("class_name", profile.class_name)
+            if profile.faculty:
+                user_info.setdefault("faculty", profile.faculty)
+            if profile.major:
+                user_info.setdefault("major", profile.major)
+            if profile.email:
+                user_info.setdefault("email", profile.email)
+
         use_case = SmartQueryWithRAGUseCase(
             embedding_service=embedding_service,  # type: ignore
             vector_store_service=vector_store,  # type: ignore
@@ -90,7 +155,7 @@ async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTa
         input_data = SmartQueryInput(
             query=request.query,
             session_id=session_id,
-            user_info=request.user_info,
+            user_info=user_info or None,
             collection=request.collection,
             rag_config=RAGConfig(
                 enabled=request.enable_rag,
@@ -153,7 +218,7 @@ async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTa
             ),
             created_at=result.created_at,
         )
-        user_id = (request.user_info or {}).get("user_id")
+        user_id = (user_info or {}).get("user_id")
         persisted_session_id = session_id
         assistant_message_id = None
         if user_id:
@@ -210,7 +275,10 @@ async def smart_query(request: SmartQueryRequest, background_tasks: BackgroundTa
 
 
 @router.post("/stream")
-async def smart_query_stream(request: SmartQueryRequest):
+async def smart_query_stream(
+    request: SmartQueryRequest,
+    x_user_id: str = Depends(get_user_id),
+):
     """Smart query with streaming response (Server-Sent Events)."""
 
     async def event_generator() -> AsyncIterator[str]:
@@ -261,11 +329,48 @@ async def smart_query_stream(request: SmartQueryRequest):
                         exc,
                     )
 
+            profile_repo = ServiceRegistry.get_student_profile_repository()
+            profile = None
+            personalized_prompt = ""
+            if x_user_id and x_user_id != "anonymous" and profile_repo:
+                try:
+                    profile = await profile_repo.get_or_create(x_user_id)
+                    personalization = await PersonalizationService(
+                        profile_repo
+                    ).get_personalized_context(x_user_id)
+                    if personalization.prompt_additions:
+                        personalized_prompt = personalization.prompt_additions
+                except Exception as exc:
+                    logger.warning("Failed to load profile for %s: %s", x_user_id, exc)
+
+            user_context = _build_profile_context(profile)
+            system_prompt = SmartQueryWithRAGUseCase.DEFAULT_SYSTEM_PROMPT
+            if user_context:
+                system_prompt += f"\n\nNgữ cảnh người dùng: {user_context}"
+            if personalized_prompt:
+                system_prompt += f"\n{personalized_prompt}"
+
+            user_info = dict(request.user_info or {})
+            if profile and "user_id" not in user_info:
+                user_info["user_id"] = x_user_id
+                if profile.name:
+                    user_info.setdefault("name", profile.name)
+                if profile.student_id:
+                    user_info.setdefault("student_id", profile.student_id)
+                if profile.class_name:
+                    user_info.setdefault("class_name", profile.class_name)
+                if profile.faculty:
+                    user_info.setdefault("faculty", profile.faculty)
+                if profile.major:
+                    user_info.setdefault("major", profile.major)
+                if profile.email:
+                    user_info.setdefault("email", profile.email)
+
             # Step 1: RAG retrieval (same as non-streaming)
             input_data = SmartQueryInput(
                 query=request.query,
                 session_id=session_id,
-                user_info=request.user_info,
+                user_info=user_info or None,
                 collection=request.collection or qdrant_config.collection_name,
                 rag_config=RAGConfig(
                     enabled=request.enable_rag,
@@ -333,7 +438,6 @@ async def smart_query_stream(request: SmartQueryRequest):
                 yield f"data: {json.dumps({'artifacts': artifacts_data})}\n\n"
 
             # Build prompt
-            system_prompt = use_case.DEFAULT_SYSTEM_PROMPT
             full_prompt = use_case._build_prompt(
                 query=request.query,
                 context=context,
@@ -353,7 +457,7 @@ async def smart_query_stream(request: SmartQueryRequest):
                 yield f"data: {json.dumps({'content': chunk})}\n\n"
 
             # Send completion signal
-            user_id = (request.user_info or {}).get("user_id")
+            user_id = (user_info or {}).get("user_id")
             persisted_session_id = session_id
             assistant_message_id = None
             if user_id:
@@ -560,12 +664,17 @@ async def _persist_chat_history(
         if not chat_repo:
             return session_id, None, None
 
+        # Only persist if there's at least one message to save
+        if not user_message and not assistant_message:
+            return session_id, None, None
+
         resolved_session_id = session_id
         if resolved_session_id:
             session = await chat_repo.get_session_by_id(resolved_session_id)
         else:
             session = None
 
+        # Only create session if we actually have messages to save
         if not session:
             create_use_case = CreateSessionUseCase(chat_repo)
             created = await create_use_case.execute(

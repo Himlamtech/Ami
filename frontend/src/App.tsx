@@ -20,18 +20,28 @@ const SavedPage = lazy(() => import('@/features/bookmarks/pages/SavedPage'))
 const DocsPage = lazy(() => import('@/features/docs/pages/DocsPage'))
 const LandingPage = lazy(() => import('@/features/landing/pages/LandingPage'))
 
-// Lazy load pages - Admin
+// Lazy load pages - Admin: Overview
 const DashboardPage = lazy(() => import('@/features/admin/pages/DashboardPage'))
+
+// Lazy load pages - Admin: Accounts (System Users)
+const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage'))
+const AdminProfilePage = lazy(() => import('@/features/admin/pages/AdminProfilePage'))
+
+// Lazy load pages - Admin: Students
+const StudentProfilesPage = lazy(() => import('@/features/admin/pages/StudentProfilesPage'))
 const ConversationsPage = lazy(() => import('@/features/admin/pages/ConversationsPage'))
-const FeedbackPage = lazy(() => import('@/features/admin/pages/FeedbackPage'))
-const AnalyticsPage = lazy(() => import('@/features/admin/pages/AnalyticsPage'))
+const ActivityLogPage = lazy(() => import('@/features/admin/pages/ActivityLogPage'))
+
+// Lazy load pages - Admin: Knowledge
 const KnowledgePage = lazy(() => import('@/features/admin/pages/KnowledgePage'))
 const DatasourcesPage = lazy(() => import('@/features/admin/pages/DatasourcesPage'))
 const VectorStorePage = lazy(() => import('@/features/admin/pages/VectorStorePage'))
-const UsersPage = lazy(() => import('@/features/admin/pages/UsersPage'))
-const SettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
 const MonitorTargetsPage = lazy(() => import('@/features/admin/pages/MonitorTargetsPage'))
 const PendingApprovalsPage = lazy(() => import('@/features/admin/pages/PendingApprovalsPage'))
+
+// Lazy load pages - Admin: Infrastructure
+const ModelPage = lazy(() => import('@/features/admin/pages/ModelPage'))
+const SettingsPage = lazy(() => import('@/features/admin/pages/SettingsPage'))
 
 function PageLoader() {
     return (
@@ -43,7 +53,7 @@ function PageLoader() {
 
 function App() {
     return (
-        <BrowserRouter basename="/v2">
+        <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     {/* Auth Routes */}
@@ -74,16 +84,27 @@ function App() {
                             <AdminLayout />
                         </ProtectedRoute>
                     }>
+                        {/* Overview */}
                         <Route index element={<DashboardPage />} />
+
+                        {/* Accounts (System Users) */}
+                        <Route path="users" element={<UsersPage />} />
+                        <Route path="profile" element={<AdminProfilePage />} />
+
+                        {/* Students */}
+                        <Route path="students" element={<StudentProfilesPage />} />
                         <Route path="conversations" element={<ConversationsPage />} />
-                        <Route path="feedback" element={<FeedbackPage />} />
-                        <Route path="analytics" element={<AnalyticsPage />} />
+                        <Route path="activity-log" element={<ActivityLogPage />} />
+
+                        {/* Knowledge */}
                         <Route path="knowledge" element={<KnowledgePage />} />
                         <Route path="datasources" element={<DatasourcesPage />} />
                         <Route path="vector-store" element={<VectorStorePage />} />
                         <Route path="monitor-targets" element={<MonitorTargetsPage />} />
                         <Route path="approvals" element={<PendingApprovalsPage />} />
-                        <Route path="users" element={<UsersPage />} />
+
+                        {/* Infrastructure */}
+                        <Route path="model" element={<ModelPage />} />
                         <Route path="settings" element={<SettingsPage />} />
                     </Route>
 

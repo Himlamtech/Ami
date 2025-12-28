@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Awaitable
 import uuid
 import asyncio
 import logging
@@ -14,6 +14,8 @@ from domain.entities.orchestration_result import (
     OrchestrationMetrics,
 )
 from domain.enums.tool_type import ToolType
+from domain.enums.llm_mode import LLMMode
+from application.interfaces.services.llm_service import ILLMService
 from application.interfaces.services.orchestrator_service import (
     IOrchestratorService,
 )
@@ -115,12 +117,16 @@ class OrchestrateQueryUseCase:
         self,
         orchestrator: IOrchestratorService,
         tool_executor: IToolExecutorService,
+        synthesis_llm: Optional[ILLMService] = None,
     ):
         self.orchestrator = orchestrator
         self.tool_executor = tool_executor
+        self.synthesis_llm = synthesis_llm
 
     async def execute(
-        self, input_data: OrchestrateQueryInput
+        self,
+        input_data: OrchestrateQueryInput,
+        event_handler: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None,
     ) -> OrchestrateQueryOutput:
         """
         Execute query orchestration.
@@ -160,9 +166,14 @@ class OrchestrateQueryUseCase:
             created_at=start_time,
         )
 
+        async def emit(payload: Dict[str, Any]) -> None:
+            if event_handler:
+                await event_handler(payload)
+
         try:
             # 2. Ask orchestrator to decide tools
             decision_start = datetime.now()
+            await emit({"type": "status", "stage": "deciding_tools"})
 
             image_info = {
                 "present": bool(input_data.image_bytes),
@@ -187,25 +198,81 @@ class OrchestrateQueryUseCase:
                 f"Orchestrator decided {len(tools_to_call)} tools: "
                 f"{[t.tool_type.value for t in tools_to_call]}"
             )
+            await emit(
+                {
+                    "type": "tools_decided",
+                    "tools": [
+                        {
+                            "id": tool.id,
+                            "type": tool.tool_type.value,
+                            "reasoning": tool.reasoning,
+                        }
+                        for tool in tools_to_call
+                    ],
+                }
+            )
 
             # 3. Execute tools
             tools_start = datetime.now()
+            await emit({"type": "status", "stage": "executing_tools"})
 
             for tool_call in tools_to_call:
                 result.add_tool_call(tool_call)
+                await emit(
+                    {
+                        "type": "tool_start",
+                        "tool": {
+                            "id": tool_call.id,
+                            "type": tool_call.tool_type.value,
+                            "reasoning": tool_call.reasoning,
+                        },
+                    }
+                )
                 await self._execute_tool(tool_call)
+                await emit(
+                    {
+                        "type": "tool_end",
+                        "tool": {
+                            "id": tool_call.id,
+                            "type": tool_call.tool_type.value,
+                            "reasoning": tool_call.reasoning,
+                            "status": tool_call.execution_status.value,
+                            "error": tool_call.error_message,
+                        },
+                        "result": self._summarize_tool_result(tool_call),
+                    }
+                )
 
             tools_time = int((datetime.now() - tools_start).total_seconds() * 1000)
             result.metrics.tools_execution_time_ms = tools_time
 
             # 4. Synthesize final answer
             synthesis_start = datetime.now()
+            await emit({"type": "status", "stage": "synthesizing"})
 
-            final_answer = await self.orchestrator.synthesize_response(
-                query=input_data.query,
-                tool_results=tools_to_call,
-                user_context=input_data.user_context,
-            )
+            final_answer = ""
+            if event_handler and self.synthesis_llm:
+                prompt = self._build_synthesis_prompt(
+                    query=input_data.query,
+                    tool_results=tools_to_call,
+                    user_context=input_data.user_context,
+                )
+                chunks = []
+                async for chunk in self.synthesis_llm.stream_generate(
+                    prompt=prompt,
+                    mode=LLMMode.QA,
+                ):
+                    if not chunk:
+                        continue
+                    chunks.append(chunk)
+                    await emit({"type": "answer_chunk", "content": chunk})
+                final_answer = "".join(chunks).strip()
+            else:
+                final_answer = await self.orchestrator.synthesize_response(
+                    query=input_data.query,
+                    tool_results=tools_to_call,
+                    user_context=input_data.user_context,
+                )
 
             synthesis_time = int(
                 (datetime.now() - synthesis_start).total_seconds() * 1000
@@ -220,6 +287,14 @@ class OrchestrateQueryUseCase:
                 answer=final_answer,
                 confidence=confidence,
                 sources=sources,
+            )
+            await emit(
+                {
+                    "type": "status",
+                    "stage": "completed",
+                    "confidence": confidence,
+                    "sources": sources,
+                }
             )
 
             # 6. Mark completed
@@ -242,6 +317,7 @@ class OrchestrateQueryUseCase:
                 sources=["error"],
             )
             result.mark_completed()
+            await emit({"type": "error", "error": str(e)})
 
             return OrchestrateQueryOutput(result=result)
 
@@ -356,3 +432,86 @@ class OrchestrateQueryUseCase:
                     sources.append(source)
 
         return sources
+
+    @staticmethod
+    def _build_synthesis_prompt(
+        query: str,
+        tool_results: List[ToolCall],
+        user_context: Dict[str, Any],
+    ) -> str:
+        results_summary = ""
+        for tool in tool_results:
+            if tool.is_success() and tool.execution_result:
+                results_summary += f"\n\n**{tool.tool_type.value}:**\n"
+
+                if tool.tool_type == ToolType.USE_RAG_CONTEXT:
+                    results_summary += tool.execution_result.get("answer", "")
+                    sources = tool.execution_result.get("sources", [])
+                    if sources:
+                        results_summary += f"\nSources: {sources}"
+
+                elif tool.tool_type == ToolType.SEARCH_WEB:
+                    results_summary += tool.execution_result.get("summary", "")
+                    urls = tool.execution_result.get("source_urls", [])
+                    if urls:
+                        results_summary += f"\nURLs: {urls[:3]}"
+
+                elif tool.tool_type == ToolType.ANSWER_DIRECTLY:
+                    results_summary += tool.execution_result.get("answer", "")
+
+                elif tool.tool_type == ToolType.FILL_FORM:
+                    results_summary += tool.execution_result.get("form_markdown", "")
+
+                elif tool.tool_type == ToolType.CLARIFY_QUESTION:
+                    results_summary += tool.execution_result.get(
+                        "clarification_prompt", ""
+                    )
+                    suggestions = tool.execution_result.get("suggestions", [])
+                    if suggestions:
+                        results_summary += f"\nGợi ý: {suggestions}"
+
+        if not results_summary:
+            return "Xin lỗi, không thể xử lý câu hỏi của bạn. Vui lòng thử lại."
+
+        return f"""Based on the tool results below, provide a final answer to the user's question.
+
+**User Question:** {query}
+
+**User Context:**
+- Name: {user_context.get('name', 'Unknown')}
+- Student ID: {user_context.get('student_id', 'Unknown')}
+- Major: {user_context.get('major', 'Unknown')}
+- Year: {user_context.get('year', 'Unknown')}
+- Class: {user_context.get('class_name', 'Unknown')}
+- Faculty: {user_context.get('faculty', 'Unknown')}
+- Language preference: {user_context.get('language', 'vi')}
+
+**Tool Results:**
+{results_summary}
+
+**Instructions:**
+1. Combine information from all tools coherently
+2. Use the user's preferred language (Vietnamese if 'vi')
+3. If form was generated, include it in the response
+4. Add relevant citations if available
+5. Be helpful and professional
+
+**Your Final Answer:**"""
+
+    @staticmethod
+    def _summarize_tool_result(tool_call: ToolCall) -> Optional[Dict[str, Any]]:
+        if not tool_call.execution_result:
+            return None
+
+        result = tool_call.execution_result
+        if tool_call.tool_type == ToolType.USE_RAG_CONTEXT:
+            return {"sources": result.get("sources", [])}
+        if tool_call.tool_type == ToolType.SEARCH_WEB:
+            return {"source_urls": result.get("source_urls", [])}
+        if tool_call.tool_type == ToolType.FILL_FORM:
+            return {"form_title": result.get("form_title")}
+        if tool_call.tool_type == ToolType.CLARIFY_QUESTION:
+            return {"suggestions": result.get("suggestions", [])}
+        if tool_call.tool_type == ToolType.ANSWER_DIRECTLY:
+            return {"reasoning": result.get("reasoning")}
+        return {"result": result}

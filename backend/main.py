@@ -5,20 +5,48 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
+from datetime import datetime
 
 from infrastructure.persistence.mongodb.client import (
     get_mongodb_client,
     get_database,
 )
 from config.services import ServiceRegistry
-from api.middleware import LoggingMiddleware, admin_only_middleware
-from api.v1 import chat_api_router, admin_api_router, auth_api_router
-from api.v1.admin.config import router as config_router
+from config import app_config, setup_logging
+from api.middleware import (
+    LoggingMiddleware,
+    ami_api_key_middleware,
+    audit_log_middleware,
+)
+from api.v1 import chat_api_router, admin_api_router, auth_api_router, logs_api_router
 from application.use_cases.monitor_targets.monitor_scheduler import (
     register_monitor_targets_job,
 )
+from application.services.password_service import hash_password
 
+setup_logging()
 logger = logging.getLogger(__name__)
+
+
+async def ensure_default_admin(db):
+    """Create default admin user if none exists."""
+    existing_admin = await db.users.find_one({"role": "admin"})
+    if existing_admin:
+        return
+
+    now = datetime.now()
+    user_doc = {
+        "username": app_config.default_admin_username,
+        "email": app_config.default_admin_email,
+        "full_name": "AMI Admin",
+        "role": "admin",
+        "hashed_password": hash_password(app_config.default_admin_password),
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.users.insert_one(user_doc)
+    logger.info("✅ Default admin user created")
 
 
 @asynccontextmanager
@@ -27,6 +55,7 @@ async def lifespan(app: FastAPI):
     try:
         db = await get_database()
         ServiceRegistry.initialize(db)
+        await ensure_default_admin(db)
         await register_monitor_targets_job()
         logger.info("✅ Application initialized")
     except Exception as e:
@@ -69,6 +98,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(LoggingMiddleware)
+app.middleware("http")(ami_api_key_middleware)
+app.middleware("http")(audit_log_middleware)
 
 
 @app.exception_handler(RequestValidationError)
@@ -88,8 +119,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 API_V1 = "/api/v1"
 app.include_router(chat_api_router, prefix=API_V1, tags=["chat"])
 app.include_router(auth_api_router, prefix=API_V1, tags=["auth"])
+app.include_router(logs_api_router, prefix=API_V1, tags=["logs"])
 app.include_router(admin_api_router, prefix=API_V1, tags=["admin"])
-app.include_router(config_router, prefix=API_V1, tags=["admin-config"])
 
 
 @app.get("/health")

@@ -1,268 +1,327 @@
-import { useState, useCallback, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatApi } from '../api/chatApi'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { chatApi, type OrchestrateResponse } from '../api/chatApi'
 import { generateId } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
-import type { Message, Attachment, SuggestedQuestion, ThinkingMode, Source } from '@/types/chat'
+import type { Message, Attachment, SuggestedQuestion, ThinkingMode, Source, ToolProgress } from '@/types/chat'
 
-const MODE_CONFIG: Record<ThinkingMode, { temperature: number; maxTokens: number }> = {
-    fast: { temperature: 0.3, maxTokens: 1024 },
-    thinking: { temperature: 0.8, maxTokens: 4096 },
+const TOOL_LABELS: Record<string, string> = {
+    use_rag_context: 'dùng RAG',
+    search_web: 'search web',
+    answer_directly: 'trả lời trực tiếp',
+    fill_form: 'tạo biểu mẫu',
+    clarify_question: 'làm rõ câu hỏi',
+    analyze_image: 'phân tích ảnh',
+}
+
+const extractSources = (response: OrchestrateResponse): Source[] | undefined => {
+    const tools = response.tools ?? []
+    const ragTool = tools.find((tool) => tool.type === 'use_rag_context')
+    const rawSources = ragTool?.result?.sources
+    if (!Array.isArray(rawSources) || rawSources.length === 0) {
+        return undefined
+    }
+    return rawSources.map((source, idx) => ({
+        id: source.id || source.document_id || `source-${idx}`,
+        title: source.title || 'Unknown',
+        url: source.url,
+        score: source.score ?? source.relevance_score ?? 0,
+    }))
 }
 
 export function useChat(sessionId?: string) {
     const queryClient = useQueryClient()
+    const navigate = useNavigate()
     const [messages, setMessages] = useState<Message[]>([])
     const [isStreaming, setIsStreaming] = useState(false)
     const [suggestions, setSuggestions] = useState<SuggestedQuestion[]>([])
+    const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(sessionId)
+    const [isSending, setIsSending] = useState(false)
+    const streamCancelRef = useRef<(() => void) | null>(null)
     const user = useAuthStore((state) => state.user)
 
-    // Load conversation
     const { data: conversationData, isLoading: isLoadingConversation } = useQuery({
         queryKey: ['conversation', sessionId],
         queryFn: () => chatApi.getConversation(sessionId!),
         enabled: !!sessionId,
     })
 
-    // Clear messages when sessionId changes
     useEffect(() => {
         setMessages([])
+        setCurrentSessionId(sessionId)
     }, [sessionId])
 
-    // Update messages when conversation data changes
     useEffect(() => {
         if (!conversationData?.messages) return
         setMessages((prev) => {
-            const hasStreaming = prev.some((msg) => msg.isStreaming)
-            if (hasStreaming) {
+            const hasPending = prev.some((msg) => msg.isStreaming)
+            if (hasPending) {
                 return prev
             }
             if (prev.length === 0) {
                 return conversationData.messages
             }
-            const prevById = new Map(prev.map((msg) => [msg.id, msg]))
-            const merged = conversationData.messages.map((message) => {
-                const existing = prevById.get(message.id)
-                if (!existing) {
-                    return message
-                }
-                return {
-                    ...existing,
-                    ...message,
-                    sources: message.sources || existing.sources,
-                    feedback: message.feedback || existing.feedback,
-                }
-            })
-            const serverIds = new Set(conversationData.messages.map((m) => m.id))
-            const remaining = prev.filter((msg) => !serverIds.has(msg.id))
-            return [...merged, ...remaining]
+            const serverIds = new Set(conversationData.messages.map((msg) => msg.id))
+            const tempMessages = prev.filter(
+                (msg) => !serverIds.has(msg.id) && msg.id.startsWith('temp-')
+            )
+            return [...conversationData.messages, ...tempMessages]
         })
     }, [conversationData])
 
-    // (Legacy) Send message mutation - kept for compatibility
-    const sendMessageMutation = useMutation({
-        mutationFn: chatApi.sendMessage,
-        onSuccess: (data) => {
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg.isStreaming
-                        ? { ...data.message, isStreaming: false }
-                        : msg
-                )
-            )
-            setSuggestions(data.suggestions)
-        },
-    })
+    const appendStep = useCallback((messageId: string, step: string) => {
+        setMessages((prev) =>
+            prev.map((msg) => {
+                if (msg.id !== messageId) return msg
+                const currentSteps = msg.steps ?? []
+                const lastStep = currentSteps[currentSteps.length - 1]
+                if (lastStep === step) return msg
+                return { ...msg, steps: [...currentSteps, step] }
+            })
+        )
+    }, [])
 
-    const persistMessage = useCallback(
-        async (
-            tempId: string,
-            role: 'user' | 'assistant',
-            content: string,
-            metadata?: Record<string, any>
-        ) => {
-            if (!sessionId) return
-            try {
-                const saved = await chatApi.logMessage({
-                    sessionId,
-                    role,
-                    content,
-                    metadata,
-                })
-                setMessages((prev) =>
-                    prev.map((msg) =>
-                        msg.id === tempId
-                            ? {
-                                ...msg,
-                                ...saved,
-                                isStreaming: false,
-                            }
-                            : msg
-                    )
-                )
-            } catch (error) {
-                console.error(`[useChat] Failed to log ${role} message`, error)
-            }
-        },
-        [sessionId]
-    )
-
-    // Send message with streaming
     const sendMessage = useCallback(
-        async (content: string, attachments?: Attachment[], mode: ThinkingMode = 'fast') => {
-            if (!sessionId) {
-                console.warn('[useChat] Cannot send message without a session')
-                return false
-            }
-            const { temperature, maxTokens } = MODE_CONFIG[mode] ?? MODE_CONFIG.fast
+        async (content: string, attachments?: Attachment[], _mode: ThinkingMode = 'fast') => {
+            if (!content.trim()) return false
 
-            // Check for image attachments
-            const imageAttachment = attachments && attachments.length > 0
-                ? attachments.find(a => a.type === 'image')
-                : undefined
+            const imageAttachment =
+                attachments && attachments.length > 0
+                    ? attachments.find((attachment) => attachment.type === 'image')
+                    : undefined
 
             let queryContent = content
 
-            // If there's an image, process it first
             if (imageAttachment) {
                 try {
-                    // Fetch the image file from the blob URL
                     const response = await fetch(imageAttachment.url)
                     const blob = await response.blob()
                     const file = new File([blob], imageAttachment.name, { type: 'image/jpeg' })
-
-                    // Send image query
                     const imageResult = await chatApi.sendImageQuery(file, content)
-
-                    // Enhance query with image analysis
                     queryContent = `[Image analyzed: ${imageResult.description}]\n${content}\n\nImage details: ${imageResult.response}`
                 } catch (error) {
-                    console.error('Image processing error:', error)
+                    console.error('[useChat] Image processing error', error)
                 }
             }
 
-            // Add user message and streaming placeholder
             const userMessage: Message = {
-                id: generateId(),
+                id: `temp-${generateId()}`,
                 role: 'user',
                 content,
                 timestamp: new Date().toISOString(),
                 attachments,
             }
-            const assistantId = generateId()
+            const assistantId = `temp-${generateId()}`
             const streamingMessage: Message = {
                 id: assistantId,
                 role: 'assistant',
                 content: '',
                 timestamp: new Date().toISOString(),
                 isStreaming: true,
+                steps: [],
             }
-            setMessages((prev) => [...prev, userMessage, streamingMessage])
-            persistMessage(userMessage.id, 'user', content)
 
+            setMessages((prev) => [...prev, userMessage, streamingMessage])
             setIsStreaming(true)
             setSuggestions([])
+            setIsSending(true)
 
-            let fullContent = ''
-            let rafId: number | null = null
-            let pendingUpdate = false
-            let latestSources: Source[] = []
-
-            const updateContent = (content: string) => {
-                fullContent = content
-
-                if (!pendingUpdate) {
-                    pendingUpdate = true
-                    rafId = requestAnimationFrame(() => {
-                        setMessages((prev) =>
-                            prev.map((msg) =>
-                                msg.id === assistantId
-                                    ? { ...msg, content: fullContent }
-                                    : msg
-                            )
-                        )
-                        pendingUpdate = false
-                    })
-                }
-            }
-
-            // Use streaming API
-            console.log('[useChat] Starting stream for:', queryContent)
-            chatApi.smartQueryStream(
-                {
-                    query: queryContent,
-                    session_id: sessionId,
-                    temperature,
-                    max_tokens: maxTokens,
-                },
-                (chunk: string) => {
-                    console.log('[useChat] Received chunk:', chunk)
-                    try {
-                        const data = JSON.parse(chunk)
-                        console.log('[useChat] Parsed data:', data)
-                        if (data.content) {
-                            const newContent = fullContent + data.content
-                            console.log('[useChat] New accumulated:', newContent)
-                            updateContent(newContent)
-                        }
-                        if (data.sources) {
-                            console.log('[useChat] Received sources:', data.sources.length)
-                            // Map backend sources to frontend Source format
-                            const mappedSources = data.sources.map((s: any, idx: number) => ({
-                                id: s.document_id || `source-${idx}`,
-                                title: s.title || 'Unknown',
-                                score: s.relevance_score,
-                                url: s.url
-                            }))
-                            latestSources = mappedSources
-                            setMessages((prev) =>
-                                prev.map((msg) =>
-                                    msg.id === assistantId
-                                        ? { ...msg, sources: mappedSources }
-                                        : msg
+            try {
+                const cancel = chatApi.orchestrateStream(
+                    {
+                        query: queryContent,
+                        session_id: currentSessionId,
+                        user_id: user?.id,
+                    },
+                    (chunk: string) => {
+                        try {
+                            const data = JSON.parse(chunk)
+                            if (data.type === 'status') {
+                                if (data.stage === 'deciding_tools') {
+                                    appendStep(assistantId, 'Đang suy luận')
+                                }
+                                if (data.stage === 'synthesizing') {
+                                    appendStep(assistantId, 'Đang sinh câu trả lời')
+                                }
+                                if (data.stage === 'completed') {
+                                    appendStep(assistantId, 'Hoàn tất')
+                                }
+                                setMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === assistantId
+                                            ? { ...msg, toolStage: data.stage }
+                                            : msg
+                                    )
                                 )
-                            )
-                        }
-                        if (data.suggestions) {
-                            setSuggestions(data.suggestions)
-                        }
-                    } catch (e) {
-                        console.error('[useChat] JSON parse failed, treating as plain text:', e)
-                        // Plain text chunk
-                        const newContent = fullContent + chunk
-                        updateContent(newContent)
-                    }
-                },
-                () => {
-                    // Cancel any pending RAF
-                    if (rafId !== null) {
-                        cancelAnimationFrame(rafId)
-                    }
+                                return
+                            }
 
-                    // Final update with complete content
-                    setIsStreaming(false)
-                    setMessages((prev) =>
-                        prev.map((msg) =>
-                            msg.id === assistantId
-                                ? { ...msg, content: fullContent, isStreaming: false }
-                                : msg
-                        )
+                            if (data.type === 'tools_decided' && Array.isArray(data.tools)) {
+                                const tools: ToolProgress[] = data.tools.map((tool: any) => ({
+                                    id: tool.id,
+                                    type: tool.type,
+                                    status: 'pending',
+                                    reasoning: tool.reasoning,
+                                }))
+                                setMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === assistantId
+                                            ? { ...msg, tools }
+                                            : msg
+                                    )
+                                )
+                                return
+                            }
+
+                            if (data.type === 'tool_start' && data.tool) {
+                                const label = TOOL_LABELS[data.tool.type] || data.tool.type
+                                appendStep(assistantId, `Đang ${label}`)
+                                setMessages((prev) =>
+                                    prev.map((msg) => {
+                                        if (msg.id !== assistantId) return msg
+                                        const updatedTools = (msg.tools || []).map((tool) =>
+                                            tool.id === data.tool.id
+                                                ? { ...tool, status: 'running' }
+                                                : tool
+                                        )
+                                        return { ...msg, tools: updatedTools }
+                                    })
+                                )
+                                return
+                            }
+
+                            if (data.type === 'tool_end' && data.tool) {
+                                appendStep(assistantId, 'Đang suy luận')
+                                setMessages((prev) =>
+                                    prev.map((msg) => {
+                                        if (msg.id !== assistantId) return msg
+                                        const updatedTools = (msg.tools || []).map((tool) =>
+                                            tool.id === data.tool.id
+                                                ? {
+                                                    ...tool,
+                                                    status: data.tool.status,
+                                                    error: data.tool.error,
+                                                }
+                                                : tool
+                                        )
+                                        const sources = Array.isArray(data.result?.sources)
+                                            ? data.result.sources.map((source: any, idx: number) => ({
+                                                  id: source.id || source.document_id || `source-${idx}`,
+                                                  title: source.title || 'Unknown',
+                                                  url: source.url,
+                                                  score: source.score ?? source.relevance_score ?? 0,
+                                              }))
+                                            : msg.sources
+                                        const webSources = Array.isArray(data.result?.source_urls)
+                                            ? data.result.source_urls
+                                            : msg.webSources
+                                        return { ...msg, tools: updatedTools, sources, webSources }
+                                    })
+                                )
+                                return
+                            }
+
+                            if (data.type === 'answer_chunk' && data.content) {
+                                setMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === assistantId
+                                            ? {
+                                                  ...msg,
+                                                  content: `${msg.content || ''}${data.content}`,
+                                              }
+                                            : msg
+                                    )
+                                )
+                                return
+                            }
+
+                            if (data.type === 'final') {
+                                const nextSessionId = data.session_id || currentSessionId
+                                if (!currentSessionId && nextSessionId) {
+                                    setCurrentSessionId(nextSessionId)
+                                    navigate(`/chat/${nextSessionId}`, { replace: true })
+                                }
+                                const sources = extractSources({
+                                    tools: data.tools,
+                                } as OrchestrateResponse)
+                                appendStep(assistantId, 'Hoàn tất')
+                                setMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === assistantId
+                                            ? {
+                                                  ...msg,
+                                                  content: data.answer || msg.content || '',
+                                                  isStreaming: false,
+                                                  sources: sources || msg.sources,
+                                                  toolStage: 'completed',
+                                              }
+                                            : msg
+                                    )
+                                )
+                                setIsStreaming(false)
+                                setIsSending(false)
+                                queryClient.invalidateQueries({ queryKey: ['sessions'] })
+                                if (nextSessionId) {
+                                    queryClient.invalidateQueries({ queryKey: ['conversation', nextSessionId] })
+                                }
+                                return
+                            }
+
+                            if (data.type === 'error') {
+                                appendStep(assistantId, 'Hoàn tất')
+                                setMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === assistantId
+                                            ? {
+                                                  ...msg,
+                                                content: 'Xin lỗi, hệ thống đang bận. Vui lòng thử lại.',
+                                                isStreaming: false,
+                                                toolStage: 'completed',
+                                            }
+                                            : msg
+                                    )
+                                )
+                                setIsStreaming(false)
+                                setIsSending(false)
+                            }
+                        } catch (error) {
+                            console.error('[useChat] Stream parse failed', error)
+                        }
+                    },
+                    () => {
+                        setIsStreaming(false)
+                        setIsSending(false)
+                    }
+                )
+                streamCancelRef.current = cancel
+                return true
+            } catch (error) {
+                console.error('[useChat] Orchestrate failed', error)
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === assistantId
+                            ? {
+                                ...msg,
+                                content: 'Xin lỗi, hệ thống đang bận. Vui lòng thử lại.',
+                                isStreaming: false,
+                            }
+                            : msg
                     )
-                    const metadata = latestSources.length ? { sources: latestSources } : undefined
-                    persistMessage(assistantId, 'assistant', fullContent, metadata)
-                    // Invalidate conversations list
-                    queryClient.invalidateQueries({ queryKey: ['sessions'] })
-                    queryClient.invalidateQueries({ queryKey: ['conversation', sessionId] })
-                }
-            )
-
-            return true
+                )
+                setIsStreaming(false)
+                setIsSending(false)
+                return false
+            }
         },
-        [sessionId, queryClient, persistMessage]
+        [appendStep, currentSessionId, navigate, queryClient, user?.id]
     )
 
-    // Stop streaming
     const stopStreaming = useCallback(() => {
+        if (streamCancelRef.current) {
+            streamCancelRef.current()
+            streamCancelRef.current = null
+        }
         setIsStreaming(false)
         setMessages((prev) =>
             prev.map((msg) =>
@@ -273,25 +332,33 @@ export function useChat(sessionId?: string) {
         )
     }, [])
 
-    // Submit feedback
     const submitFeedback = useCallback(
         async (messageId: string, type: 'helpful' | 'not_helpful', comment?: string) => {
-            if (!sessionId || !user?.id) return
-            await chatApi.submitFeedback(messageId, { type, comment, sessionId, userId: user.id })
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg.id === messageId
-                        ? { ...msg, feedback: { type, comment } }
-                        : msg
+            if (!currentSessionId || !user?.id) return
+            try {
+                await chatApi.submitFeedback({
+                    sessionId: currentSessionId,
+                    messageId,
+                    userId: user.id,
+                    feedbackType: type,
+                })
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === messageId
+                            ? { ...msg, feedback: { type, comment } }
+                            : msg
+                    )
                 )
-            )
+            } catch (error) {
+                console.error('[useChat] Feedback error', error)
+            }
         },
-        [sessionId, user]
+        [currentSessionId, user?.id]
     )
 
     return {
         messages,
-        isLoading: isLoadingConversation || sendMessageMutation.isPending,
+        isLoading: isLoadingConversation || isSending,
         isStreaming,
         suggestions,
         sendMessage,

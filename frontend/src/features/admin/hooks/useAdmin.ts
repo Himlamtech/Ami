@@ -8,27 +8,11 @@ export function useAnalytics(period?: string) {
         staleTime: 1000 * 60 * 2, // 2 minutes
     })
 
-    const analyticsQuery = useQuery({
-        queryKey: ['admin', 'analytics', period],
-        queryFn: () => adminApi.getAnalytics({ period }),
-        staleTime: 1000 * 60 * 5,
-    })
-
-    const costsQuery = useQuery({
-        queryKey: ['admin', 'costs', period],
-        queryFn: () => adminApi.getCostBreakdown({ period }),
-        staleTime: 1000 * 60 * 5,
-    })
-
     return {
         dashboard: dashboardQuery.data,
-        analytics: analyticsQuery.data,
-        costs: costsQuery.data,
-        isLoading: dashboardQuery.isLoading || analyticsQuery.isLoading,
+        isLoading: dashboardQuery.isLoading,
         refetch: () => {
             dashboardQuery.refetch()
-            analyticsQuery.refetch()
-            costsQuery.refetch()
         },
     }
 }

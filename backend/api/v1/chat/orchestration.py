@@ -1,12 +1,15 @@
 """Orchestration routes for query routing with LLM function calling."""
 
 import base64
+import asyncio
+import json
 import logging
 import uuid
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi.responses import StreamingResponse
 
 from application.use_cases.orchestration.orchestrate_query import (
     OrchestrateQueryUseCase,
@@ -23,6 +26,7 @@ from application.use_cases.chat import (
     SendMessageUseCase,
     SendMessageInput,
 )
+from api.dependencies.auth import get_user_id
 from domain.enums.chat_message_role import ChatMessageRole
 from domain.enums.llm_mode import LLMMode
 from config import ServiceRegistry
@@ -72,8 +76,29 @@ class OrchestrationResponse:
         }
 
 
+def _build_user_context(profile) -> dict:
+    if not profile:
+        return {}
+    progress = profile.get_academic_progress()
+    context = {
+        "name": profile.name,
+        "student_id": profile.student_id,
+        "major": profile.major,
+        "year": progress.get("current_year") or profile.year,
+        "class_name": profile.class_name,
+        "faculty": profile.faculty,
+        "language": profile.preferred_language or "vi",
+        "email": profile.email,
+    }
+    return {key: value for key, value in context.items() if value}
+
+
 @router.post("/orchestrate", response_model=dict)
-async def orchestrate_query(request_data: dict, background_tasks: BackgroundTasks):
+async def orchestrate_query(
+    request_data: dict,
+    background_tasks: BackgroundTasks,
+    x_user_id: str = Depends(get_user_id),
+):
     """
     Orchestrate a query using LLM function calling.
 
@@ -121,7 +146,8 @@ async def orchestrate_query(request_data: dict, background_tasks: BackgroundTask
         query = request_data.get("query", "").strip()
         if not query:
             raise HTTPException(status_code=400, detail="Query cannot be empty")
-        user_id = request_data.get("user_id")
+        header_user_id = x_user_id if x_user_id != "anonymous" else None
+        user_id = request_data.get("user_id") or header_user_id
         vector_results = request_data.get("vector_results", {})
         user_context = request_data.get("user_context", {})
         conversation_history = request_data.get("conversation_history", [])
@@ -129,8 +155,18 @@ async def orchestrate_query(request_data: dict, background_tasks: BackgroundTask
         image_base64 = request_data.get("image_base64")
         image_format = request_data.get("image_format")
 
-        if user_id and not user_context:
-            user_context = {"user_id": user_id}
+        if user_id:
+            profile_repo = ServiceRegistry.get_student_profile_repository()
+            profile = None
+            if profile_repo:
+                try:
+                    profile = await profile_repo.get_or_create(user_id)
+                except Exception as exc:
+                    logger.warning("Failed to load profile for %s: %s", user_id, exc)
+            profile_context = _build_user_context(profile)
+            if profile_context:
+                user_context = {**profile_context, **user_context}
+            user_context.setdefault("user_id", user_id)
 
         # Get use case
         use_case = ServiceRegistry.get_orchestrate_query_use_case()
@@ -174,11 +210,21 @@ async def orchestrate_query(request_data: dict, background_tasks: BackgroundTask
         persisted_session_id = session_id
         assistant_message_id = None
         if user_id:
+            tools_summary = _build_tool_summary(result.tools_called)
+            rag_sources = _extract_rag_sources(result.tools_called)
+            web_sources = _extract_web_sources(result.tools_called)
             persisted_session_id, _, assistant_message_id = await _persist_chat_history(
                 user_id=user_id,
                 session_id=session_id,
                 user_message=query,
                 assistant_message=result.final_answer,
+                assistant_metadata={
+                    "source": "orchestrate",
+                    "request_id": request_id,
+                    "tools": tools_summary,
+                    "sources": rag_sources,
+                    "web_sources": web_sources,
+                },
                 request_id=request_id,
             )
 
@@ -262,6 +308,176 @@ async def orchestrate_query(request_data: dict, background_tasks: BackgroundTask
         )
 
 
+@router.post("/orchestrate/stream")
+async def orchestrate_query_stream(
+    request_data: dict,
+    background_tasks: BackgroundTasks,
+    x_user_id: str = Depends(get_user_id),
+):
+    request_id = f"req_{uuid.uuid4()}"
+    session_id = request_data.get("session_id") or f"session_{uuid.uuid4()}"
+    message_id = request_data.get("message_id") or f"msg_{uuid.uuid4()}"
+
+    query = request_data.get("query", "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    header_user_id = x_user_id if x_user_id != "anonymous" else None
+    user_id = request_data.get("user_id") or header_user_id
+    vector_results = request_data.get("vector_results", {})
+    user_context = request_data.get("user_context", {})
+    conversation_history = request_data.get("conversation_history", [])
+    image_url = request_data.get("image_url")
+    image_base64 = request_data.get("image_base64")
+    image_format = request_data.get("image_format")
+
+    if user_id:
+        profile_repo = ServiceRegistry.get_student_profile_repository()
+        profile = None
+        if profile_repo:
+            try:
+                profile = await profile_repo.get_or_create(user_id)
+            except Exception as exc:
+                logger.warning("Failed to load profile for %s: %s", user_id, exc)
+        profile_context = _build_user_context(profile)
+        if profile_context:
+            user_context = {**profile_context, **user_context}
+        user_context.setdefault("user_id", user_id)
+
+    use_case = ServiceRegistry.get_orchestrate_query_use_case()
+    if not use_case:
+        raise HTTPException(
+            status_code=500,
+            detail="Orchestration service not initialized",
+        )
+
+    image_bytes = None
+    if image_url or image_base64:
+        image_bytes, image_format = await _load_image_payload(
+            image_url=image_url,
+            image_base64=image_base64,
+            image_format=image_format,
+        )
+
+    input_data = OrchestrateQueryInput(
+        query=query,
+        session_id=session_id,
+        message_id=message_id,
+        vector_results=vector_results,
+        user_context=user_context,
+        conversation_history=conversation_history,
+        image_bytes=image_bytes,
+        image_format=image_format,
+    )
+
+    queue: asyncio.Queue[dict] = asyncio.Queue()
+
+    async def emit(payload: dict) -> None:
+        payload.setdefault("request_id", request_id)
+        payload.setdefault("session_id", session_id)
+        payload.setdefault("message_id", message_id)
+        await queue.put(payload)
+
+    async def run_orchestration() -> None:
+        try:
+            await emit({"type": "status", "stage": "starting"})
+            output = await use_case.execute(input_data, event_handler=emit)
+            result = output.result
+
+            primary_tool = None
+            successful_tools = result.get_successful_tools()
+            if successful_tools:
+                primary_tool = successful_tools[0].tool_type.value
+            elif result.tools_called:
+                primary_tool = result.tools_called[0].tool_type.value
+
+            persisted_session_id = session_id
+            assistant_message_id = None
+            if user_id:
+                tools_summary = _build_tool_summary(result.tools_called)
+                rag_sources = _extract_rag_sources(result.tools_called)
+                web_sources = _extract_web_sources(result.tools_called)
+                persisted_session_id, _, assistant_message_id = (
+                    await _persist_chat_history(
+                        user_id=user_id,
+                        session_id=session_id,
+                        user_message=query,
+                        assistant_message=result.final_answer,
+                        assistant_metadata={
+                            "source": "orchestrate",
+                            "request_id": request_id,
+                            "tools": tools_summary,
+                            "sources": rag_sources,
+                            "web_sources": web_sources,
+                        },
+                        request_id=request_id,
+                    )
+                )
+
+            final_payload = {
+                "type": "final",
+                "answer": result.final_answer,
+                "session_id": persisted_session_id,
+                "message_id": assistant_message_id or message_id,
+                "primary_tool": primary_tool,
+                "tools": [
+                    {
+                        "id": tc.id,
+                        "type": tc.tool_type.value,
+                        "status": tc.execution_status.value,
+                        "reasoning": tc.reasoning,
+                        "result": tc.execution_result,
+                        "error": tc.error_message,
+                    }
+                    for tc in result.tools_called
+                ],
+                "metrics": (
+                    {
+                        "decision_time_ms": result.metrics.orchestrator_decision_time_ms,
+                        "tool_execution_time_ms": result.metrics.tools_execution_time_ms,
+                        "synthesis_time_ms": result.metrics.synthesis_time_ms,
+                        "total_time_ms": result.metrics.total_time_ms,
+                    }
+                    if result.metrics
+                    else None
+                ),
+                "success": not result.any_tool_failed(),
+                "error": (
+                    None if not result.any_tool_failed() else "tool_execution_failed"
+                ),
+            }
+
+            await emit(final_payload)
+
+            if user_id or persisted_session_id:
+                background_tasks.add_task(
+                    _run_profile_memory_extraction,
+                    user_id=user_id,
+                    session_id=persisted_session_id,
+                    user_message=query,
+                    assistant_message=result.final_answer,
+                    conversation_history=conversation_history,
+                )
+
+        except Exception as exc:
+            logger.error("Orchestrate stream error: %s", exc, exc_info=True)
+            await emit({"type": "error", "error": str(exc)})
+
+    async def event_generator():
+        task = asyncio.create_task(run_orchestration())
+        try:
+            while True:
+                payload = await queue.get()
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                if payload.get("type") in ("final", "error"):
+                    yield "data: [DONE]\n\n"
+                    break
+        finally:
+            task.cancel()
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 async def _load_image_payload(
     image_url: Optional[str],
     image_base64: Optional[str],
@@ -339,11 +555,49 @@ async def _run_profile_memory_extraction(
         logger.warning("Profile memory extraction failed: %s", exc)
 
 
+def _build_tool_summary(tool_calls) -> list:
+    summary = []
+    for tool_call in tool_calls or []:
+        summary.append(
+            {
+                "id": tool_call.id,
+                "type": tool_call.tool_type.value,
+                "status": tool_call.execution_status.value,
+                "reasoning": tool_call.reasoning,
+                "error": tool_call.error_message,
+            }
+        )
+    return summary
+
+
+def _extract_rag_sources(tool_calls) -> list:
+    for tool_call in tool_calls or []:
+        if tool_call.tool_type.value != "use_rag_context":
+            continue
+        result = tool_call.execution_result or {}
+        sources = result.get("sources", [])
+        if isinstance(sources, list):
+            return sources
+    return []
+
+
+def _extract_web_sources(tool_calls) -> list:
+    for tool_call in tool_calls or []:
+        if tool_call.tool_type.value != "search_web":
+            continue
+        result = tool_call.execution_result or {}
+        sources = result.get("source_urls", [])
+        if isinstance(sources, list):
+            return sources
+    return []
+
+
 async def _persist_chat_history(
     user_id: str,
     session_id: str,
     user_message: str,
     assistant_message: str,
+    assistant_metadata: Optional[dict],
     request_id: str,
 ) -> tuple[str, Optional[str], Optional[str]]:
     try:
@@ -351,8 +605,13 @@ async def _persist_chat_history(
         if not chat_repo:
             return session_id, None, None
 
+        # Only persist if there are messages to save
+        if not user_message and not assistant_message:
+            return session_id, None, None
+
         session = await chat_repo.get_session_by_id(session_id)
         if not session:
+            # Create session only when we have messages
             create_use_case = CreateSessionUseCase(chat_repo)
             created = await create_use_case.execute(
                 CreateSessionInput(
@@ -382,7 +641,8 @@ async def _persist_chat_history(
                     session_id=session_id,
                     role=ChatMessageRole.ASSISTANT,
                     content=assistant_message,
-                    metadata={"source": "orchestrate", "request_id": request_id},
+                    metadata=assistant_metadata
+                    or {"source": "orchestrate", "request_id": request_id},
                 )
             )
             assistant_message_id = result.message.id

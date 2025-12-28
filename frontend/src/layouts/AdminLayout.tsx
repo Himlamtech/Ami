@@ -3,8 +3,6 @@ import { useState } from 'react'
 import {
     LayoutDashboard,
     MessageSquare,
-    Star,
-    BarChart3,
     BookOpen,
     Users,
     Settings,
@@ -19,6 +17,11 @@ import {
     ArrowLeft,
     AlarmClock,
     ClipboardCheck,
+    Cpu,
+    UserCircle,
+    GraduationCap,
+    History,
+    UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -38,9 +41,21 @@ const navGroups = [
         title: 'Overview',
         items: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+        ],
+    },
+    {
+        title: 'Accounts',
+        items: [
+            { icon: UserCog, label: 'System Users', path: '/admin/users' },
+            { icon: UserCircle, label: 'My Profile', path: '/admin/profile' },
+        ],
+    },
+    {
+        title: 'Students',
+        items: [
+            { icon: GraduationCap, label: 'Student Profiles', path: '/admin/students' },
             { icon: MessageSquare, label: 'Conversations', path: '/admin/conversations' },
-            { icon: Star, label: 'Feedback', path: '/admin/feedback' },
-            { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
+            { icon: History, label: 'Activity Log', path: '/admin/activity-log' },
         ],
     },
     {
@@ -51,7 +66,13 @@ const navGroups = [
             { icon: Layers, label: 'Vector Store', path: '/admin/vector-store' },
             { icon: AlarmClock, label: 'Monitor Targets', path: '/admin/monitor-targets' },
             { icon: ClipboardCheck, label: 'Approvals', path: '/admin/approvals' },
-            { icon: Users, label: 'Users', path: '/admin/users' },
+        ],
+    },
+    {
+        title: 'Infra',
+        items: [
+            { icon: Cpu, label: 'Model', path: '/admin/model' },
+            { icon: Settings, label: 'Settings', path: '/admin/settings' },
         ],
     },
 ]
@@ -131,14 +152,14 @@ export default function AdminLayout() {
 
                 <Separator className="opacity-50" />
 
-                {/* Settings */}
+                {/* Back to Chat */}
                 <div className="px-2 py-3">
                     <Button
                         asChild
                         variant="ghost"
                         size="sm"
                         className={cn(
-                            'w-full justify-start h-10 rounded-xl bg-[var(--surface)] shadow-sm mb-2',
+                            'w-full justify-start h-10 rounded-xl bg-[var(--surface)] shadow-sm',
                             sidebarCollapsed && 'justify-center px-0'
                         )}
                     >
@@ -147,20 +168,6 @@ export default function AdminLayout() {
                             {!sidebarCollapsed && <span className="ml-3">Back to Chat</span>}
                         </Link>
                     </Button>
-                    <NavLink
-                        to="/admin/settings"
-                        className={({ isActive }) =>
-                            cn(
-                                'group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                                isActive
-                                    ? 'bg-primary/5 text-neutral-900 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-primary'
-                                    : 'text-neutral-700 hover:bg-[var(--surface)] hover:text-neutral-900'
-                            )
-                        }
-                    >
-                        <Settings className="w-5 h-5 flex-shrink-0 text-neutral-400 group-hover:text-neutral-600" />
-                        {!sidebarCollapsed && <span>Settings</span>}
-                    </NavLink>
                 </div>
             </aside>
 
@@ -216,23 +223,19 @@ export default function AdminLayout() {
 
                 <Separator className="opacity-50" />
 
-                {/* Settings */}
+                {/* Back to Chat */}
                 <div className="px-2 py-3">
-                    <NavLink
-                        to="/admin/settings"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={({ isActive }) =>
-                            cn(
-                                'group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors',
-                                isActive
-                                    ? 'bg-primary/5 text-neutral-900 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-primary'
-                                    : 'text-neutral-700 hover:bg-[var(--surface)] hover:text-neutral-900'
-                            )
-                        }
+                    <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start h-10 rounded-xl bg-[var(--surface)] shadow-sm"
                     >
-                        <Settings className="w-5 h-5 flex-shrink-0 text-neutral-400 group-hover:text-neutral-600" />
-                        <span>Settings</span>
-                    </NavLink>
+                        <Link to="/chat" aria-label="Back to chat" onClick={() => setMobileMenuOpen(false)}>
+                            <ArrowLeft className="w-5 h-5 flex-shrink-0 text-neutral-400" />
+                            <span className="ml-3">Back to Chat</span>
+                        </Link>
+                    </Button>
                 </div>
             </aside>
 

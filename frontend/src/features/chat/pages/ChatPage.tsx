@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { MoreHorizontal, Share2, Sparkles } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { MoreHorizontal, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -20,8 +20,6 @@ import type { SuggestedQuestion, Attachment, ThinkingMode } from '@/types/chat'
 export default function ChatPage() {
 
     const { sessionId } = useParams()
-    const navigate = useNavigate()
-    const creatingSessionRef = useRef(false)
     const {
         messages,
         isLoading,
@@ -29,40 +27,28 @@ export default function ChatPage() {
         suggestions: chatSuggestions,
         sendMessage,
         stopStreaming,
-        submitFeedback
+        submitFeedback,
     } = useChat(sessionId)
     const [initialSuggestions, setInitialSuggestions] = useState<SuggestedQuestion[]>([])
     const scrollRef = useRef<HTMLDivElement>(null)
     const [mode, setMode] = useState<ThinkingMode>('fast')
 
-    useEffect(() => {
-        if (sessionId || creatingSessionRef.current) return
-        creatingSessionRef.current = true
-        chatApi.createSession()
-            .then((session) => {
-                navigate(`/chat/${session.id}`, { replace: true })
-            })
-            .catch((error) => {
-                console.error('[ChatPage] Failed to auto-create session', error)
-            })
-            .finally(() => {
-                creatingSessionRef.current = false
-            })
-    }, [sessionId, navigate])
-
     // Load initial suggestions
     useEffect(() => {
-        chatApi.getSuggestions().then(setInitialSuggestions).catch(() => { })
+        chatApi.getSuggestions({ count: 3 }).then(setInitialSuggestions).catch(() => { })
     }, [])
 
-    const suggestions = chatSuggestions.length > 0 ? chatSuggestions : initialSuggestions
+    const suggestions = (chatSuggestions.length > 0 ? chatSuggestions : initialSuggestions).slice(0, 3)
 
     // Auto scroll to bottom
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-        }
-    }, [messages])
+        if (!scrollRef.current) return
+        const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null
+        if (!viewport) return
+        requestAnimationFrame(() => {
+            viewport.scrollTop = viewport.scrollHeight
+        })
+    }, [messages, isStreaming])
 
     const handleSend = async (content: string, attachments?: Attachment[], sendMode?: ThinkingMode) => {
         return sendMessage(content, attachments, sendMode ?? mode)
@@ -70,10 +56,6 @@ export default function ChatPage() {
 
     const handleStop = () => {
         stopStreaming()
-    }
-
-    const handleFeedback = (messageId: string, type: 'helpful' | 'not_helpful') => {
-        submitFeedback(messageId, type)
     }
 
     const handleSuggestionSelect = (question: string) => {
@@ -87,11 +69,8 @@ export default function ChatPage() {
             {/* Topbar */}
             <header className="flex items-center justify-between h-[52px] px-4 lg:px-6 bg-[var(--surface)]/90 backdrop-blur-sm shadow-sm">
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                        <Sparkles className="w-4 h-4" />
-                    </div>
-                    <h1 className="font-semibold text-neutral-900 truncate">
-                        {messages.length > 0 ? conversationTitle : 'AMI / AI Assistant'}
+                    <h1 className="font-bold text-2xl text-red-600 truncate">
+                        {messages.length > 0 ? conversationTitle : 'AMI AI Assistant'}
                     </h1>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -125,7 +104,7 @@ export default function ChatPage() {
                             <MessageBubble
                                 key={message.id}
                                 message={message}
-                                onFeedback={(type) => handleFeedback(message.id, type)}
+                                onFeedback={submitFeedback}
                             />
                         ))}
 

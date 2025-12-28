@@ -73,6 +73,7 @@ from .constants import (
 
 # Service Registry
 from .services import ServiceRegistry
+from .logging_config import setup_logging
 
 __all__ = [
     # App
@@ -118,4 +119,6 @@ __all__ = [
     "UserConstants",
     # Service Registry
     "ServiceRegistry",
+    # Logging
+    "setup_logging",
 ]

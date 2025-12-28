@@ -48,6 +48,8 @@ class MongoDBConfig(BaseConfig):
     collection_pending_updates: str = Field(default="pending_updates")
     collection_usage_metrics: str = Field(default="usage_metrics")
     collection_suggested_questions: str = Field(default="suggested_questions")
+    collection_audit_logs: str = Field(default="audit_logs")
+    collection_client_logs: str = Field(default="client_logs")
 
     # MongoDB Tuning
     mongodb_timeout_ms: int = Field(default=5000, ge=1000)

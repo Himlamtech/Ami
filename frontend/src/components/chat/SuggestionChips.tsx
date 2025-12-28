@@ -16,26 +16,17 @@ export default function SuggestionChips({ suggestions, onSelect }: SuggestionChi
                 <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
                 Gợi ý
             </span>
-            {suggestions.map((suggestion) => {
-                const meta = [suggestion.category, suggestion.source].filter(Boolean).join(' · ')
-                return (
-                    <div key={suggestion.id} className="flex flex-col items-start gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-8 px-3 rounded-full bg-[var(--surface2)] text-neutral-700 hover:text-neutral-900 hover:bg-[var(--surface2)] shadow-sm hover:shadow-md transition-all"
-                            onClick={() => onSelect(suggestion.text)}
-                        >
-                            {suggestion.text}
-                        </Button>
-                        {meta && (
-                            <span className="text-[10px] text-neutral-400">
-                                {meta}
-                            </span>
-                        )}
-                    </div>
-                )
-            })}
+            {suggestions.map((suggestion) => (
+                <Button
+                    key={suggestion.id}
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-8 px-3 rounded-full bg-[var(--surface2)] text-neutral-700 hover:text-neutral-900 hover:bg-[var(--surface2)] shadow-sm hover:shadow-md transition-all"
+                    onClick={() => onSelect(suggestion.text)}
+                >
+                    {suggestion.text}
+                </Button>
+            ))}
         </div>
     )
 }

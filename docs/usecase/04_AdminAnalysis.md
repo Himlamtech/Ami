@@ -6,10 +6,9 @@
 3. Cost & LLM Usage Tracking (UC-017)
 4. Conversation History Review (UC-019)
 5. Analytics Architecture
-6. Real-time Monitoring
-7. Reporting & Exports
-8. Error Handling & Recovery
-9. Performance Optimization
+6. Error Handling
+7. Performance Targets
+8. Security & Audit Log Monitoring (UC-022)
 
 ---
 
@@ -991,3 +990,41 @@ Error: Permission Denied
 | Cost calculation accuracy | 99.9% |
 | Search conversation latency | < 5 seconds |
 
+---
+
+## 8. Security & Audit Log Monitoring (UC-022)
+
+### 8.1 Overview
+
+Provide admin visibility into security events and admin/manager actions.
+This supports incident response and accountability when roles change, data sources are updated, or API keys are rotated.
+
+### 8.2 Log Monitoring Flow
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant Frontend as Admin Dashboard
+    participant Backend as Log Service
+    participant MongoDB as Audit Logs
+
+    Admin->>Frontend: 1. Open Log Monitoring
+    Frontend->>Backend: 2. GET /api/v1/admin/audit-logs?filters
+    Backend->>MongoDB: 3. Query audit logs
+    MongoDB-->>Backend: 4. Return log list
+    Backend-->>Frontend: 5. Render logs + filters
+```
+
+### 8.3 Signals to Monitor
+
+- Failed admin access attempts (403/401)
+- Invalid client API key usage
+- Changes to roles, users, and system config
+- High error rates from specific clients or IPs
+
+### 8.4 Example Queries
+
+```
+GET /api/v1/admin/audit-logs?action=config.update&start_date=2025-12-01
+GET /api/v1/admin/audit-logs?actor_role=manager&target_type=datasource
+```

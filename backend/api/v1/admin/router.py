@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter
 
-from .analytics import router as analytics_router
 from .approvals import router as approvals_router
 from .conversations import router as conversations_router
 from .data_sources import router as data_sources_router
@@ -16,6 +15,9 @@ from .vector_store import router as vector_store_router
 from .crawler import router as crawler_router
 from .config import router as admin_config_router
 from .monitor_targets import router as monitor_targets_router
+from .audit_logs import router as audit_logs_router
+from .students import router as students_router
+from .activity_logs import router as activity_logs_router
 
 router = APIRouter()
 
@@ -28,6 +30,9 @@ router.include_router(vector_store_router)
 router.include_router(data_sources_router)
 router.include_router(approvals_router)
 router.include_router(monitor_targets_router)
+router.include_router(audit_logs_router)
+router.include_router(students_router)
+router.include_router(activity_logs_router)
 
 # Ops & sync
 router.include_router(sync_router)
@@ -36,7 +41,6 @@ router.include_router(crawler_router)
 # Observability
 router.include_router(conversations_router)
 router.include_router(feedback_router)
-router.include_router(analytics_router)
 router.include_router(knowledge_router)
 
 __all__ = ["router"]

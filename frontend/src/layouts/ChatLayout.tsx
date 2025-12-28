@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import ChatSidebar from '@/components/chat/ChatSidebar'
 import MobileNav from '@/components/shared/MobileNav'
-import { Menu, Bot } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function ChatLayout() {

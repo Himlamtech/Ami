@@ -19,7 +19,8 @@
 ### System Components
 ```
 Frontend (React) ──┐
-                   ├─→ FastAPI Backend ──→ Auth Service
+                   ├─→ FastAPI Backend ──→ API Key Gate (AMI_API_KEY)
+                   │                   └─→ Auth Service
 Voice Input ──────┤                   ├─→ Chat Service (Orchestrator)
 Image Input ──────┤                   ├─→ Embedding Service
                    └─→ WebSocket ──┐  ├─→ LLM Service
@@ -30,6 +31,8 @@ Image Input ──────┤                   ├─→ Embedding Service
 
 ### Data Flow Layers
 ```
+Layer 0: Client API Key Validation (X-AMI-API-Key)
+         ↓
 Layer 1: User Input (Text/Voice/Image)
          ↓
 Layer 2: Input Validation & Normalization
@@ -46,6 +49,13 @@ Layer 7: Response Formatting & Delivery
          ↓
 Layer 8: Feedback & Analytics
 ```
+
+### API Access Requirements
+
+- Every request to `/api/v1/*` must include `X-AMI-API-Key`.
+- Backend validates the key against `AMI_API_KEY` in `.env`.
+- Missing or invalid key returns `401 Unauthorized`.
+- If `AMI_API_KEY` is not configured, return `503 Service Unavailable` (kill switch).
 
 ---
 
@@ -724,24 +734,32 @@ Error: Duplicate Image (Same Hash)
     },
     {
       "step": 2,
-      "name": "Extract User Context",
-      "extract": ["major", "year", "interests", "language_preference"],
-      "purpose": "Personalization"
+      "name": "Load User Profile",
+      "source": "/api/v1/profile/{user_id}",
+      "fields": ["name", "student_id", "major", "level", "interests", "preferred_detail_level"],
+      "purpose": "Primary personalization source"
     },
     {
       "step": 3,
+      "name": "Extract User Context",
+      "extract": ["major", "level", "interests", "language_preference"],
+      "purpose": "Normalize profile into prompt context"
+    },
+    {
+      "step": 4,
       "name": "Summarize Context",
       "trigger": "message_count > 20",
       "action": "Create brief summary of conversation so far",
       "purpose": "Fit more context in token budget"
     },
     {
-      "step": 4,
+      "step": 5,
       "name": "Build System Prompt",
       "include": [
         "Role: PTIT Virtual Assistant",
+        "User Name: {name}",
         "User Major: {major}",
-        "User Year: {year}",
+        "User Level: {level}",
         "Tone: Professional but friendly",
         "Language: {language}"
       ],
@@ -1035,6 +1053,11 @@ GET    /api/v1/users/statistics          # Get user statistics
 
 **Goal:** Extract durable student traits/preferences from conversations and reuse in future responses.
 
+**Identity query behavior (e.g. "Đố bạn biết tôi là ai?")**
+- If user profile has `name/major/student_id`, respond with profile-backed identity summary.
+- If profile is empty, ask user to confirm their identity details before continuing.
+- Do NOT hallucinate identity; only use profile + memory store.
+
 **Flow (short):**
 1. Chat message saved → enqueue memory extraction job.
 2. LLM extracts memory candidates (traits, preferences, background) with evidence.
@@ -1109,6 +1132,7 @@ Level 1: Input Validation (400 Bad Request)
 └─ → Fast fail, user can retry immediately
 
 Level 2: Authentication (401/403)
+├─ Missing or invalid AMI_API_KEY
 ├─ Invalid token
 ├─ Token expired
 ├─ User suspended
@@ -1253,7 +1277,7 @@ Async Processing:
 
 ## Summary: Key Integration Points
 
-1. **Auth → Session Manager:** Validates token, retrieves user context
+1. **Auth → Session Manager:** Validates token, loads user profile (/api/v1/profile/{user_id})
 2. **Session Manager → Chat Handler:** Loads message history, user preferences
 3. **Chat Handler → Embedding Service:** Converts text to vectors
 4. **Embedding Service → Vector DB:** Retrieves similar documents
@@ -1263,6 +1287,7 @@ Async Processing:
 8. **Chat Handler → Analytics:** Logs metrics and events
 
 All components must:
+- Require X-AMI-API-Key for backend access
 - Use JWT for authentication
 - Implement request/response validation
 - Handle errors gracefully

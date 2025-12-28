@@ -1,90 +1,129 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Header
 from api.schemas.auth_dto import LoginRequest, RegisterRequest, AuthResponse
-from config import app_config
 from config.services import ServiceRegistry
 from domain.entities.student_profile import StudentProfile, StudentLevel
-import uuid
+from infrastructure.persistence.mongodb.client import get_database
+from application.services.password_service import hash_password, verify_password
+from typing import Optional
+from datetime import datetime
+from bson import ObjectId
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _normalize_identifier(identifier: str) -> str:
+    return identifier.strip().lower()
+
+
 @router.post("/login", response_model=AuthResponse)
 async def login(request: LoginRequest):
-    # Admin Login
-    if (
-        request.email.lower().strip() == "admin@ptit.edu.vn"
-        or "admin" in request.email.lower()
+    identifier = _normalize_identifier(request.email)
+    db = await get_database()
+
+    user = await db.users.find_one(
+        {"$or": [{"email": identifier}, {"username": identifier}]}
+    )
+    if not user or not verify_password(
+        request.password, user.get("hashed_password", "")
     ):
-        # Generic admin check - in production use real password content
-        if request.password:  # Accept any password for demo if not strict
-            return AuthResponse(
-                user_id="admin-001",
-                token=app_config.admin_api_key or "secret_admin_key",
-                role="admin",
-                full_name="Administrator",
-                email=request.email,
-            )
-
-    # Student Login
-    # In a real app, verify password hash. Here we simulate finding/creating user.
-    profile_repo = ServiceRegistry.get_student_profile_repository()
-
-    # Try to find user by email (assuming direct mapping or search)
-    # Since find_all can filter, we use that if available, or just use email as user_id for now if no auth DB.
-    # But wait, ServiceRegistry might not expose find_by_email directly in repo interface?
-    # Let's assume we can lookup by a consistent ID generation or search.
-
-    # For this MVP/Connect task, we generate a deterministic ID from email or lookup
-    user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, request.email))
-
-    profile = await profile_repo.find_by_user_id(user_id)
-    if not profile:
-        # Auto-create for demo/MVP if not found? Or fail?
-        # User asked to "connect", usually implies making it work.
-        # Let's create if not exists to remove friction.
-        profile = StudentProfile(
-            id=str(uuid.uuid4()),
-            user_id=user_id,
-            email=request.email,
-            name=request.email.split("@")[0],  # Fallback name
-            level=StudentLevel.FRESHMAN,
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
         )
-        await profile_repo.create(profile)
+
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive",
+        )
+
+    user_id = str(user.get("_id"))
+    role = user.get("role", "user")
+    full_name = user.get("full_name") or user.get("username") or identifier
+    email = user.get("email") or identifier
 
     return AuthResponse(
-        user_id=profile.user_id,
-        token=profile.user_id,  # For student, token is the user_id for X-User-ID header
-        role="student",
-        full_name=profile.name or "Student",
-        email=profile.email or request.email,
+        user_id=user_id,
+        token=user_id,
+        role=role,
+        full_name=full_name,
+        email=email,
     )
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(request: RegisterRequest):
-    profile_repo = ServiceRegistry.get_student_profile_repository()
+async def register(
+    request: RegisterRequest,
+    x_user_id: Optional[str] = Header(None, alias="X-User-ID"),
+):
+    if not x_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin access required",
+        )
 
-    # Check if exists
-    user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, request.email))
-    existing = await profile_repo.find_by_user_id(user_id)
+    db = await get_database()
+    try:
+        admin_user = await db.users.find_one({"_id": ObjectId(x_user_id)})
+    except Exception:
+        admin_user = None
+
+    if not admin_user or admin_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    if request.password != request.password_confirmation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match",
+        )
+
+    email = request.email.strip().lower()
+    username = (request.username or email.split("@")[0]).strip().lower()
+    role = (request.role or "user").strip().lower()
+    if role not in ("user", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role",
+        )
+    existing = await db.users.find_one(
+        {"$or": [{"email": email}, {"username": username}]}
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
+    now = datetime.now()
+    user_doc = {
+        "username": username,
+        "email": email,
+        "full_name": request.full_name,
+        "role": role,
+        "hashed_password": hash_password(request.password),
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    result = await db.users.insert_one(user_doc)
+    user_id = str(result.inserted_id)
+
+    profile_repo = ServiceRegistry.get_student_profile_repository()
     profile = StudentProfile(
-        id=str(uuid.uuid4()),
+        id=user_id,
         user_id=user_id,
-        email=request.email,
+        email=email,
         name=request.full_name,
         level=StudentLevel.FRESHMAN,
     )
     await profile_repo.create(profile)
 
     return AuthResponse(
-        user_id=profile.user_id,
-        token=profile.user_id,
-        role="student",
-        full_name=profile.name,
-        email=profile.email,
+        user_id=user_id,
+        token=user_id,
+        role=role,
+        full_name=request.full_name,
+        email=email,
     )

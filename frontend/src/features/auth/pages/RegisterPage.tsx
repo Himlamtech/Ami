@@ -23,6 +23,7 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
+    const registrationDisabled = true
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const navigate = useNavigate()
@@ -38,6 +39,14 @@ export default function RegisterPage() {
     })
 
     const onSubmit = async (data: RegisterForm) => {
+        if (registrationDisabled) {
+            toast({
+                variant: 'destructive',
+                title: 'Đăng ký bị vô hiệu hóa',
+                description: 'Vui lòng liên hệ admin để tạo tài khoản.',
+            })
+            return
+        }
         setIsLoading(true)
         try {
             await registerUser({
@@ -72,6 +81,11 @@ export default function RegisterPage() {
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+                    {registrationDisabled && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                            Đăng ký tài khoản đang tạm khóa. Vui lòng liên hệ admin để được tạo tài khoản.
+                        </div>
+                    )}
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="fullName">Họ và tên</Label>
@@ -79,6 +93,7 @@ export default function RegisterPage() {
                                 id="fullName"
                                 placeholder="Nguyễn Văn A"
                                 {...register('fullName')}
+                                disabled={registrationDisabled}
                                 className={errors.fullName ? 'border-red-500' : ''}
                             />
                             {errors.fullName && (
@@ -93,6 +108,7 @@ export default function RegisterPage() {
                                 type="email"
                                 placeholder="example@ptit.edu.vn"
                                 {...register('email')}
+                                disabled={registrationDisabled}
                                 className={errors.email ? 'border-red-500' : ''}
                             />
                             {errors.email && (
@@ -107,6 +123,7 @@ export default function RegisterPage() {
                                     id="password"
                                     type={showPassword ? 'text' : 'password'}
                                     {...register('password')}
+                                    disabled={registrationDisabled}
                                     className={errors.password ? 'border-red-500' : ''}
                                 />
                                 <button
@@ -132,6 +149,7 @@ export default function RegisterPage() {
                                 id="confirmPassword"
                                 type="password"
                                 {...register('confirmPassword')}
+                                disabled={registrationDisabled}
                                 className={errors.confirmPassword ? 'border-red-500' : ''}
                             />
                             {errors.confirmPassword && (
@@ -143,7 +161,7 @@ export default function RegisterPage() {
                     <Button
                         type="submit"
                         className="w-full"
-                        disabled={isLoading}
+                        disabled={isLoading || registrationDisabled}
                     >
                         {isLoading ? (
                             <>

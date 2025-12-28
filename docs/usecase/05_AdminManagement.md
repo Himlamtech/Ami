@@ -8,6 +8,9 @@
 5. Privacy & Compliance
 6. Error Handling & Recovery
 7. Performance Optimization
+8. Access Control & Client API Key (UC-021)
+9. Audit Log & Change Tracking (UC-022)
+10. User Management Lifecycle Example
 
 ---
 
@@ -16,6 +19,13 @@
 ### 1.1 Overview
 
 Provide administrators with comprehensive tools to search user profiles, monitor engagement metrics, manage access, and ensure platform health and compliance.
+This includes role-based access (admin/manager/user), admin-only account creation, and mandatory profile completion before using chat features.
+
+**Key rules:**
+- Default admin account exists in MongoDB and can be updated by admin.
+- Only admin can create new accounts or assign roles.
+- Manager can access admin panel but cannot create admins or modify system roles.
+- Users cannot access admin panel and do not see admin navigation.
 
 ### 1.2 Complete User Management Flow
 
@@ -705,7 +715,112 @@ Error: Search Timeout
 
 ---
 
-## 8. User Management Lifecycle Example
+## 8. Access Control & Client API Key (UC-021)
+
+### 8.1 Overview
+
+Ensure only trusted clients can call user-facing APIs, and enforce role-based access:
+- **Admin**: full access, can create users/roles and manage system config
+- **Manager**: access admin panel for operations (analytics, approvals, monitoring) but cannot create admins
+- **User**: chat, profile, bookmarks only
+
+Client access is protected with a shared API key in `X-AMI-API-Key`. Removing or rotating the key in `.env`
+immediately blocks mobile/web clients to mitigate abuse or DDoS.
+
+### 8.2 Client API Key Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as Mobile/Web
+    participant Backend as API Gateway
+    participant Config as .env
+
+    Client->>Backend: 1. Request /api/v1/* with X-AMI-API-Key
+    Backend->>Config: 2. Load AMI_API_KEY
+    Config-->>Backend: 3. Return key
+    Backend->>Backend: 4. Validate header
+    alt valid key
+        Backend-->>Client: 5. Continue request
+    else invalid or missing key
+        Backend-->>Client: 6. 401 Unauthorized
+    end
+
+    Note over Config: Remove AMI_API_KEY to block all clients
+```
+
+### 8.3 Scope
+
+- API key required for all `/api/v1/*` routes, including admin
+- Admin routes are protected by RBAC and require `X-AMI-API-Key`
+- Key is stored in `.env` and can be rotated without code changes
+
+### 8.4 Headers & Config
+
+```
+Header: X-AMI-API-Key: <client_key>
+.env:  AMI_API_KEY=<client_key>
+```
+
+---
+
+## 9. Audit Log & Change Tracking (UC-022)
+
+### 9.1 Overview
+
+Record every admin/manager change for accountability and rollback analysis.
+Audit logs are immutable and searchable by actor, action, target, and time range.
+
+### 9.2 Audit Logging Flow
+
+```mermaid
+sequenceDiagram
+    participant Manager
+    participant Backend
+    participant MongoDB as Audit Logs
+
+    Manager->>Backend: 1. Update resource (user, config, data source)
+    Backend->>Backend: 2. Apply RBAC + validate request
+    Backend->>MongoDB: 3. Write audit log {actor, action, before, after}
+    MongoDB-->>Backend: 4. Log saved
+    Backend-->>Manager: 5. Return success
+```
+
+### 9.3 Audit Log Data Model
+
+```json
+{
+  "audit_log": {
+    "_id": ObjectId("507f1f77bcf86cd799439099"),
+    "actor_id": "user_admin_001",
+    "actor_role": "admin|manager",
+    "action": "user.update|datasource.create|config.update",
+    "target_type": "user|profile|datasource|config",
+    "target_id": "target_123",
+    "before": { "field": "old_value" },
+    "after": { "field": "new_value" },
+    "ip": "203.0.113.10",
+    "user_agent": "Mozilla/5.0",
+    "request_id": "req_abc123",
+    "timestamp": "2025-12-26T10:00:00Z"
+  }
+}
+```
+
+### 9.4 Audit Log Endpoints (Expected)
+
+```
+GET /api/v1/admin/audit-logs
+├─ Query: ?actor_id=&action=&target_type=&start_date=&end_date=
+└─ Response: Paginated list of audit logs
+
+GET /api/v1/admin/audit-logs/{id}
+├─ Returns: Full before/after diff
+└─ Access: admin only
+```
+
+---
+
+## 10. User Management Lifecycle Example
 
 ```
 Admin Workflow:
@@ -740,4 +855,3 @@ Admin Workflow:
 
 Result: Retained user through proactive engagement
 ```
-

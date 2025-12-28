@@ -3,7 +3,7 @@
  */
 
 import { api } from '@/lib/api'
-import type { Attachment, Message, SuggestedQuestion, Source } from '@/types/chat'
+import type { Attachment, Message, SuggestedQuestion, Source, ToolProgress } from '@/types/chat'
 
 export interface SmartQueryRequest {
     query: string
@@ -29,6 +29,30 @@ export interface SmartQueryResponse {
         processing_time_ms: number
         tokens_used: number
     }
+}
+
+export interface OrchestrateRequest {
+    query: string
+    session_id?: string
+    user_id?: string
+}
+
+export interface OrchestrateResponse {
+    answer: string
+    session_id?: string
+    message_id?: string
+    request_id?: string
+    primary_tool?: string
+    tools?: Array<{
+        type?: string
+        status?: string
+        reasoning?: string
+        result?: Record<string, any>
+        error?: string
+    }>
+    metrics?: Record<string, any>
+    success?: boolean
+    error?: string
 }
 
 export interface Session {
@@ -83,7 +107,37 @@ const mapSources = (metadata?: Record<string, any>): Source[] | undefined => {
     }))
 }
 
+const mapWebSources = (metadata?: Record<string, any>): string[] | undefined => {
+    const rawSources = metadata?.web_sources
+    if (!Array.isArray(rawSources) || rawSources.length === 0) {
+        return undefined
+    }
+    return rawSources.filter((url) => typeof url === 'string' && url.length > 0)
+}
+
+const mapTools = (metadata?: Record<string, any>): ToolProgress[] | undefined => {
+    const rawTools = metadata?.tools
+    if (!Array.isArray(rawTools)) {
+        return undefined
+    }
+    return rawTools.map((tool, idx) => ({
+        id: tool.id || `tool-${idx}`,
+        type: tool.type || 'unknown',
+        status: tool.status || 'pending',
+        reasoning: tool.reasoning,
+        error: tool.error,
+    }))
+}
+
 export const chatApi = {
+    orchestrate: (request: OrchestrateRequest): Promise<OrchestrateResponse> =>
+        api.post('/chat/orchestrate', request),
+    orchestrateStream: (
+        request: OrchestrateRequest,
+        onMessage: (chunk: string) => void,
+        onDone?: () => void
+    ) => api.stream('/chat/orchestrate/stream', request, onMessage, onDone),
+
     smartQuery: (request: SmartQueryRequest): Promise<SmartQueryResponse> =>
         api.post('/smart-query', request),
 
@@ -126,6 +180,8 @@ export const chatApi = {
                     timestamp: message.created_at,
                     attachments: message.attachments ?? [],
                     sources: mapSources(message.metadata),
+                    tools: mapTools(message.metadata),
+                    webSources: mapWebSources(message.metadata),
                 }
             }),
         }
@@ -164,14 +220,6 @@ export const chatApi = {
     deleteConversation: (sessionId: string): Promise<void> =>
         api.delete(`/chat/sessions/${sessionId}`),
 
-    submitFeedback: (messageId: string, data: { type: string; comment?: string; sessionId: string; userId: string }): Promise<void> =>
-        api.post('/feedback/submit', {
-            session_id: data.sessionId,
-            message_id: messageId,
-            user_id: data.userId,
-            feedback_type: data.type,
-            comment: data.comment
-        }),
 
     getSuggestions: async (params?: {
         count?: number
@@ -212,6 +260,20 @@ export const chatApi = {
         }
 
         return { message, suggestions: [] as SuggestedQuestion[] }
+    },
+
+    submitFeedback: async (data: {
+        sessionId: string
+        messageId: string
+        userId: string
+        feedbackType: 'helpful' | 'not_helpful'
+    }) => {
+        return api.post('/feedback/submit', {
+            session_id: data.sessionId,
+            message_id: data.messageId,
+            user_id: data.userId,
+            feedback_type: data.feedbackType,
+        })
     },
 }
 

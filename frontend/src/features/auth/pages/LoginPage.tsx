@@ -30,26 +30,10 @@ export default function LoginPage() {
         try {
             await login(email, password)
 
-            // Check current user state immediately after login? 
-            // Note: login is async but state update via zustand might be instant or batched. 
-            // However, we can trust the API response data if we returned it, but store does void.
-            // We can assume successful login sets the user in store. 
-            // Since we can't easily access the updated state inside this function immediately without using the store.getState() 
-            // or waiting for re-render, we'll do a simple heuristic or checking the store directly if possible.
-            // A safer bet involves checking the email/role from the inputs or just assuming student if not admin email for now, 
-            // OR better: let's look at how authStore sets the user.
-
-            // Let's rely on the fact that if we are here, login success.
-            // Check standard redirect
             if (from === '/') {
-                // Heuristic based on email for immediate feedback, 
-                // OR ideally we should check the role from the token/user state.
-                // Since this is a simple app, let's redirect to /admin if email contains admin
-                if (email.toLowerCase().includes('admin')) {
-                    navigate('/admin', { replace: true })
-                } else {
-                    navigate('/chat', { replace: true })
-                }
+                const { user } = useAuthStore.getState()
+                const canAccessAdmin = user?.role === 'admin' || user?.role === 'manager'
+                navigate(canAccessAdmin ? '/admin' : '/chat', { replace: true })
             } else {
                 navigate(from, { replace: true })
             }
@@ -85,17 +69,17 @@ export default function LoginPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">Email hoặc Username</Label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                                 <Input
                                     id="email"
-                                    type="email"
-                                    placeholder="sinhvien@ptit.edu.vn"
+                                    type="text"
+                                    placeholder="Ami Account"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="pl-10"
-                                    autoComplete="email"
+                                    autoComplete="username"
                                 />
                             </div>
                         </div>

@@ -1,19 +1,19 @@
-"""Admin authentication - Simple API Key based auth for admin routes."""
+"""Admin authentication - role-based auth for admin routes."""
 
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Header, HTTPException, status
 from typing import Optional
+from bson import ObjectId
 
-from config import app_config
+from infrastructure.persistence.mongodb.client import get_database
 
 
-def verify_admin_api_key(
-    x_admin_api_key: Optional[str] = Header(None, alias="X-Admin-API-Key")
+async def verify_admin_api_key(
+    x_user_id: Optional[str] = Header(None, alias="X-User-ID"),
 ) -> bool:
     """
-    Verify admin API key from request header.
+    Verify admin/manager access from user role.
 
-    Admin operations (document management, crawling, etc.) require this key.
-    The key should be set in environment variable ADMIN_API_KEY.
+    Admin operations (document management, crawling, etc.) require admin or manager role.
 
     Usage:
         @router.post("/documents")
@@ -22,24 +22,32 @@ def verify_admin_api_key(
         ):
             ...
     """
-    # TODO: Implement proper role-based authentication
-    # Temporarily disable auth check for development
-    return True
+    if not x_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-User-ID header is required for admin operations",
+        )
 
-    # Original auth logic (commented out for testing):
-    # if not x_admin_api_key:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="X-Admin-API-Key header is required for admin operations",
-    #     )
-    #
-    # if x_admin_api_key != app_config.admin_api_key:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Invalid admin API key",
-    #     )
-    #
-    # return True
+    db = await get_database()
+    try:
+        user = await db.users.find_one({"_id": ObjectId(x_user_id)})
+    except Exception:
+        user = None
+
+    if not user or not user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User not allowed",
+        )
+
+    role = user.get("role", "user")
+    if role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    return True
 
 
 def get_user_id(x_user_id: Optional[str] = Header(None, alias="X-User-ID")) -> str:

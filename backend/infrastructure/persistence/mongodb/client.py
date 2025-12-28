@@ -101,6 +101,15 @@ class MongoDBClient:
                 [("session_id", 1), ("created_at", 1)]
             )
 
+            # Audit logs indexes
+            await self.db.audit_logs.create_index("actor_id")
+            await self.db.audit_logs.create_index("action")
+            await self.db.audit_logs.create_index("timestamp")
+
+            # Client logs indexes
+            await self.db.client_logs.create_index("level")
+            await self.db.client_logs.create_index("timestamp")
+
             logger.info("✓ MongoDB indexes created")
 
         except Exception as e:

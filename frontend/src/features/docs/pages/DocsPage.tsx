@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Search, FileText, Download, ExternalLink, FolderOpen, Calendar, HelpCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, FileText, Download, ExternalLink, FolderOpen, Calendar, HelpCircle, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 interface Document {
     id: string
@@ -16,68 +17,46 @@ interface Document {
     type: 'pdf' | 'doc' | 'link' | 'form'
 }
 
-// Mock data - Popular documents
-const mockDocuments: Document[] = [
-    {
-        id: '1',
-        title: 'Thông báo học phí năm học 2024-2025',
-        category: 'Tài chính',
-        description: 'Chi tiết học phí các ngành, hệ đào tạo và hướng dẫn đóng học phí online.',
-        url: '/docs/hoc-phi-2024.pdf',
-        updatedAt: new Date(Date.now() - 604800000).toISOString(),
-        type: 'pdf',
-    },
-    {
-        id: '2',
-        title: 'Hướng dẫn đăng ký môn học trên Portal',
-        category: 'Đào tạo',
-        description: 'Các bước đăng ký môn học, hủy môn, đổi lớp trên hệ thống Portal sinh viên.',
-        url: '/docs/dang-ky-mon-hoc.pdf',
-        updatedAt: new Date(Date.now() - 1209600000).toISOString(),
-        type: 'pdf',
-    },
-    {
-        id: '3',
-        title: 'Quy định về học bổng và hỗ trợ tài chính',
-        category: 'Học bổng',
-        description: 'Điều kiện, mức học bổng KKHT, học bổng tài trợ và các chương trình hỗ trợ.',
-        url: '/docs/hoc-bong.pdf',
-        updatedAt: new Date(Date.now() - 2592000000).toISOString(),
-        type: 'pdf',
-    },
-    {
-        id: '4',
-        title: 'Mẫu đơn xin nghỉ học có thời hạn',
-        category: 'Biểu mẫu',
-        description: 'Mẫu đơn và hướng dẫn thủ tục xin nghỉ học tạm thời, bảo lưu kết quả.',
-        url: '/docs/mau-don-nghi-hoc.doc',
-        updatedAt: new Date(Date.now() - 5184000000).toISOString(),
-        type: 'form',
-    },
-    {
-        id: '5',
-        title: 'Lịch học kỳ 1 năm 2024-2025',
-        category: 'Lịch học',
-        description: 'Lịch học, lịch thi, các ngày nghỉ lễ trong học kỳ 1 năm học 2024-2025.',
-        url: '/docs/lich-hoc-ky-1.pdf',
-        updatedAt: new Date(Date.now() - 1209600000).toISOString(),
-        type: 'pdf',
-    },
-]
+interface FAQ {
+    question: string
+    answer: string
+}
 
 const categories = ['Tất cả', 'Tài chính', 'Đào tạo', 'Học bổng', 'Biểu mẫu', 'Lịch học']
-
-const faqs = [
-    { question: 'Làm sao để xin miễn giảm học phí?', answer: 'Liên hệ phòng Công tác sinh viên...' },
-    { question: 'Thời gian đăng ký môn học kỳ 2?', answer: 'Thường bắt đầu từ tuần cuối của kỳ 1...' },
-    { question: 'Cách kiểm tra lịch thi?', answer: 'Truy cập Portal → Lịch thi...' },
-]
 
 export default function DocsPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('Tất cả')
+    const [documents, setDocuments] = useState<Document[]>([])
+    const [faqs, setFaqs] = useState<FAQ[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
-    const filteredDocs = mockDocuments.filter((doc) => {
+    useEffect(() => {
+        loadDocuments()
+    }, [])
+
+    const loadDocuments = async () => {
+        setLoading(true)
+        setError(null)
+        try {
+            // Fetch documents from API
+            const response = await api.get('/documents')
+            if (response.data) {
+                setDocuments(response.data.documents || [])
+                setFaqs(response.data.faqs || [])
+            }
+        } catch {
+            setError('Không thể tải danh sách tài liệu')
+            // Fallback: empty state
+            setDocuments([])
+            setFaqs([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const filteredDocs = documents.filter((doc) => {
         const matchesSearch = searchQuery
             ? doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             doc.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -101,14 +80,36 @@ export default function DocsPage() {
         }
     }
 
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center p-4">
+                <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+            </div>
+        )
+    }
+
     return (
         <div className="flex-1 overflow-y-auto p-4 lg:p-6">
             <div className="max-w-3xl mx-auto space-y-6">
                 {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Tài liệu</h1>
-                    <p className="text-neutral-500">Tài liệu và biểu mẫu sinh viên PTIT</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-neutral-900">Tài liệu</h1>
+                        <p className="text-neutral-500">Tài liệu và biểu mẫu sinh viên PTIT</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={loadDocuments}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Làm mới
+                    </Button>
                 </div>
+
+                {error && (
+                    <Card className="border-destructive">
+                        <CardContent className="p-4 text-center text-destructive">
+                            {error}
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Search */}
                 <div className="relative">

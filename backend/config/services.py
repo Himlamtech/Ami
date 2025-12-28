@@ -419,6 +419,7 @@ class ServiceRegistry:
 
         # Create orchestrator service
         orchestrator = GeminiOrchestratorService()
+        synthesis_llm = cls.get_llm(provider="gemini")
 
         # Create tool handlers
         rag_handler = RAGToolHandler(llm_service=cls.get_llm(provider="gemini"))
@@ -448,4 +449,5 @@ class ServiceRegistry:
         return OrchestrateQueryUseCase(
             orchestrator=orchestrator,
             tool_executor=tool_executor,
+            synthesis_llm=synthesis_llm,
         )

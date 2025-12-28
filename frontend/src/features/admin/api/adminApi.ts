@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import type {
     DashboardStats,
     AdminConversation,
+    AdminConversationDetail,
     FeedbackItem,
     KnowledgeGap,
     AdminUser,
@@ -18,19 +19,17 @@ export const adminApi = {
     // Dashboard
     getDashboardStats: async () => {
         try {
-            // Fetch metrics from analytics overview
-            const metrics = await api.get<any>('/admin/analytics/overview', { period: 'today' })
             // Fetch counts from system stats
             const counts = await api.get<any>('/admin/stats')
 
             return {
-                totalRequests: metrics.requests || 0,
+                totalRequests: counts.total_requests || 0,
                 requestsChange: 0,
-                activeUsers: metrics.active_users || 0,
+                activeUsers: counts.active_users || 0,
                 usersChange: 0,
-                avgLatency: metrics.avg_latency_ms || 0,
+                avgLatency: 0,
                 latencyChange: 0,
-                errorRate: metrics.error_rate || 0,
+                errorRate: 0,
                 errorRateChange: 0,
                 totalDocuments: counts.total_documents || 0,
                 totalSessions: counts.total_chat_sessions || 0,
@@ -81,7 +80,7 @@ export const adminApi = {
     },
 
     getConversationDetail: (sessionId: string) =>
-        api.get<AdminConversation>(`/admin/conversations/${sessionId}`),
+        api.get<AdminConversationDetail>(`/admin/conversations/${sessionId}`),
 
     archiveConversation: (sessionId: string) =>
         api.put(`/admin/conversations/${sessionId}/archive`),
@@ -101,16 +100,6 @@ export const adminApi = {
 
     markFeedbackReviewed: (feedbackId: string) =>
         api.put(`/admin/feedback/${feedbackId}/reviewed`),
-
-    // Analytics
-    getAnalytics: (params?: { period?: string; groupBy?: string }) =>
-        api.get('/admin/analytics/usage', {
-            period: params?.period,
-            group_by: params?.groupBy,
-        }),
-
-    getCostBreakdown: (params?: { period?: string }) =>
-        api.get('/admin/analytics/costs', params),
 
     // Knowledge
     getKnowledgeGaps: () => api.get<KnowledgeGap[]>('/admin/knowledge/gaps'),

@@ -41,6 +41,18 @@ class AppConfig(BaseConfig):
     # Admin API Key (for protected admin routes)
     admin_api_key: str = Field(default="")
 
+    # AMI API Key (for mobile/web clients)
+    ami_api_key: str = Field(default="")
+
+    # Default admin bootstrap credentials
+    default_admin_username: str = Field(default="amiadmin")
+    default_admin_password: str = Field(default="amiadmin")
+    default_admin_email: str = Field(default="amiadmin@local")
+
+    # Logging
+    log_dir: str = Field(default="logs")
+    log_level: str = Field(default="INFO")
+
     # AI Services API Keys
     gemini_api_key: str = Field(default="")
 

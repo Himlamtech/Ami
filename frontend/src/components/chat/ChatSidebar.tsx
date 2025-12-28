@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-    Bot,
-    Sparkles,
     Search,
     MessageSquareText,
     User,
@@ -14,6 +12,7 @@ import {
     LogOut,
     Bookmark,
     PenLine,
+    Sparkles,
 } from 'lucide-react'
 import { chatApi, type Session } from '@/features/chat/api/chatApi'
 
@@ -41,7 +40,7 @@ export default function ChatSidebar({ onClose }: ChatSidebarProps) {
     const [isCreatingSession, setIsCreatingSession] = useState(false)
     const navigate = useNavigate()
     const queryClient = useQueryClient()
-    const { logout } = useAuthStore()
+    const { logout, user } = useAuthStore()
 
     // Fetch sessions from backend
     const { data: sessions = [], isLoading } = useQuery({
@@ -73,18 +72,9 @@ export default function ChatSidebar({ onClose }: ChatSidebarProps) {
     }
 
     const handleNewChat = async () => {
-        if (isCreatingSession) return
-        setIsCreatingSession(true)
-        try {
-            const session = await chatApi.createSession()
-            queryClient.invalidateQueries({ queryKey: ['sessions'] })
-            navigate(`/chat/${session.id}`)
-            onClose?.()
-        } catch (error) {
-            console.error('[ChatSidebar] Failed to create new chat', error)
-        } finally {
-            setIsCreatingSession(false)
-        }
+        // Just navigate to /chat - session will be created on first message
+        navigate('/chat')
+        onClose?.()
     }
 
     return (
@@ -174,14 +164,15 @@ export default function ChatSidebar({ onClose }: ChatSidebarProps) {
 
             {/* Footer */}
             <div className="p-3 space-y-1">
-                {/* Show admin link for all users - simplified for now */}
-                <NavLink
-                    to="/admin"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-[var(--surface)] hover:text-neutral-900 transition-colors"
-                >
-                    <Shield className="w-5 h-5" />
-                    <span>Admin Panel</span>
-                </NavLink>
+                {user?.role === 'admin' || user?.role === 'manager' ? (
+                    <NavLink
+                        to="/admin"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-[var(--surface)] hover:text-neutral-900 transition-colors"
+                    >
+                        <Shield className="w-5 h-5" />
+                        <span>Admin Panel</span>
+                    </NavLink>
+                ) : null}
                 <NavLink
                     to="/chat/profile"
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-[var(--surface)] hover:text-neutral-900 transition-colors"

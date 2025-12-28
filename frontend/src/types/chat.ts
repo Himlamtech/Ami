@@ -4,6 +4,10 @@ export interface Message {
     content: string
     timestamp: string
     sources?: Source[]
+    webSources?: string[]
+    tools?: ToolProgress[]
+    toolStage?: string
+    steps?: string[]
     feedback?: Feedback
     isStreaming?: boolean
     attachments?: Attachment[]
@@ -20,6 +24,14 @@ export interface Feedback {
     type: 'helpful' | 'not_helpful'
     comment?: string
     categories?: string[]
+}
+
+export interface ToolProgress {
+    id: string
+    type: string
+    status: 'pending' | 'running' | 'success' | 'failed' | 'skipped'
+    reasoning?: string
+    error?: string
 }
 
 export interface Conversation {

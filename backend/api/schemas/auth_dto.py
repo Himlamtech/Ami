@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -12,11 +12,13 @@ class RegisterRequest(BaseModel):
     password: str
     password_confirmation: str
     full_name: str
+    username: Optional[str] = None
+    role: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
     user_id: str
-    token: str  # This will be either the admin_api_key or just user_id for students
+    token: str
     role: str
     full_name: str
     email: str

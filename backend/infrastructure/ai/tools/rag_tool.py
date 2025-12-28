@@ -146,6 +146,7 @@ class RAGToolHandler(IToolHandler):
                 "id": chunk.get("id", ""),
                 "title": chunk.get("title", chunk.get("source", "")),
                 "score": chunk.get("score", 0.0),
+                "url": chunk.get("url") or chunk.get("source_url"),
             }
             sources.append(source)
 
